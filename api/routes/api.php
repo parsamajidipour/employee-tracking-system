@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\TrackController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -39,4 +41,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+});
+
+// Mobile. SPEC section 5 calls for a device-bound token — Sanctum personal
+// access tokens (already migrated) serve that role: one token per device,
+// checked via the same auth:sanctum guard used above. Token issuance/pairing
+// is a future auth change, not part of this one.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+    Route::post('/track', [TrackController::class, 'store']);
+    Route::get('/me/window', [MeController::class, 'window']);
 });
