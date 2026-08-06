@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\UserRole;
+use App\Models\Device;
 use App\Models\ShiftTemplate;
 use App\Models\Team;
 use App\Models\TrackingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class EmployeeControllerTest extends TestCase
@@ -16,7 +20,9 @@ class EmployeeControllerTest extends TestCase
 
     public function test_index_lists_employees(): void
     {
-        $this->actingAs(User::factory()->supervisor()->create());
+        // GET /employees is manage-schedules-gated (hr/admin), not
+        // view-locations — see AuthorizationTest and DECISIONS.md.
+        $this->actingAs(User::factory()->hr()->create());
         $team = Team::factory()->create();
         $employee = User::factory()->create(['team_id' => $team->id, 'name' => 'Fahad Al-Balushi']);
 
@@ -88,5 +94,95 @@ class EmployeeControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJson(['started_at' => null]);
+    }
+
+    public function test_store_creates_an_employee_attached_to_the_one_default_team(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        // Seeded by the seed_default_team_and_backfill_users migration —
+        // every install has exactly one team; see DECISIONS.md.
+        $team = Team::first();
+
+        $response = $this->postJson('/api/v1/employees', [
+            'name' => 'New Hire',
+            'phone' => '+968 9000 0000',
+            'username' => 'newhire',
+            'password' => 'password123',
+            'is_active' => true,
+        ]);
+
+        $response->assertCreated();
+        $employee = User::where('username', 'newhire')->first();
+        $this->assertNotNull($employee);
+        $this->assertSame(UserRole::Employee, $employee->role);
+        $this->assertTrue($employee->is_active);
+        $this->assertSame($team->id, $employee->team_id);
+    }
+
+    public function test_store_requires_a_unique_username(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        User::factory()->create(['username' => 'taken']);
+
+        $response = $this->postJson('/api/v1/employees', [
+            'name' => 'New Hire',
+            'username' => 'taken',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['username']);
+    }
+
+    public function test_set_active_toggles_the_flag(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create(['is_active' => true]);
+
+        $response = $this->putJson("/api/v1/employees/{$employee->id}/active", ['is_active' => false]);
+
+        $response->assertOk();
+        $this->assertFalse($employee->refresh()->is_active);
+    }
+
+    public function test_reset_password_changes_the_stored_hash(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create();
+
+        $response = $this->putJson("/api/v1/employees/{$employee->id}/password", ['password' => 'brand-new-password']);
+
+        $response->assertNoContent();
+        $this->assertTrue(Hash::check('brand-new-password', $employee->refresh()->password));
+    }
+
+    public function test_revoke_device_deletes_the_token_and_marks_the_device_revoked(): void
+    {
+        Cache::flush(); // see DeviceAuthControllerTest::setUp() re: the login route's shared rate-limit cache
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create(['username' => 'alice', 'password' => Hash::make('secret123')]);
+
+        $this->postJson('/api/v1/device/login', [
+            'username' => 'alice',
+            'password' => 'secret123',
+            'device_identifier' => 'device-1',
+        ])->assertOk();
+
+        $response = $this->deleteJson("/api/v1/employees/{$employee->id}/device");
+
+        $response->assertNoContent();
+        $device = Device::where('employee_id', $employee->id)->first();
+        $this->assertNotNull($device->revoked_at);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_revoke_device_is_a_no_op_when_there_is_no_active_device(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create();
+
+        $response = $this->deleteJson("/api/v1/employees/{$employee->id}/device");
+
+        $response->assertNoContent();
     }
 }

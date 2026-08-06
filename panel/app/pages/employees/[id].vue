@@ -1,16 +1,9 @@
 <script setup lang="ts">
-interface Team {
-  id: number
-  name: string
-  timezone: string
-}
-
 interface Employee {
   id: number
   name: string
-  email: string
-  team_id: number | null
-  team?: Team | null
+  email: string | null
+  username: string | null
 }
 
 interface ShiftTemplate {
@@ -82,9 +75,9 @@ async function loadAll() {
     const employees = await apiFetch<Employee[]>('/api/v1/employees')
     employee.value = employees.find((e) => e.id === employeeId) ?? null
 
-    if (employee.value?.team_id) {
-      templates.value = await apiFetch<ShiftTemplate[]>(`/api/v1/shift-templates?team_id=${employee.value.team_id}`)
-    }
+    // No team filter — this deployment has exactly one team (see
+    // DECISIONS.md), so every template already belongs to it.
+    templates.value = await apiFetch<ShiftTemplate[]>('/api/v1/shift-templates')
 
     shifts.value = await apiFetch<EmployeeShift[]>(`/api/v1/employee-shifts?employee_id=${employeeId}`)
     exceptions.value = await apiFetch<ShiftException[]>(`/api/v1/shift-exceptions?employee_id=${employeeId}`)
@@ -234,7 +227,7 @@ onMounted(async () => {
 
     <template v-else-if="employee">
       <h1 class="mb-1 text-xl font-semibold text-slate-900">{{ employee.name }}</h1>
-      <p class="mb-6 text-sm text-slate-500">{{ employee.email }} — {{ employee.team?.name ?? 'no team' }}</p>
+      <p class="mb-6 text-sm text-slate-500">{{ employee.username ?? employee.email ?? '—' }}</p>
 
       <div class="mb-8 grid max-w-5xl grid-cols-2 gap-6">
         <!-- Resolved window: what the resolver actually produces -->

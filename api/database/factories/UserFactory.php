@@ -33,6 +33,7 @@ class UserFactory extends Factory
             // Matches the column default — spelled out explicitly rather
             // than relying on it, same convention as the other factories.
             'role' => UserRole::Employee,
+            'is_active' => true,
         ];
     }
 
@@ -59,5 +60,10 @@ class UserFactory extends Factory
     public function supervisor(): static
     {
         return $this->state(['role' => UserRole::Supervisor]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(['is_active' => false]);
     }
 }

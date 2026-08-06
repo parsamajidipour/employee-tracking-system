@@ -1,13 +1,7 @@
 <script setup lang="ts">
-interface Team {
-  id: number
-  name: string
-}
-
 interface ShiftTemplate {
   id: number
   team_id: number
-  team?: Team
   name: string
   timezone: string
   days_of_week: number[]
@@ -20,14 +14,17 @@ interface ShiftTemplate {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const teams = ref<Team[]>([])
+// This deployment is a single company with one team (see DECISIONS.md) —
+// there is no team picker anywhere in the UI. Fetched once so every
+// template create/update can still send the team_id the API requires,
+// without ever showing it.
+const defaultTeamId = ref<number | null>(null)
 const templates = ref<ShiftTemplate[]>([])
 const loading = ref(true)
 const error = ref('')
 
 const editingId = ref<number | null>(null)
 const form = reactive({
-  team_id: null as number | null,
   name: '',
   timezone: 'Asia/Muscat',
   days_of_week: [0, 1, 2, 3, 4] as number[],
@@ -49,7 +46,8 @@ function dayLabel(days: number[]): string {
 async function load() {
   loading.value = true
   try {
-    teams.value = await apiFetch<Team[]>('/api/v1/teams')
+    const teams = await apiFetch<{ id: number }[]>('/api/v1/teams')
+    defaultTeamId.value = teams[0]?.id ?? null
     templates.value = await apiFetch<ShiftTemplate[]>('/api/v1/shift-templates')
     error.value = ''
   } catch {
@@ -61,7 +59,6 @@ async function load() {
 
 function startCreate() {
   editingId.value = null
-  form.team_id = teams.value[0]?.id ?? null
   form.name = ''
   form.timezone = 'Asia/Muscat'
   form.days_of_week = [0, 1, 2, 3, 4]
@@ -74,7 +71,6 @@ function startCreate() {
 
 function startEdit(template: ShiftTemplate) {
   editingId.value = template.id
-  form.team_id = template.team_id
   form.name = template.name
   form.timezone = template.timezone
   form.days_of_week = [...template.days_of_week]
@@ -89,9 +85,9 @@ async function submit() {
   error.value = ''
   try {
     if (editingId.value === null) {
-      await apiFetch('/api/v1/shift-templates', { method: 'POST', body: { ...form } })
+      await apiFetch('/api/v1/shift-templates', { method: 'POST', body: { ...form, team_id: defaultTeamId.value } })
     } else {
-      await apiFetch(`/api/v1/shift-templates/${editingId.value}`, { method: 'PUT', body: { ...form } })
+      await apiFetch(`/api/v1/shift-templates/${editingId.value}`, { method: 'PUT', body: { ...form, team_id: defaultTeamId.value } })
     }
     startCreate()
     await load()
@@ -121,12 +117,6 @@ onMounted(load)
 
     <form @submit.prevent="submit" class="mb-6 max-w-2xl space-y-3 rounded border border-slate-200 bg-white p-4">
       <div class="flex gap-2">
-        <div class="flex-1">
-          <label class="block text-xs text-slate-500">Team</label>
-          <select v-model.number="form.team_id" required class="w-full rounded border border-slate-300 px-2 py-1 text-sm">
-            <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
-          </select>
-        </div>
         <div class="flex-1">
           <label class="block text-xs text-slate-500">Name</label>
           <input v-model="form.name" required class="w-full rounded border border-slate-300 px-2 py-1 text-sm" />
@@ -181,7 +171,6 @@ onMounted(load)
     <table v-else class="w-full max-w-4xl border-collapse text-left text-sm">
       <thead>
         <tr class="border-b border-slate-300">
-          <th class="py-1 pr-4">Team</th>
           <th class="py-1 pr-4">Name</th>
           <th class="py-1 pr-4">Days</th>
           <th class="py-1 pr-4">Hours</th>
@@ -191,7 +180,6 @@ onMounted(load)
       </thead>
       <tbody>
         <tr v-for="template in templates" :key="template.id" class="border-b border-slate-200">
-          <td class="py-1 pr-4">{{ template.team?.name }}</td>
           <td class="py-1 pr-4">{{ template.name }}</td>
           <td class="py-1 pr-4">{{ dayLabel(template.days_of_week) }}</td>
           <td class="py-1 pr-4">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</td>

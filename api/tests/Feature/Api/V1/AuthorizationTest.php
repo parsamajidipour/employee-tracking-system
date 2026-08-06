@@ -70,19 +70,26 @@ class AuthorizationTest extends TestCase
     {
         $this->actingAs(User::factory()->supervisor()->create());
 
-        $this->getJson('/api/v1/employees')->assertOk();
+        // The employee roster (GET /employees) moved to manage-schedules —
+        // it carries phone numbers, usernames, active status, and device
+        // identifiers now (App\Http\Controllers\Api\V1\EmployeeController),
+        // none of which view-locations is meant to reach. A supervisor
+        // still gets employee names from /positions and still reaches
+        // window()/session() below, which is all the live map needs.
+        $this->getJson('/api/v1/employees')->assertStatus(403);
         $this->getJson('/api/v1/teams')->assertStatus(403);
         $this->postJson('/api/v1/shift-templates', [])->assertStatus(403);
     }
 
-    public function test_hr_session_manages_schedules_but_gets_403_on_location_endpoints(): void
+    public function test_hr_session_manages_schedules_and_the_employee_roster_but_gets_403_on_location_endpoints(): void
     {
         // The separation of duties this system depends on: hr sets working
-        // hours but must not be able to see where anyone is.
+        // hours and manages employee accounts, but must not be able to see
+        // where anyone is.
         $this->actingAs(User::factory()->hr()->create());
 
         $this->getJson('/api/v1/teams')->assertOk();
-        $this->getJson('/api/v1/employees')->assertStatus(403);
+        $this->getJson('/api/v1/employees')->assertOk();
 
         $otherEmployee = User::factory()->create();
         $this->getJson("/api/v1/employees/{$otherEmployee->id}/window?date=2026-08-06")->assertStatus(403);

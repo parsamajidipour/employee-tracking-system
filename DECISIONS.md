@@ -226,3 +226,81 @@ it is not committed (see below) and needs to be re-run once per clone/reset.
   beyond "re-run the extract command against a current daily build" if the
   underlying OSM data ever needs updating. Not automated; revisit if stale
   data becomes an actual complaint.
+
+## Multi-team is deferred, not removed
+
+**Decision.** This deployment seeds exactly one team ("Default", `Asia/
+Muscat`) and attaches every employee to it automatically — there is no team
+picker anywhere in the panel (`teams.vue` is deleted, `shift-templates.vue`
+sends `team_id` silently instead of showing a select). The underlying
+concept is untouched: `teams` is still a real table, `Team.timezone` still
+feeds `App\Services\ShiftWindowResolver`, `shift_templates` still belong to
+a team, and `TeamController`'s CRUD endpoints are still live at
+`/api/v1/teams` — just unlinked from the UI, not deleted.
+
+**Why.** The product is a single company right now. A picker with exactly
+one always-selected option is UI for a problem that doesn't exist yet;
+removing the *concept* of a team instead would mean redesigning the
+schedule domain from scratch the day a second company or site actually
+needs one. Keeping the schema and API intact while hiding the picker is
+the cheap, reversible version of "not now."
+
+**Consequences.** `database/migrations/..._seed_default_team_and_backfill_users.php`
+is a one-time data migration, not a seeder — it runs on every deploy via
+`migrate --force`, so the default team and the backfill both exist
+unconditionally, not just in dev environments that happen to run
+`db:seed`. Un-deferring multi-team means adding the picker back to
+`teams.vue`'s (or a successor's) UI and to `shift-templates.vue` and the
+employee-creation flow — the API already supports it. Nothing in the
+resolver, the gate, or the migrations changes.
+
+## One active device per employee — company-issued phones, not BYOD
+
+**Decision.** `App\Services\DeviceService::login()` refuses a second device
+login for an employee while a first one is still active (`devices` has a
+partial unique index on `employee_id` WHERE `revoked_at IS NULL`). There is
+no "log in on a new phone automatically revokes the old one" path — an hr/
+admin must explicitly revoke via the panel (`DELETE /api/v1/employees/
+{employee}/device`) before a new device can log in for that employee.
+
+**Why.** The phones running the tracking app are company-issued, not the
+employee's own (SPEC section 9's open question 4 is answered by this: not
+BYOD). A second device attempting to log in while the first is still
+active is either a lost/replaced phone or something actually wrong — not a
+normal, expected event like "I got a new personal phone" would be on a
+BYOD deployment. Refusing by default and requiring an explicit revoke
+means every device change leaves a trail (the old `devices` row stays,
+marked `revoked_at`, alongside the new one) instead of silently rotating.
+
+**Consequences.** If phones ever become employee-owned (BYOD) in a later
+phase, this policy needs revisiting — auto-revoking the old device on a
+new login might become the right default instead of refusing outright.
+Losing a phone without panel access to revoke it first means that
+employee can't get a new device logged in until an hr/admin does it —
+acceptable friction at this project's scale (50–150 employees, an hr/admin
+always reachable), not something to work around with self-service revoke
+from the app itself.
+
+## The employee roster (GET /employees) moved to manage-schedules, not view-locations
+
+**Decision.** `GET /api/v1/employees` now requires `manage-schedules`
+(hr/admin), not `view-locations` (supervisor/admin) as it did before this
+change. A supervisor session gets 403 on it.
+
+**Why.** The response now carries phone numbers, usernames, active status,
+and a device identifier/last-seen time (`App\Http\Controllers\Api\V1\
+EmployeeController::index()`) — account data, not location data. A
+supervisor's capability is specifically about seeing *where* employees
+are, not their phone numbers or whether their device was recently
+revoked. The live map never called this endpoint anyway: it gets employee
+names from `/positions`, and the detail panel's window/session data from
+`employees/{id}/window` and `employees/{id}/session`, both still
+`view-locations`-gated and unchanged. This also fixes a pre-existing
+inconsistency: `employees/{id}.vue`'s schedule-editing mutations
+(`employee-shifts`, `shift-exceptions`) were already `manage-schedules`-
+gated, so a supervisor could load that page but never save anything on
+it — the whole employee-management surface is consistently hr/admin-only.
+
+**Consequences.** Any future supervisor-facing need for an employee list
+(e.g. searching by name in a UI element that doesn't show account data)
+should hit `/positions` or a new, narrower endpoint — not this one.

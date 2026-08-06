@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\DeviceAuthController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EmployeeShiftController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -28,7 +29,13 @@ Route::post('/login', function (Request $request) {
         'password' => ['required'],
     ]);
 
-    if (! Auth::attempt($credentials)) {
+    // is_active rides along in the credentials array Auth::attempt() passes
+    // to the Eloquent user provider, which where()s on every key in it —
+    // an inactive account simply isn't found, the same "deactivate means
+    // deactivated everywhere, not just the mobile app" rule the device
+    // login endpoint enforces on its own path. See EmployeeController's
+    // setActive().
+    if (! Auth::attempt([...$credentials, 'is_active' => true])) {
         throw ValidationException::withMessages([
             'email' => ['These credentials do not match our records.'],
         ]);
@@ -38,6 +45,13 @@ Route::post('/login', function (Request $request) {
 
     return response()->json(['user' => Auth::user()]);
 });
+
+// Mobile device login — see App\Services\DeviceService and DECISIONS.md's
+// "one active device per employee" entry. Unauthenticated by definition
+// (this is how a device gets its token) and rate-limited: it's the one
+// endpoint in this app that accepts a password over and over from an
+// otherwise-anonymous caller.
+Route::post('/v1/device/login', [DeviceAuthController::class, 'login'])->middleware('throttle:5,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', function (Request $request) {
@@ -72,7 +86,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // (manage-schedules) and supervisor (view-locations) are separate
     // concerns, not tiers of one hierarchy — see App\Enums\UserRole.
     Route::middleware('capability:view-locations')->group(function () {
-        Route::get('/employees', [EmployeeController::class, 'index']);
         Route::get('/employees/{employee}/window', [EmployeeController::class, 'window']);
         Route::get('/employees/{employee}/session', [EmployeeController::class, 'session']);
         Route::get('/positions', [PositionController::class, 'index']);
@@ -83,6 +96,19 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
         Route::post('/teams', [TeamController::class, 'store']);
         Route::put('/teams/{team}', [TeamController::class, 'update']);
         Route::delete('/teams/{team}', [TeamController::class, 'destroy']);
+
+        // The employee roster is an HR/admin concern, not a view-locations
+        // one — it now carries phone numbers, usernames, active status,
+        // and device identifiers (App\Http\Controllers\Api\V1\
+        // EmployeeController::index()), none of which a supervisor's
+        // capability is meant to reach. A supervisor still gets employee
+        // names from /positions and window()/session() above, which is
+        // all the live map needs.
+        Route::get('/employees', [EmployeeController::class, 'index']);
+        Route::post('/employees', [EmployeeController::class, 'store']);
+        Route::put('/employees/{employee}/active', [EmployeeController::class, 'setActive']);
+        Route::put('/employees/{employee}/password', [EmployeeController::class, 'resetPassword']);
+        Route::delete('/employees/{employee}/device', [EmployeeController::class, 'revokeDevice']);
 
         Route::get('/shift-templates', [ShiftTemplateController::class, 'index']);
         Route::post('/shift-templates', [ShiftTemplateController::class, 'store']);
