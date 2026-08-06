@@ -4,12 +4,13 @@ Lightweight decision log. Newest entries at the bottom. This is not a spec —
 `docs/SPEC.md` is the source of truth for behavior; this file is the "why"
 behind structural choices that aren't obvious from reading the code.
 
-## Admin UI is Nuxt 3, not Blade or Inertia
+## Admin UI is Nuxt, not Blade or Inertia
 
-**Decision.** The admin panel is a separate Nuxt 3 + Tailwind app (`panel/`),
+**Decision.** The admin panel is a separate Nuxt + Tailwind app (`panel/`),
 not server-rendered Blade views or an Inertia-glued SPA inside the Laravel
 app. `api/` (the renamed former `panel/`) is Laravel, API only — no views, no
-Vite/Tailwind frontend tooling, no `resources/`.
+Vite/Tailwind frontend tooling, no `resources/`. (Which Nuxt major version —
+see the entry below.)
 
 **Why.** Directed change, not derived from a technical constraint in this
 repo. The consequence that matters for everything downstream: the admin UI
@@ -51,7 +52,8 @@ fails closed (no cookie, 419 on POSTs), not open.
 **Decision.** `docker-compose.yml` (dev) covers `postgres`, `redis`, and
 `api` only. The panel is started with `npm run dev` on the host.
 `panel/Dockerfile` still exists, but the only thing that references it is
-`docker-compose.prod.yml`, which is not used in dev.
+`docker-compose.prod.unfinished.yml`, which is not used in dev — see the
+next entry for why it's named that.
 
 **Why.** A containerized Nuxt dev server adds a rebuild-image step to every
 frontend change for no benefit in a single-developer/single-VPS-scale setup
@@ -65,30 +67,63 @@ frontend iteration.
 `api/`'s host-mapped port (not the Docker service name — the browser can't
 resolve that). Whatever port the panel runs on (`PANEL_PORT`, default 3000)
 must match `api/`'s `SANCTUM_STATEFUL_DOMAINS` / `CORS_ALLOWED_ORIGINS`, or
-login will fail CORS/CSRF checks. `docker-compose.prod.yml` is for deploying
-the panel as a container alongside `api/`; its `panel/Dockerfile` currently
-still runs `npm run dev`, not a production build (`nuxt build` +
-`.output/`) — that's a known gap, not addressed here.
+login will fail CORS/CSRF checks.
 
-## No TypeScript in panel/app/ (for now)
+## docker-compose.prod.unfinished.yml is named that on purpose
 
-**Decision.** `panel/app/` uses plain `<script setup>` and `.js` files, not
-`lang="ts"` or `.ts`. This is a workaround, not a style preference — remove
-it once the underlying bug is fixed upstream.
+**Decision.** The file adding a containerized `panel` service on top of the
+base stack is named `docker-compose.prod.unfinished.yml`, not
+`docker-compose.prod.yml`, and opens with a "NOT PRODUCTION-READY" banner.
 
-**Why.** With `nuxt@3.21.11`, any `.ts` file (or `.vue` with
-`lang="ts"`) crashes the dev server: Vite's TS handling looks for
-`.nuxt/tsconfig.app.json`, which Nuxt's own root `.nuxt/tsconfig.json`
-references but never actually gets generated. This is a real version-skew
-bug — `nuxt@3.21.11` depends on `@nuxt/kit@3.21.11` exactly, but the
-installed dependency tree also pulls in transitive packages expecting a
-newer `@nuxt/kit` (4.x) that writes the split `tsconfig.app.json` /
-`tsconfig.node.json` / `tsconfig.shared.json` files; the resolved 3.21.11
-`@nuxt/kit` only writes the old single `tsconfig.json`. The result: any file
-that needs TS type-stripping fails with `ENOENT` on a file that was never
-written.
+**Why.** `panel/Dockerfile` runs `npm run dev` — the Nuxt dev server, not a
+production build. A file plainly named `docker-compose.prod.yml` invites
+someone to run it against a real deploy without reading further; the `npm
+run dev` process inside it would then serve dev-mode HMR/error-overlay
+code in production. Renaming it and banner-commenting it is the cheap
+insurance against that, until the Dockerfile is actually rewritten to run
+`nuxt build` and serve `.output/` with a production Node process (plus
+deciding what sits in front of it — reverse proxy, TLS termination, etc.).
+That rewrite is out of scope here.
 
-**Consequences.** If you need TypeScript in the panel, first check whether
-a `nuxt`/`@nuxt/kit` patch has fixed this (verify `.nuxt/tsconfig.app.json`
-actually gets created after `npx nuxi prepare`). Until then, stick to plain
-JS in `panel/app/`.
+**Consequences.** Don't rename it back to `docker-compose.prod.yml` until
+`panel/Dockerfile` actually performs a production build. If you do that
+work, update this entry and the one above accordingly.
+
+## panel/ runs Nuxt 4, not 3 — a version-skew bug forced the move
+
+**Decision.** `panel/` pins `nuxt@^4.5.2`, not `^3.x`. TypeScript is used
+normally throughout `panel/app/` (`lang="ts"`, `.ts` composables).
+
+**Why.** `nuxt@3.21.11`'s installed dependency tree has a real version
+skew: `nuxt` itself depends on `@nuxt/kit@3.21.11` exactly, but transitive
+deps (`@dxup/nuxt`, `@nuxt/devtools` / `@nuxt/devtools-kit`) pull in
+`@nuxt/kit@4.5.2`. `nuxt`'s own root `.nuxt/tsconfig.json` ends up generated
+in the *newer* split-file shape — it references `./tsconfig.app.json` — but
+the actually-hoisted 3.21.11 `@nuxt/kit` only ever writes the *old* single
+`tsconfig.json`. Result: `.nuxt/tsconfig.app.json` never exists, and any
+`.ts` file or `lang="ts"` block crashes the Vite dev server with `ENOENT` on
+that missing file the moment it needs TS type-stripping.
+
+Two fixes were possible: force `@nuxt/kit` to a single version everywhere
+(via npm `overrides`), or move `nuxt` itself to the 4.x line the transitive
+deps already expect. The `overrides` attempt (pinning `@nuxt/kit` down to
+3.21.11 across the tree) didn't take cleanly — npm left the three transitive
+copies at 4.5.2 and reported them "invalid" rather than replacing them.
+Moving to `nuxt@^4.5.2` removed the skew outright: `@nuxt/kit@4.5.2` is now
+what's actually hoisted and used by `nuxt`'s own prepare step, so all five
+`.nuxt/tsconfig.*.json` files get written consistently, and `npm run dev` /
+`nuxt typecheck` both run clean.
+
+**Also needed for typecheck:** `nuxt typecheck` requires `vue-tsc`, which
+requires `typescript` to still expose its pre-rewrite `./lib/tsc` subpath
+export. `npm install -D typescript` grabs whatever is tagged `latest`, which
+was `7.x` (TypeScript's native/Go-based rewrite) at the time — its package
+layout doesn't have that subpath, so `vue-tsc` fails with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`. `panel/package.json` pins
+`typescript@5.9.3` (last stable pre-7.x release) as a devDependency
+specifically for `vue-tsc` compatibility.
+
+**Consequences.** If bumping `nuxt` past `4.5.2`, re-check `npm ls
+@nuxt/kit` for a reintroduced skew before assuming TS still works. If
+`vue-tsc` ever ships a release compatible with `typescript@7.x`'s new
+export layout, the `typescript@5.9.3` pin can be dropped.

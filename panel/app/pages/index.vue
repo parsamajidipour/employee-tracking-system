@@ -1,10 +1,16 @@
-<script setup>
-const user = ref(null)
+<script setup lang="ts">
+interface AuthUser {
+  id: number
+  name: string
+  email: string
+}
+
+const user = ref<AuthUser | null>(null)
 const loading = ref(true)
 
 onMounted(async () => {
   try {
-    user.value = await apiFetch('/api/user')
+    user.value = await apiFetch<AuthUser>('/api/user')
   } catch {
     user.value = null
   } finally {

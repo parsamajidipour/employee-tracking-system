@@ -1,0 +1,32 @@
+# NOT PRODUCTION-READY. DO NOT USE TO DEPLOY.
+#
+# panel/Dockerfile runs `npm run dev` — the Nuxt *dev server*, not a built
+# app. That means: no production optimizations, dev-only error overlays and
+# HMR websocket exposed, and meaningfully worse runtime performance. This
+# file exists only as a placeholder for a real production setup (multi-stage
+# build running `nuxt build` + serving `.output/` with `node
+# .output/server/index.mjs`, plus whatever reverse proxy terminates TLS in
+# front of it) — that work has not been done yet.
+#
+# In dev, the Nuxt panel runs on the host via `npm run dev` — see README.md.
+# This file's only current purpose is documenting the intended shape of a
+# containerized panel service once the Dockerfile is actually productionized.
+# See DECISIONS.md for more.
+#
+# Usage (once panel/Dockerfile is fixed):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.unfinished.yml up -d
+services:
+  panel:
+    build:
+      context: ./panel
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # The api/ origin as seen by the browser, not the in-network service
+      # name — the login flow runs in the browser, not server-to-server.
+      NUXT_PUBLIC_API_BASE: "http://localhost:${API_PORT:-8000}"
+    env_file:
+      - ./panel/.env
+    ports:
+      - "${PANEL_PORT:-3000}:3000"

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 const email = ref('')
 const password = ref('')
 const error = ref('')

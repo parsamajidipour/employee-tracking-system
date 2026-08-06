@@ -10,7 +10,7 @@ during working hours only — see `docs/SPEC.md` for the full spec and
 api/      Laravel 11, API only — mobile API, panel API, WebSocket (Reverb),
           all business logic. Postgres/PostGIS + Redis. Sanctum for the
           panel's SPA (cookie) auth.
-panel/    Nuxt 3 + Tailwind admin UI. Authenticates against api/ over
+panel/    Nuxt 4 + Tailwind admin UI. Authenticates against api/ over
           Sanctum. Runs on the host in dev — see below.
 app/      Placeholder. Flutter Android client, built in a later phase.
 docs/     SPEC.md, API.md, PRIVACY.md.
@@ -52,9 +52,10 @@ if you want to run `api/` outside Docker too.
    in sync if you change the port). `panel/.env`'s `NUXT_PUBLIC_API_BASE`
    must point at the api's browser-visible URL from step 2.
 
-Docker does **not** run the panel in dev — see `DECISIONS.md`. A
-`docker-compose.prod.yml` adds a containerized panel service for production;
-it is not used in dev.
+Docker does **not** run the panel in dev — see `DECISIONS.md`.
+`docker-compose.prod.unfinished.yml` sketches a containerized panel service
+for production, but is not usable yet (`panel/Dockerfile` still runs the dev
+server, not a production build) and is not used in dev.
 
 ### Trying the login flow
 

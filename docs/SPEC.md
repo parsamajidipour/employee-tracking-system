@@ -17,14 +17,14 @@ decisions below exist to make it structurally true rather than a matter of polic
 ```
 tracking/
 ├─ api/        Laravel, API only: mobile API + panel API + WebSocket
-├─ panel/      Nuxt 3 admin UI, authenticates against api/ via Sanctum SPA
+├─ panel/      Nuxt 4 admin UI, authenticates against api/ via Sanctum SPA
 ├─ app/        Flutter, Android only in phase 1
 ├─ docs/       SPEC.md, PRIVACY.md, API.md
 └─ CLAUDE.md   invariants that must hold in every session
 ```
 
 The admin UI was originally planned as a Blade/Inertia part of the Laravel
-monolith. It is Nuxt 3 instead, talking to `api/` over Sanctum's SPA
+monolith. It is Nuxt 4 instead, talking to `api/` over Sanctum's SPA
 (cookie-based) authentication. See `DECISIONS.md` for why.
 
 ## 3. Invariants
