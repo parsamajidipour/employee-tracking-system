@@ -159,39 +159,70 @@ Any new panel/admin route must be added to exactly one of the two
 `Route::middleware('capability:...')` groups in `routes/api.php`, never
 gated by role name or rank directly.
 
-## Live map tiles: OpenStreetMap's standard raster servers, for now
+## Live map tiles: self-hosted PMTiles extract, served from `api/`
 
 **Decision.** The live map (`panel/app/pages/map.vue`) renders with
-MapLibre GL JS against a plain raster source pointed at OpenStreetMap's
-standard tile servers (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`).
-No API key, no account, no billing.
+MapLibre GL JS against a single PMTiles archive (`api/storage/app/basemap/
+oman.pmtiles`, a Protomaps basemap extract clipped to Oman's bounding box,
+zoom 0–14), served by `api/`'s own `GET /api/basemap/oman.pmtiles` route
+(`App\Http\Controllers\BasemapController`) and read client-side with the
+`pmtiles` package's `Protocol` handler plus `@protomaps/basemaps`' vector
+style layers. No new container: `response()->file()` on a `BinaryFileResponse`
+already gets `Range`-request handling for free from Symfony, which is all
+the PMTiles HTTP-range-read model needs.
 
-**Why.** Every alternative that looks more "production" (MapTiler, Stadia
-Maps, Mapbox) requires a signup and an API key even on their free tiers —
-which means either committing a key to the repo (never happening) or adding
-a whole new secret-provisioning step to `README.md`'s dev setup before a
-single marker renders. OSM's tile servers need neither, which matches this
-phase: `CLAUDE.md` says reach for the boring option, and right now "does a
-marker show up on a map" doesn't justify a new account anywhere.
+This replaces the previous entry below (OSM's standard raster tile
+servers), which is superseded, not just amended — the "viewport leaks to a
+third party" consequence that entry accepted is what this decision removes.
 
-**Consequences — read before shipping this past a demo.** Every tile
-request is a direct browser request to `tile.openstreetmap.org`, carrying
-the supervisor's viewport (which map area, at what zoom, how often) to a
-third party outside this system. That's a smaller leak than a location
-point ever reaching them — OSM never sees an employee's coordinates, only
-which map tiles a supervisor's browser happens to be looking at — but it's
-still a real one, and it sits oddly next to a product whose entire premise
-is *not* leaking location data to parties who don't need it. OSM's tile
-usage policy also just plainly disallows heavy production traffic without
-self-hosting.
+**Why.** `tile.openstreetmap.org`'s usage policy doesn't permit embedding
+it in an application like this one, and OSM's own infrastructure will
+rate-limit or block it under any real load — that was flagged as a known
+gap in the previous entry, and it's not something to leave sitting once
+there's a next task touching this file. PMTiles makes self-hosting cheap
+enough to do immediately instead of deferring it: it's one file, range-read
+over plain HTTP, no tile-serving process, no cache layer, no per-tile
+routing — the file itself *is* the server-side state. That fits `CLAUDE.md`
+better than the `tileserver-gl`-container alternative the old entry
+sketched: one static file beats a new long-running service at this
+project's scale.
 
-Two credible next steps once this matters, in ascending effort: (1) a free
-provider that still needs a key (MapTiler's free tier is generous at this
-project's scale) — trades "no signup" for "no third-party viewport
-telemetry on every request being someone else's business model," which
-isn't actually true either since the provider still sees requests, just
-under a commercial ToS instead of OSM's community one; (2) self-host tiles
-(a `tileserver-gl` container serving a pre-built extract of Oman from
-OSM data) — the only option that removes the third party entirely, at the
-cost of a new service and a data-refresh story. Revisit before a real
-deploy, not before.
+**How the extract was built.** Protomaps publishes a daily-updated
+planet-wide basemap PMTiles archive at `https://build.protomaps.com/
+<YYYYMMDD>.pmtiles` (~120GB). PMTiles' layout supports extracting a
+bounding box from a *remote* archive via HTTP range requests alone —
+nothing close to 120GB is downloaded. The `go-pmtiles` CLI's `extract`
+subcommand did this for Oman's bbox in about 80MB / a few dozen HTTP
+requests total. See `README.md`'s dev-setup step for the exact command —
+it is not committed (see below) and needs to be re-run once per clone/reset.
+
+**Consequences.**
+- `api/storage/app/basemap/oman.pmtiles` is a generated artifact, not
+  source — gitignored (already covered by the existing blanket
+  `api/storage/app/*` / `api/storage/app/.gitignore` rules, nothing new
+  needed there), and regenerated locally by the README's download step, not
+  fetched from any application-controlled URL at runtime.
+- `GET /api/basemap/oman.pmtiles` is intentionally unauthenticated — it's
+  OSM-derived basemap geometry, the same data anyone could get from OSM
+  directly, not employee location data. Nothing in `CLAUDE.md`'s access
+  rules applies to it.
+- `api/config/cors.php`'s `exposed_headers` now includes `Content-Range`,
+  `Content-Length`, and `Accept-Ranges` — the pmtiles client reads these off
+  the `fetch()` response to do its range reads, and cross-origin `fetch()`
+  hides all response headers from JS unless a CORS response explicitly
+  exposes them.
+- No `glyphs`/`sprite` URL is set in the MapLibre style. Text labels still
+  render — MapLibre falls back to local system fonts when no glyphs
+  endpoint is configured — but POI icons don't (no local fallback exists
+  for sprite images; console shows "could not be loaded" warnings for
+  them). Leaving both unset is deliberate either way: this is still the
+  no-design-pass phase, and standing up a font/sprite service (third-party
+  or self-hosted) to draw icons would reintroduce exactly the kind of
+  external request this change exists to remove, for a cosmetic gain no one
+  asked for yet.
+- The extract is zoom 0–14 and was built from whatever day's build was
+  current when generated — Protomaps' daily builds aren't meant to be
+  hotlinked or diffed against by date, so there's no "refresh" story here
+  beyond "re-run the extract command against a current daily build" if the
+  underlying OSM data ever needs updating. Not automated; revisit if stale
+  data becomes an actual complaint.

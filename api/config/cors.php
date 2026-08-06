@@ -28,7 +28,13 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    // pmtiles' browser client (see panel/app/pages/map.vue) reads Range
+    // requests against api/basemap/oman.pmtiles via fetch(), and fetch()
+    // hides every response header from JS by default on a cross-origin
+    // request unless it's explicitly exposed here — Content-Length and
+    // Accept-Ranges are how the client sizes its first request; Content-Range
+    // is how it confirms which byte range actually came back.
+    'exposed_headers' => ['Content-Range', 'Content-Length', 'Accept-Ranges'],
 
     'max_age' => 0,
 

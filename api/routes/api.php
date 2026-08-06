@@ -8,10 +8,16 @@ use App\Http\Controllers\Api\V1\ShiftExceptionController;
 use App\Http\Controllers\Api\V1\ShiftTemplateController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\TrackController;
+use App\Http\Controllers\BasemapController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
+
+// Self-hosted basemap tiles for the live map (see DECISIONS.md) — no auth,
+// no capability gate. It's OSM basemap geometry, not employee location
+// data; nothing in this response depends on who's asking.
+Route::get('/basemap/oman.pmtiles', [BasemapController::class, 'oman']);
 
 // Session-cookie login for the Sanctum SPA flow (Nuxt panel/). Capability
 // authorization (App\Enums\Capability, the `capability` middleware) is

@@ -41,7 +41,31 @@ if you want to run `api/` outside Docker too.
    This brings up Postgres (with PostGIS enabled), Redis, and `api/`, then
    runs migrations and serves the API at http://localhost:8000 (port
    configurable via `API_PORT` in the root `.env`).
-3. Start the panel on the host:
+3. Download the live map's basemap tiles. The live map (`panel/app/pages/map.vue`)
+   renders from a self-hosted [Protomaps](https://protomaps.com) PMTiles
+   extract instead of any third-party tile server — see `DECISIONS.md`'s
+   "Live map tiles" entry for why. The file is a generated artifact, not
+   source, and is gitignored — download/build it once per clone:
+
+   ```
+   go install github.com/protomaps/go-pmtiles@latest
+   mkdir -p api/storage/app/basemap
+   "$(go env GOPATH)/bin/go-pmtiles" extract \
+     "https://build.protomaps.com/$(date -u +%Y%m%d).pmtiles" \
+     api/storage/app/basemap/oman.pmtiles \
+     --bbox=52.0000004,16.4649608,60.0545770,26.7026780 \
+     --maxzoom=14
+   ```
+
+   This reads only the ~80MB of tiles inside Oman's bounding box out of
+   Protomaps' ~120GB daily planet build via HTTP range requests — it does
+   not download the whole archive. Requires Go; `go-pmtiles` is a single
+   static binary with no other dependencies. If `build.protomaps.com`
+   doesn't have today's date yet (builds land a few hours into the UTC
+   day), try `date -u -d yesterday +%Y%m%d` instead. `api/` is bind-mounted
+   into the container (see below), so the file is picked up with no rebuild
+   or restart — just refresh the panel.
+4. Start the panel on the host:
    ```
    cd panel
    npm install

@@ -5,6 +5,18 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxtjs/tailwindcss'],
   css: ['maplibre-gl/dist/maplibre-gl.css'],
+  // maplibre-gl bundles its own worker via `new Worker(new URL(...))`; Vite's
+  // dep optimizer pre-bundles that worker chunk into a cache path it doesn't
+  // actually keep in sync with the main module in dev, which 404s the worker
+  // script at runtime — vector tile parsing (needed once the live map has a
+  // vector source, not just raster) silently never happens as a result.
+  // Excluding it from optimization makes Vite serve maplibre-gl's own worker
+  // file directly instead.
+  vite: {
+    optimizeDeps: {
+      exclude: ['maplibre-gl'],
+    },
+  },
   runtimeConfig: {
     public: {
       // The api/ origin as seen by the browser — must be in api/'s

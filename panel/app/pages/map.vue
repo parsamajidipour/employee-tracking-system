@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl'
+import { Map as MapLibreMap, Marker as MapLibreMarker, addProtocol } from 'maplibre-gl'
+import { Protocol as PMTilesProtocol } from 'pmtiles'
+import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
 import type { StalenessBucket } from '~/composables/usePositions'
 
 // MapLibre and Laravel Echo/pusher-js both touch window/WebSocket at module
@@ -114,19 +116,32 @@ watch(positions, syncMarkers, { deep: true })
 watch(now, syncMarkers)
 
 onMounted(() => {
+  // Self-hosted PMTiles basemap (see DECISIONS.md's "Live map tiles" entry)
+  // — addProtocol is a global registration, harmless to repeat on
+  // remount, but only ever needed once per page load.
+  addProtocol('pmtiles', new PMTilesProtocol().tile)
+
+  const { public: config } = useRuntimeConfig()
+  const basemapUrl = `${config.apiBase}/api/basemap/oman.pmtiles`
+
   map = new MapLibreMap({
     container: mapContainer.value!,
     style: {
       version: 8,
       sources: {
-        osm: {
-          type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
+        protomaps: {
+          type: 'vector',
+          url: `pmtiles://${basemapUrl}`,
           attribution: '© OpenStreetMap contributors',
         },
       },
-      layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+      // No `glyphs`/`sprite` URL, deliberately: text labels still render —
+      // MapLibre falls back to local system fonts when no glyphs endpoint
+      // is configured — but POI icons don't (no local fallback exists for
+      // sprite images), which is fine for this plain-Tailwind,
+      // no-design-pass page. Either way, nothing reaches a third-party
+      // font/sprite host, which is the point of self-hosting the tiles.
+      layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
     },
     center: [58.4, 23.6],
     zoom: 7,
