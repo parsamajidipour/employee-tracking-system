@@ -1,0 +1,62 @@
+# Env files (all apps)
+.env
+.env.*
+!.env.example
+!api/.env.example
+!panel/.env.example
+
+# Laravel (api/)
+api/vendor/
+api/node_modules/
+api/public/hot
+api/public/storage
+api/storage/*.key
+api/storage/pail
+api/storage/app/*
+!api/storage/app/public
+api/storage/framework/cache/*
+!api/storage/framework/cache/.gitignore
+api/storage/framework/sessions/*
+!api/storage/framework/sessions/.gitignore
+api/storage/framework/testing/*
+!api/storage/framework/testing/.gitignore
+api/storage/framework/views/*
+!api/storage/framework/views/.gitignore
+api/storage/logs/*
+!api/storage/logs/.gitignore
+api/storage/*.sqlite
+api/database/*.sqlite
+api/bootstrap/cache/*.php
+api/.phpunit.cache
+api/Homestead.json
+api/Homestead.yaml
+api/auth.json
+
+# Nuxt (panel/)
+panel/node_modules/
+panel/.nuxt/
+panel/.output/
+panel/.data/
+panel/dist/
+
+# Flutter (app/, phase 2+)
+app/.dart_tool/
+app/.flutter-plugin-dependencies
+app/.packages
+app/.pub-cache/
+app/.pub/
+app/build/
+app/**/generated_plugin_registrant.dart
+app/*.iml
+app/android/.gradle/
+app/android/**/gradle-wrapper.jar
+app/android/local.properties
+app/android/key.properties
+app/android/**/*.keystore
+app/android/**/*.jks
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
