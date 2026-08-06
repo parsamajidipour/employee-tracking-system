@@ -114,6 +114,25 @@ final class ShiftWindowResolver
     }
 
     /**
+     * What window, if any, starts on $localDate (a "Y-m-d" string in the
+     * employee's team timezone) — the admin-facing counterpart to resolve():
+     * same precedence, same helper, just anchored on an explicit calendar
+     * date an admin picked rather than "now." This is what the panel's
+     * per-employee schedule page calls to show what the resolver actually
+     * produces for a chosen date, next to the raw rows — never a second,
+     * separate implementation of window logic (CLAUDE.md invariant 8).
+     */
+    public function resolveForDate(User $employee, string $localDate): ?ShiftWindow
+    {
+        $team = $employee->team;
+        if ($team === null) {
+            return null;
+        }
+
+        return $this->resolveGoverningWindowForDate($employee, $team, $localDate, $team->timezone);
+    }
+
+    /**
      * The first window that starts strictly after $after, or null if none is
      * found within NEXT_WINDOW_LOOKAHEAD_DAYS.
      */
@@ -146,8 +165,9 @@ final class ShiftWindowResolver
      * resolve() (exceptions -> employee_shifts -> team template, each level
      * fully authoritative once it has a row for this date), but for a single
      * anchor date with no "yesterday" candidate and no containment check.
-     * Used by resolveNext(); resolve() has its own containment-checked,
-     * two-anchor version of this same precedence and is left untouched.
+     * Used by resolveNext() and resolveForDate(); resolve() has its own
+     * containment-checked, two-anchor version of this same precedence and is
+     * left untouched.
      */
     private function resolveGoverningWindowForDate(User $employee, Team $team, string $anchorDate, string $timezone): ?ShiftWindow
     {

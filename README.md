@@ -47,15 +47,42 @@ if you want to run `api/` outside Docker too.
    npm install
    npm run dev
    ```
-   Serves at http://localhost:3000 by default (`PANEL_PORT` in the root
-   `.env` controls what `api/`'s CORS/Sanctum config expects — keep the two
-   in sync if you change the port). `panel/.env`'s `NUXT_PUBLIC_API_BASE`
-   must point at the api's browser-visible URL from step 2.
+   Serves at http://localhost:3000 by default. **`PANEL_PORT` in the root
+   `.env` must match whatever port this actually runs on** — it's not just
+   documentation, it's what `docker-compose.yml` uses to build `api/`'s
+   `SANCTUM_STATEFUL_DOMAINS` and `CORS_ALLOWED_ORIGINS`. If you run the
+   panel on a different port (e.g. to avoid a clash with another project on
+   3000), set `PANEL_PORT` to match *before* `docker compose up`, or via
+   `PORT=<port> npm run dev` on the panel side to match an existing
+   `PANEL_PORT` — either way the two must agree, or login fails CORS/CSRF
+   checks with no more specific error than that. `panel/.env`'s
+   `NUXT_PUBLIC_API_BASE` must point at the api's browser-visible URL from
+   step 2.
 
 Docker does **not** run the panel in dev — see `DECISIONS.md`.
 `docker-compose.prod.unfinished.yml` sketches a containerized panel service
 for production, but is not usable yet (`panel/Dockerfile` still runs the dev
 server, not a production build) and is not used in dev.
+
+### Code changes and rebuilding
+
+`api/` is bind-mounted into the container (`docker-compose.yml`), so most
+edits — controllers, routes, migrations, config, anything under `api/`
+except `vendor/` — take effect on the next request with no rebuild, the
+same way `panel/`'s `npm run dev` already behaves. `vendor/` is
+deliberately *not* live-mounted (an anonymous volume shadows it), so the
+container keeps using whatever Composer installed at image-build time
+regardless of what's (or isn't) in the host's `api/vendor`.
+
+Rebuild (`docker compose build api`, then `docker compose up -d api`) is
+still required for:
+- `composer.json` / `composer.lock` changes (new/updated PHP dependencies)
+- `api/Dockerfile` changes
+- anything that needs a fresh `vendor/` snapshot for another reason
+
+Migrations run automatically on container start (`php artisan migrate
+--force`, in the `command:` above) — a new migration just needs the
+container restarted (`docker compose restart api`), not rebuilt.
 
 ### Trying the login flow
 

@@ -54,4 +54,20 @@ final readonly class ShiftWindow
         return $instant->greaterThanOrEqualTo($this->effectiveStart())
             && $instant->lessThan($this->effectiveEnd());
     }
+
+    /**
+     * The shape every API response uses for a window — graced times only,
+     * per this class's own rule above. The single implementation shared by
+     * the mobile-facing and admin-facing window endpoints.
+     *
+     * @return array{start: string, end: string, source: string}
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'start' => $this->effectiveStart()->toISOString(),
+            'end' => $this->effectiveEnd()->toISOString(),
+            'source' => $this->source->value,
+        ];
+    }
 }

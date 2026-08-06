@@ -34,6 +34,15 @@ services:
     build:
       context: ./api
     restart: unless-stopped
+    volumes:
+      # Bind-mount the source so code changes take effect on the next
+      # request with no rebuild. The anonymous volume on vendor/ shadows
+      # the mount for that one path, keeping the image's own
+      # composer-installed vendor/ in place instead of whatever (or
+      # nothing) is on the host — see README's "Dev environment" section
+      # for exactly which changes still require docker compose build.
+      - ./api:/var/www/html
+      - /var/www/html/vendor
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,7 +67,14 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
       - "${REVERB_PORT:-8080}:8080"
-    command: sh -c "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"
+    # --no-reload matters now that api/ is bind-mounted: `artisan serve`
+    # otherwise restarts its child process on every api/.env change and,
+    # on restart, strips almost all inherited env vars so the child
+    # re-reads .env from scratch — which discards the DB_HOST=postgres
+    # etc. set above in favor of api/.env's host-perspective values (meant
+    # for running `php artisan` directly on the host, not from a
+    # container). --no-reload keeps this container's real environment.
+    command: sh -c "php artisan migrate --force && php artisan serve --no-reload --host=0.0.0.0 --port=8000"
 
 volumes:
   postgres_data:

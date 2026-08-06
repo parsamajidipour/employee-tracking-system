@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -29,6 +30,9 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Matches the column default — spelled out explicitly rather
+            // than relying on it, same convention as the other factories.
+            'role' => UserRole::Employee,
         ];
     }
 
@@ -40,5 +44,20 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(['role' => UserRole::Admin]);
+    }
+
+    public function hr(): static
+    {
+        return $this->state(['role' => UserRole::Hr]);
+    }
+
+    public function supervisor(): static
+    {
+        return $this->state(['role' => UserRole::Supervisor]);
     }
 }

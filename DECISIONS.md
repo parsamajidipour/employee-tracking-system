@@ -127,3 +127,34 @@ specifically for `vue-tsc` compatibility.
 @nuxt/kit` for a reintroduced skew before assuming TS still works. If
 `vue-tsc` ever ships a release compatible with `typescript@7.x`'s new
 export layout, the `typescript@5.9.3` pin can be dropped.
+
+## Authorization is capability-based, not a role hierarchy — and admin holds both capabilities
+
+**Decision.** `App\Enums\UserRole` has no rank/comparison method. Access is
+decided by `App\Enums\Capability` (`manage-schedules`, `view-locations`),
+via `App\Enums\UserRole::can()` and enforced by `App\Http\Middleware\
+EnsureCapability`. `manage-schedules` is granted to `admin` and `hr`;
+`view-locations` to `admin` and `supervisor`. Neither role inherits the
+other's capability.
+
+**Why.** An earlier version used a linear `atLeast()` rank comparison
+(employee < supervisor < hr < admin), which meant `hr` — ranked above
+`supervisor` — automatically passed any `role:supervisor` gate, including
+future location-viewing endpoints (the live map). That breaks the
+separation of duties this system depends on per `CLAUDE.md`: the person who
+sets working hours should not be the person watching people move. Two
+independent capabilities, each with its own explicit grant list, make that
+unrepresentable by construction — there's no rank to accidentally satisfy.
+
+**Consequences.** `admin` is the one role holding both capabilities, which
+is itself a concentration of exactly the power this design otherwise keeps
+split. Not solved here — deliberately left as a known, accepted risk rather
+than invented a third role or an approval workflow with no product
+requirement driving it. If `admin`'s dual access becomes a real concern
+(e.g. once the live map ships), revisit by splitting `admin` into
+narrower roles or requiring a second admin's approval for one of the two
+capabilities — but only when something actually asks for it.
+
+Any new panel/admin route must be added to exactly one of the two
+`Route::middleware('capability:...')` groups in `routes/api.php`, never
+gated by role name or rank directly.
