@@ -158,3 +158,40 @@ capabilities — but only when something actually asks for it.
 Any new panel/admin route must be added to exactly one of the two
 `Route::middleware('capability:...')` groups in `routes/api.php`, never
 gated by role name or rank directly.
+
+## Live map tiles: OpenStreetMap's standard raster servers, for now
+
+**Decision.** The live map (`panel/app/pages/map.vue`) renders with
+MapLibre GL JS against a plain raster source pointed at OpenStreetMap's
+standard tile servers (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`).
+No API key, no account, no billing.
+
+**Why.** Every alternative that looks more "production" (MapTiler, Stadia
+Maps, Mapbox) requires a signup and an API key even on their free tiers —
+which means either committing a key to the repo (never happening) or adding
+a whole new secret-provisioning step to `README.md`'s dev setup before a
+single marker renders. OSM's tile servers need neither, which matches this
+phase: `CLAUDE.md` says reach for the boring option, and right now "does a
+marker show up on a map" doesn't justify a new account anywhere.
+
+**Consequences — read before shipping this past a demo.** Every tile
+request is a direct browser request to `tile.openstreetmap.org`, carrying
+the supervisor's viewport (which map area, at what zoom, how often) to a
+third party outside this system. That's a smaller leak than a location
+point ever reaching them — OSM never sees an employee's coordinates, only
+which map tiles a supervisor's browser happens to be looking at — but it's
+still a real one, and it sits oddly next to a product whose entire premise
+is *not* leaking location data to parties who don't need it. OSM's tile
+usage policy also just plainly disallows heavy production traffic without
+self-hosting.
+
+Two credible next steps once this matters, in ascending effort: (1) a free
+provider that still needs a key (MapTiler's free tier is generous at this
+project's scale) — trades "no signup" for "no third-party viewport
+telemetry on every request being someone else's business model," which
+isn't actually true either since the provider still sees requests, just
+under a commercial ToS instead of OSM's community one; (2) self-host tiles
+(a `tileserver-gl` container serving a pre-built extract of Oman from
+OSM data) — the only option that removes the third party entirely, at the
+cost of a new service and a data-refresh story. Revisit before a real
+deploy, not before.

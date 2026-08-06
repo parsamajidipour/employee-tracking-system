@@ -13,7 +13,12 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // broadcasting/auth: Laravel Echo's private-channel authorization
+    // request (see panel/'s live map) — a cross-origin XHR/fetch from the
+    // browser, same as api/* and sanctum/csrf-cookie, and needs the same
+    // credentialed-CORS treatment or the browser blocks the response
+    // before Echo ever sees whether the channel closure allowed it.
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
 
     'allowed_methods' => ['*'],
 

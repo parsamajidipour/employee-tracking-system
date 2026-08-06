@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\TrackingSession;
 use App\Models\User;
 use App\Services\ShiftWindowResolver;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,23 @@ class EmployeeController extends Controller
         return response()->json([
             'date' => $validated['date'],
             'window' => $window?->toApiArray(),
+        ]);
+    }
+
+    /**
+     * The live map's detail panel's "session start" — the employee's
+     * currently open tracking_sessions row, if any. Deliberately its own
+     * endpoint rather than folded into window() or the positions snapshot:
+     * a session starts once and doesn't change on every point the way a
+     * position does, so it has no reason to ride along on the high-frequency
+     * payload — fetched only when a supervisor actually opens the panel.
+     */
+    public function session(User $employee): JsonResponse
+    {
+        $session = TrackingSession::where('employee_id', $employee->id)->whereNull('ended_at')->first();
+
+        return response()->json([
+            'started_at' => $session?->started_at?->toISOString(),
         ]);
     }
 }

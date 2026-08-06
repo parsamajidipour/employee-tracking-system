@@ -2,14 +2,18 @@
 
 namespace Tests\Feature\Services;
 
+use App\Events\EmployeePositionUpdated;
 use App\Models\LocationPoint;
 use App\Models\ShiftTemplate;
 use App\Models\Team;
+use App\Models\TrackingSession;
 use App\Models\User;
 use App\Services\TrackingGate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
 class TrackingGateTest extends TestCase
@@ -25,6 +29,14 @@ class TrackingGateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // RefreshDatabase resets the users id sequence back to 1 at the
+        // start of every fresh `php artisan test` run, but Redis (isolated
+        // to its own REDIS_DB, see phpunit.xml, but never wiped) persists
+        // across runs — without this, a `last_known:1` key left over from
+        // an earlier invocation collides with today's employee id 1 and
+        // makes a test's outcome depend on what a previous run left behind.
+        Redis::connection()->flushdb();
 
         $this->gate = app(TrackingGate::class);
 
@@ -118,5 +130,96 @@ class TrackingGateTest extends TestCase
         $partition = DB::selectOne('SELECT tableoid::regclass::text AS partition FROM location_points WHERE id = ?', [$point->id]);
 
         $this->assertSame('location_points_'.$recordedAt->format('Y_m'), $partition->partition);
+    }
+
+    public function test_a_session_opens_once_and_is_not_reopened_by_later_points_in_the_same_window(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        CarbonImmutable::setTestNow($thursday->setTime(10, 0));
+
+        // Two separate batches (two separate requests, as the mobile app's
+        // ~30s flush would produce), not two points in one process() call —
+        // this is what actually exercises "later points reuse the open
+        // session" rather than just "one batch opens one session."
+        $this->gate->process($this->employee, [$this->point($thursday->setTime(8, 0))]);
+        $this->gate->process($this->employee, [$this->point($thursday->setTime(9, 0))]);
+
+        $this->assertSame(1, TrackingSession::where('employee_id', $this->employee->id)->count());
+
+        $session = TrackingSession::where('employee_id', $this->employee->id)->first();
+        $this->assertNull($session->ended_at);
+        $this->assertSame(
+            2,
+            LocationPoint::where('employee_id', $this->employee->id)->where('session_id', $session->id)->count(),
+        );
+    }
+
+    public function test_a_batch_with_an_older_point_after_a_newer_one_leaves_last_known_at_the_newer_point(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        CarbonImmutable::setTestNow($thursday->setTime(10, 0));
+
+        $newer = $thursday->setTime(9, 30);
+        $older = $thursday->setTime(9, 0);
+
+        // Order within the batch is the point: the older point is listed
+        // second (as an offline flush delivering a backlog out of order
+        // might send them) and must not win just by being processed last.
+        $this->gate->process($this->employee, [
+            $this->point($newer, ['lat' => 24.0, 'lng' => 59.0]),
+            $this->point($older, ['lat' => 20.0, 'lng' => 50.0]),
+        ]);
+
+        $lastKnown = json_decode(Redis::get("last_known:{$this->employee->id}"), true);
+
+        // json_decode gives an int back for a whole-number float (24.0 is
+        // encoded as `24`) — assertEquals, not assertSame, is the correct
+        // tool for a numeric-value comparison here, not a type one.
+        $this->assertEquals(24.0, $lastKnown['lat']);
+        $this->assertEquals(59.0, $lastKnown['lng']);
+        $this->assertTrue(CarbonImmutable::parse($lastKnown['recorded_at'])->equalTo($newer));
+    }
+
+    public function test_an_older_batch_delivered_after_a_newer_one_does_not_move_last_known_backwards(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        CarbonImmutable::setTestNow($thursday->setTime(10, 0));
+
+        $newer = $thursday->setTime(9, 30);
+        $older = $thursday->setTime(9, 0);
+
+        // The actual offline-queue failure mode: two separate requests, the
+        // fresher point arriving (and caching) first, an older, previously
+        // queued point delivered in a second batch afterwards.
+        $this->gate->process($this->employee, [$this->point($newer, ['lat' => 24.0, 'lng' => 59.0])]);
+        $this->gate->process($this->employee, [$this->point($older, ['lat' => 20.0, 'lng' => 50.0])]);
+
+        $lastKnown = json_decode(Redis::get("last_known:{$this->employee->id}"), true);
+
+        $this->assertEquals(24.0, $lastKnown['lat']);
+        $this->assertTrue(CarbonImmutable::parse($lastKnown['recorded_at'])->equalTo($newer));
+    }
+
+    public function test_a_batch_of_n_accepted_points_produces_exactly_one_broadcast(): void
+    {
+        Event::fake([EmployeePositionUpdated::class]);
+
+        $thursday = $this->sunday->addDays(4);
+        CarbonImmutable::setTestNow($thursday->setTime(10, 0));
+
+        $points = [];
+        for ($minute = 0; $minute < 5; $minute++) {
+            $points[] = $this->point($thursday->setTime(9, $minute));
+        }
+        $newestRecordedAt = $thursday->setTime(9, 4);
+
+        $result = $this->gate->process($this->employee, $points);
+
+        $this->assertSame(5, $result->accepted);
+        Event::assertDispatchedTimes(EmployeePositionUpdated::class, 1);
+        Event::assertDispatched(
+            fn (EmployeePositionUpdated $event) => CarbonImmutable::parse($event->recordedAt)->equalTo($newestRecordedAt)
+                && $event->effectiveEnd === $thursday->setTime(16, 0)->utc()->toISOString(),
+        );
     }
 }

@@ -58,6 +58,14 @@ services:
       REDIS_CLIENT: predis
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # api/.env's REVERB_HOST/REVERB_PORT are host-perspective (for running
+      # `php artisan` directly on the host against this container's mapped
+      # port) — same class of mismatch DB_HOST/DB_PORT had before. When the
+      # app broadcasts from inside this container (App\Services\
+      # PositionPublisher), it needs the reverb:start process below at its
+      # container-internal address, not the host-mapped one.
+      REVERB_HOST: localhost
+      REVERB_PORT: 8080
       # The Nuxt panel runs on the host (npm run dev), not in this stack —
       # this is the port it listens on there.
       SANCTUM_STATEFUL_DOMAINS: "localhost:${PANEL_PORT:-3000},127.0.0.1:${PANEL_PORT:-3000}"
@@ -74,7 +82,15 @@ services:
     # etc. set above in favor of api/.env's host-perspective values (meant
     # for running `php artisan` directly on the host, not from a
     # container). --no-reload keeps this container's real environment.
-    command: sh -c "php artisan migrate --force && php artisan serve --no-reload --host=0.0.0.0 --port=8000"
+    #
+    # reverb:start is backgrounded in its own subshell (not chained with
+    # `&&`) so migrate still runs to completion, and must succeed, before
+    # either long-running process starts — the same guarantee this command
+    # already had before reverb existed, just not blocked by reverb's own
+    # startup. No process manager here (single VPS, one container) — if
+    # reverb dies mid-container-life it stays down until the container is
+    # recreated; acceptable at this project's scale, revisit if it isn't.
+    command: sh -c "php artisan migrate --force && (php artisan reverb:start --host=0.0.0.0 --port=8080 &) && php artisan serve --no-reload --host=0.0.0.0 --port=8000"
 
 volumes:
   postgres_data:

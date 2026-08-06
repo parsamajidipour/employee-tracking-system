@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * `session_id` has no FK yet and is always null in this phase —
- * tracking_sessions and session lifecycle aren't part of this change. Only
- * `App\Services\TrackingGate` writes rows here (CLAUDE.md invariant: a point
- * is persisted only after passing the shift gate) — no other code path
- * should call `create()` on this model.
+ * Only `App\Services\TrackingGate` writes rows here (CLAUDE.md invariant: a
+ * point is persisted only after passing the shift gate) — no other code
+ * path should call `create()` on this model. `session_id` is always set by
+ * the time a row is written; see App\Services\TrackingSessionManager for how
+ * the session it points to is opened or reused.
  */
 class LocationPoint extends Model
 {
@@ -36,5 +36,10 @@ class LocationPoint extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    public function session(): BelongsTo
+    {
+        return $this->belongsTo(TrackingSession::class, 'session_id');
     }
 }

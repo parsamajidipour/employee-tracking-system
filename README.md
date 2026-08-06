@@ -59,6 +59,12 @@ if you want to run `api/` outside Docker too.
    `NUXT_PUBLIC_API_BASE` must point at the api's browser-visible URL from
    step 2.
 
+   The live map additionally needs `panel/.env`'s `NUXT_PUBLIC_REVERB_*`
+   vars to match `api/.env`'s `REVERB_APP_KEY`/`REVERB_HOST`/`REVERB_PORT`/
+   `REVERB_SCHEME` (host-mapped port, same as `API_PORT` above — never the
+   container-internal one). `REVERB_APP_SECRET` is not one of them and never
+   goes to the browser.
+
 Docker does **not** run the panel in dev — see `DECISIONS.md`.
 `docker-compose.prod.unfinished.yml` sketches a containerized panel service
 for production, but is not usable yet (`panel/Dockerfile` still runs the dev

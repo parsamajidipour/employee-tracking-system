@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\ShiftTemplate;
 use App\Models\Team;
+use App\Models\TrackingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,5 +57,36 @@ class EmployeeControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJson(['window' => null]);
+    }
+
+    public function test_session_returns_the_open_sessions_started_at(): void
+    {
+        $this->actingAs(User::factory()->supervisor()->create());
+        $employee = User::factory()->create();
+        // The started_at column is a timestamp with no fractional seconds —
+        // start from a whole second so the round trip through Postgres
+        // doesn't truncate away microseconds the assertion doesn't expect.
+        $startedAt = CarbonImmutable::now()->subHours(2)->startOfSecond();
+        TrackingSession::factory()->create(['employee_id' => $employee->id, 'started_at' => $startedAt]);
+
+        $response = $this->getJson("/api/v1/employees/{$employee->id}/session");
+
+        $response->assertOk();
+        $response->assertJsonPath('started_at', $startedAt->toISOString());
+    }
+
+    public function test_session_returns_null_when_no_session_is_open(): void
+    {
+        $this->actingAs(User::factory()->supervisor()->create());
+        $employee = User::factory()->create();
+        TrackingSession::factory()->create([
+            'employee_id' => $employee->id,
+            'ended_at' => CarbonImmutable::now(),
+        ]);
+
+        $response = $this->getJson("/api/v1/employees/{$employee->id}/session");
+
+        $response->assertOk();
+        $response->assertJson(['started_at' => null]);
     }
 }

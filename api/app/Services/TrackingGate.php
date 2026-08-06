@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LocationPoint;
+use App\Models\TrackingSession;
 use App\Models\User;
 use App\ValueObjects\TrackingGateResult;
 use Carbon\CarbonImmutable;
@@ -22,13 +23,29 @@ use Illuminate\Database\Query\Expression;
  * Rejected points increment a counter and are discarded: never written to
  * storage, never soft-deleted, never flagged for later review (CLAUDE.md
  * invariant 4).
+ *
+ * Points are also never stored without a session: the first accepted point
+ * for an employee with no open tracking_sessions row opens one (via
+ * App\Services\TrackingSessionManager), and every point in this batch reuses
+ * that same session — resolved at most once per process() call, not once
+ * per point, since a batch is always for a single employee.
+ *
+ * Storage is per point; publishing is not. The mobile client's offline queue
+ * means a batch can contain several accepted points spanning the same
+ * ~30s flush window, and can itself arrive after a newer batch already has
+ * (a reconnect flushing a backlog). Only the single accepted point with the
+ * latest recorded_at in this batch is handed to App\Services\PositionPublisher
+ * — one Redis write, one broadcast, per process() call, never one per point.
  */
 final class TrackingGate
 {
     private const MAX_POINT_AGE_HOURS = 48;
 
-    public function __construct(private readonly ShiftWindowResolver $resolver)
-    {
+    public function __construct(
+        private readonly ShiftWindowResolver $resolver,
+        private readonly TrackingSessionManager $sessions,
+        private readonly PositionPublisher $positions,
+    ) {
     }
 
     /**
@@ -41,6 +58,8 @@ final class TrackingGate
 
         $accepted = 0;
         $rejected = 0;
+        $session = null;
+        $newest = null;
 
         foreach ($points as $point) {
             $recordedAt = CarbonImmutable::parse($point['recorded_at'])->utc();
@@ -51,23 +70,44 @@ final class TrackingGate
                 continue;
             }
 
-            if ($this->resolver->resolve($employee, $recordedAt) === null) {
+            $window = $this->resolver->resolve($employee, $recordedAt);
+            if ($window === null) {
                 $rejected++;
 
                 continue;
             }
 
-            $this->store($employee, $point, $recordedAt, $receivedAt);
+            $session ??= $this->sessions->openOrReuse($employee, $recordedAt);
+
+            $this->store($employee, $point, $recordedAt, $receivedAt, $session);
             $accepted++;
+
+            if ($newest === null || $recordedAt->greaterThan($newest['recordedAt'])) {
+                $newest = ['point' => $point, 'recordedAt' => $recordedAt, 'window' => $window];
+            }
+        }
+
+        if ($newest !== null) {
+            $this->positions->publish(
+                $employee,
+                [
+                    'lat' => (float) $newest['point']['lat'],
+                    'lng' => (float) $newest['point']['lng'],
+                    'accuracy_m' => $newest['point']['accuracy_m'] ?? null,
+                    'battery_pct' => $newest['point']['battery_pct'] ?? null,
+                ],
+                $newest['recordedAt'],
+                $newest['window'],
+            );
         }
 
         return new TrackingGateResult($accepted, $rejected);
     }
 
-    private function store(User $employee, array $point, CarbonImmutable $recordedAt, CarbonImmutable $receivedAt): void
+    private function store(User $employee, array $point, CarbonImmutable $recordedAt, CarbonImmutable $receivedAt, TrackingSession $session): void
     {
         LocationPoint::create([
-            'session_id' => null,
+            'session_id' => $session->id,
             'employee_id' => $employee->id,
             'location' => new Expression(sprintf(
                 'ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography',

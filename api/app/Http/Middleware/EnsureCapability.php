@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Capability;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -25,18 +26,26 @@ use Symfony\Component\HttpFoundation\Response;
  * say after a later promotion. Session (Sanctum SPA cookie) auth carries a
  * TransientToken, not a PersonalAccessToken, which is what makes this
  * check possible: see Laravel\Sanctum\Guard::__invoke().
+ *
+ * passes() is the same check factored out for routes/channels.php's
+ * `positions` channel authorization, which needs a boolean, not a request
+ * pipeline to abort out of — one implementation of "does this user, with
+ * this token, have this capability," used by both.
  */
 class EnsureCapability
 {
-    public function handle(Request $request, Closure $next, string $capability): Response
+    public static function passes(User $user, Capability $capability): bool
     {
-        $user = $request->user();
-
         if ($user->currentAccessToken() instanceof PersonalAccessToken) {
-            abort(403, 'A mobile token cannot access this endpoint.');
+            return false;
         }
 
-        if (! $user->role->can(Capability::from($capability))) {
+        return $user->role->can($capability);
+    }
+
+    public function handle(Request $request, Closure $next, string $capability): Response
+    {
+        if (! self::passes($request->user(), Capability::from($capability))) {
             abort(403, 'You do not have permission to access this resource.');
         }
 

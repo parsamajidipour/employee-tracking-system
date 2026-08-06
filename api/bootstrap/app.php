@@ -4,14 +4,30 @@ use App\Http\Middleware\EnsureCapability;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+    )
+    // Not passed as withRouting()'s `channels:` param: that registers
+    // /broadcasting/auth behind the framework's default ['web'] middleware
+    // only, i.e. plain session-guard auth with no Sanctum involved at all.
+    // routes/channels.php's `positions` channel needs $user->currentAccessToken()
+    // to be reliably a real PersonalAccessToken for a device token and a
+    // TransientToken/null for a panel session (see EnsureCapability) — that
+    // distinction only exists when the request actually goes through
+    // Sanctum's guard. EnsureFrontendRequestsAreStateful (same middleware
+    // statefulApi() below adds to the api group) makes a same-origin panel
+    // request resolve via the session; auth:sanctum then does the same
+    // guard resolution /api/v1/* already relies on, for both session and
+    // bearer-token callers.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => [EnsureFrontendRequestsAreStateful::class, 'auth:sanctum']],
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();

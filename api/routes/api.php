@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EmployeeShiftController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\PositionController;
 use App\Http\Controllers\Api\V1\ShiftExceptionController;
 use App\Http\Controllers\Api\V1\ShiftTemplateController;
 use App\Http\Controllers\Api\V1\TeamController;
@@ -67,6 +68,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::middleware('capability:view-locations')->group(function () {
         Route::get('/employees', [EmployeeController::class, 'index']);
         Route::get('/employees/{employee}/window', [EmployeeController::class, 'window']);
+        Route::get('/employees/{employee}/session', [EmployeeController::class, 'session']);
+        Route::get('/positions', [PositionController::class, 'index']);
     });
 
     Route::middleware('capability:manage-schedules')->group(function () {
