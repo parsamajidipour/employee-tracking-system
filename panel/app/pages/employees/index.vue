@@ -18,49 +18,89 @@ interface Employee {
 
 const employees = ref<Employee[]>([])
 const loading = ref(true)
-const error = ref('')
+const error = ref<string | null>(null)
+
+const { confirm } = useConfirm()
+const toast = useToast()
+
+const resetPasswordOpen = ref(false)
+const resetPasswordTarget = ref<Employee | null>(null)
+const generatedPassword = ref('')
+const resetPasswordSaving = ref(false)
 
 async function load() {
   loading.value = true
   try {
     employees.value = await apiFetch<Employee[]>('/api/v1/employees')
-    error.value = ''
+    error.value = null
   } catch {
-    error.value = 'Not signed in, or failed to load employees.'
+    error.value = 'Could not load employees. Sign in and try again.'
   } finally {
     loading.value = false
   }
 }
 
-async function resetPassword(employee: Employee) {
-  const password = window.prompt(`New password for ${employee.name} (min 8 characters):`)
-  if (!password) return
+function generatePassword(length = 14): string {
+  // No 0/O/1/l/I — an admin often reads this out loud or texts it over.
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('')
+}
+
+async function openResetPassword(employee: Employee) {
+  resetPasswordTarget.value = employee
+  generatedPassword.value = generatePassword()
+  resetPasswordSaving.value = true
   try {
-    await apiFetch(`/api/v1/employees/${employee.id}/password`, { method: 'PUT', body: { password } })
-    window.alert('Password reset.')
+    await apiFetch(`/api/v1/employees/${employee.id}/password`, {
+      method: 'PUT',
+      body: { password: generatedPassword.value },
+    })
+    resetPasswordOpen.value = true
   } catch {
-    error.value = 'Password reset failed — password must be at least 8 characters.'
+    toast.error('Password reset failed.')
+  } finally {
+    resetPasswordSaving.value = false
+  }
+}
+
+async function copyGeneratedPassword() {
+  try {
+    await navigator.clipboard.writeText(generatedPassword.value)
+    toast.success('Password copied.')
+  } catch {
+    toast.error('Could not copy — select and copy manually.')
   }
 }
 
 async function toggleActive(employee: Employee) {
   const next = !employee.is_active
-  if (!confirm(`${next ? 'Activate' : 'Deactivate'} ${employee.name}?`)) return
+  const confirmed = await confirm(`${next ? 'Activate' : 'Deactivate'} ${employee.name}?`, {
+    title: next ? 'Activate employee' : 'Deactivate employee',
+    variant: next ? 'default' : 'danger',
+  })
+  if (!confirmed) return
   try {
     await apiFetch(`/api/v1/employees/${employee.id}/active`, { method: 'PUT', body: { is_active: next } })
+    toast.success(next ? 'Employee activated.' : 'Employee deactivated.')
     await load()
   } catch {
-    error.value = 'Update failed.'
+    toast.error('Update failed.')
   }
 }
 
 async function revokeDevice(employee: Employee) {
-  if (!confirm(`Revoke ${employee.name}'s device? They will need to log in again on a new phone.`)) return
+  const confirmed = await confirm(`Revoke ${employee.name}'s device? They will need to log in again on a new phone.`, {
+    title: 'Revoke device',
+    variant: 'danger',
+  })
+  if (!confirmed) return
   try {
     await apiFetch(`/api/v1/employees/${employee.id}/device`, { method: 'DELETE' })
+    toast.success('Device revoked.')
     await load()
   } catch {
-    error.value = 'Revoke failed.'
+    toast.error('Revoke failed.')
   }
 }
 
@@ -68,55 +108,62 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 p-8">
-    <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-slate-900">Employees</h1>
-      <NuxtLink to="/employees/create" class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white">
-        Add employee
-      </NuxtLink>
-    </div>
+  <AppShell title="Employees">
+    <template #actions>
+      <Button to="/employees/create">Add employee</Button>
+    </template>
 
-    <p v-if="error" class="mb-4 text-sm text-red-600">{{ error }}</p>
-    <div v-if="loading" class="text-slate-500">Loading…</div>
+    <Table
+      :headers="['Name', 'Username / email', 'Phone', 'Role', 'Active', 'Device', '']"
+      :loading="loading"
+      :error="error"
+      :is-empty="employees.length === 0"
+      empty-message="No employees yet — add one to get started."
+    >
+      <tr v-for="employee in employees" :key="employee.id" class="text-slate-700">
+        <td class="px-4 py-3 font-medium text-slate-900">{{ employee.name }}</td>
+        <td class="px-4 py-3">{{ employee.username ?? employee.email ?? '—' }}</td>
+        <td class="px-4 py-3">{{ employee.phone ?? '—' }}</td>
+        <td class="px-4 py-3"><Badge>{{ employee.role }}</Badge></td>
+        <td class="px-4 py-3">
+          <Badge :variant="employee.is_active ? 'success' : 'neutral'">
+            {{ employee.is_active ? 'Active' : 'Inactive' }}
+          </Badge>
+        </td>
+        <td class="px-4 py-3">
+          <template v-if="employee.device">
+            <div>{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
+            <div class="tabular-nums text-xs text-slate-400">
+              {{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleString() : 'never seen' }}
+            </div>
+          </template>
+          <span v-else class="text-slate-400">—</span>
+        </td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <Button size="sm" variant="secondary" :to="`/employees/${employee.id}`">Schedule</Button>
+          <Button size="sm" variant="secondary" class="ml-2" @click="openResetPassword(employee)">Reset password</Button>
+          <Button size="sm" :variant="employee.is_active ? 'danger' : 'secondary'" class="ml-2" @click="toggleActive(employee)">
+            {{ employee.is_active ? 'Deactivate' : 'Activate' }}
+          </Button>
+          <Button v-if="employee.device" size="sm" variant="danger" class="ml-2" @click="revokeDevice(employee)">
+            Revoke
+          </Button>
+        </td>
+      </tr>
+    </Table>
 
-    <table v-else class="w-full max-w-5xl border-collapse text-left text-sm">
-      <thead>
-        <tr class="border-b border-slate-300">
-          <th class="py-1 pr-4">Name</th>
-          <th class="py-1 pr-4">Username / email</th>
-          <th class="py-1 pr-4">Phone</th>
-          <th class="py-1 pr-4">Role</th>
-          <th class="py-1 pr-4">Active</th>
-          <th class="py-1 pr-4">Device</th>
-          <th class="py-1"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="employee in employees" :key="employee.id" class="border-b border-slate-200">
-          <td class="py-1 pr-4">{{ employee.name }}</td>
-          <td class="py-1 pr-4">{{ employee.username ?? employee.email ?? '—' }}</td>
-          <td class="py-1 pr-4">{{ employee.phone ?? '—' }}</td>
-          <td class="py-1 pr-4">{{ employee.role }}</td>
-          <td class="py-1 pr-4">{{ employee.is_active ? 'Active' : 'Inactive' }}</td>
-          <td class="py-1 pr-4">
-            <template v-if="employee.device">
-              {{ employee.device.device_name ?? employee.device.device_identifier }}
-              <span class="text-slate-400">
-                ({{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleString() : 'never seen' }})
-              </span>
-              <button @click="revokeDevice(employee)" class="ml-2 text-red-600 hover:underline">Revoke</button>
-            </template>
-            <span v-else class="text-slate-400">—</span>
-          </td>
-          <td class="py-1 whitespace-nowrap">
-            <NuxtLink :to="`/employees/${employee.id}`" class="mr-2 text-blue-600 hover:underline">Schedule</NuxtLink>
-            <button @click="resetPassword(employee)" class="mr-2 text-blue-600 hover:underline">Reset password</button>
-            <button @click="toggleActive(employee)" class="text-red-600 hover:underline">
-              {{ employee.is_active ? 'Deactivate' : 'Activate' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <Modal v-model="resetPasswordOpen" title="Password reset">
+      <p class="mb-3">
+        New password for <span class="font-medium text-slate-900">{{ resetPasswordTarget?.name }}</span>. This is shown
+        once — copy it now.
+      </p>
+      <div class="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+        <code class="flex-1 select-all font-mono text-sm tabular-nums text-slate-900">{{ generatedPassword }}</code>
+        <Button size="sm" variant="secondary" @click="copyGeneratedPassword">Copy</Button>
+      </div>
+      <template #footer>
+        <Button @click="resetPasswordOpen = false">Done</Button>
+      </template>
+    </Modal>
+  </AppShell>
 </template>

@@ -25,30 +25,17 @@ async function submit() {
 
 <template>
   <div class="flex min-h-screen items-center justify-center bg-slate-50">
-    <form @submit.prevent="submit" class="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow">
-      <h1 class="text-lg font-semibold text-slate-900">Sign in</h1>
-      <input
-        v-model="email"
-        type="email"
-        placeholder="Email"
-        required
-        class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-      />
-      <input
-        v-model="password"
-        type="password"
-        placeholder="Password"
-        required
-        class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-      />
-      <button
-        type="submit"
-        :disabled="submitting"
-        class="w-full rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
+    <form @submit.prevent="submit" class="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6">
+      <h1 class="text-base font-semibold text-slate-900">Sign in</h1>
+
+      <InlineAlert v-if="error">{{ error }}</InlineAlert>
+
+      <TextInput v-model="email" type="email" label="Email" required />
+      <TextInput v-model="password" type="password" label="Password" required />
+
+      <Button type="submit" :disabled="submitting" class="w-full justify-center">
         {{ submitting ? 'Signing in…' : 'Sign in' }}
-      </button>
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+      </Button>
     </form>
   </div>
 </template>

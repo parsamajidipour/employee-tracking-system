@@ -32,10 +32,14 @@ const selectedPosition = computed(
   () => positions.value.find((position) => position.employee_id === selectedEmployeeId.value) ?? null,
 )
 
+// fresh uses the app's one accent colour (blue-600) — the same colour as
+// every interactive element — per the design pass's "single accent colour
+// used only for interactive elements and the 'fresh' marker state." Aging/
+// stale stay semantic amber/red, not accent.
 const STALENESS_COLOR: Record<StalenessBucket, string> = {
-  fresh: '#16a34a', // under 1 minute
-  aging: '#d97706', // 1 to 5 minutes
-  stale: '#dc2626', // over 5 minutes
+  fresh: '#2563eb',
+  aging: '#d97706',
+  stale: '#dc2626',
 }
 
 function markerElement(): HTMLDivElement {
@@ -155,25 +159,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-[85vh]">
-    <div ref="mapContainer" class="flex-1"></div>
+  <AppShell title="Map" full-bleed>
+    <div ref="mapContainer" class="absolute inset-0"></div>
 
-    <aside class="flex w-80 flex-none flex-col border-l border-slate-200 bg-white">
-      <div v-if="selectedEmployeeId !== null" class="border-b border-slate-200 p-4">
+    <!-- Overlays the map rather than sitting beside it — see AppShell's
+         full-bleed mode and the design pass's map-page direction. -->
+    <aside
+      class="absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-80 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+    >
+      <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-slate-200 p-4">
         <div class="mb-2 flex items-start justify-between">
           <h2 class="text-sm font-semibold text-slate-900">{{ selectedPosition?.name ?? 'Employee' }}</h2>
-          <button @click="closeDetail" class="text-slate-400 hover:text-slate-600">✕</button>
+          <button type="button" @click="closeDetail" class="text-slate-400 hover:text-slate-600" aria-label="Close">✕</button>
         </div>
 
         <p class="mb-3 text-xs text-slate-500">{{ selectedPosition?.team_name ?? 'No team' }}</p>
 
         <div v-if="detailLoading" class="text-xs text-slate-500">Loading details…</div>
         <div v-else class="space-y-2 text-xs text-slate-700">
-          <p v-if="detailError" class="text-red-600">Could not load window/session details.</p>
+          <InlineAlert v-if="detailError">Could not load window/session details.</InlineAlert>
 
           <div>
             <span class="font-medium text-slate-900">Today's window:</span>
-            <span v-if="selectedWindow">
+            <span v-if="selectedWindow" class="tabular-nums">
               {{ new Date(selectedWindow.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }} –
               {{ new Date(selectedWindow.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
               <span class="text-slate-400">(graced)</span>
@@ -181,44 +189,41 @@ onUnmounted(() => {
             <span v-else class="text-slate-400">No window today</span>
           </div>
 
-          <div>
+          <div class="tabular-nums">
             <span class="font-medium text-slate-900">Session start:</span>
             {{ sessionStartedAt ? new Date(sessionStartedAt).toLocaleTimeString() : '—' }}
           </div>
 
-          <div v-if="selectedPosition" data-testid="detail-last-update">
+          <div v-if="selectedPosition" data-testid="detail-last-update" class="tabular-nums">
             <span class="font-medium text-slate-900">Last update:</span>
             {{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}
           </div>
 
-          <div v-if="selectedPosition">
+          <div v-if="selectedPosition" class="tabular-nums">
             <span class="font-medium text-slate-900">Accuracy:</span>
             {{ selectedPosition.accuracy_m !== null ? `${selectedPosition.accuracy_m} m` : '—' }}
           </div>
 
-          <div v-if="selectedPosition">
+          <div v-if="selectedPosition" class="tabular-nums">
             <span class="font-medium text-slate-900">Battery:</span>
             {{ selectedPosition.battery_pct !== null ? `${selectedPosition.battery_pct}%` : '—' }}
           </div>
         </div>
 
-        <button
-          disabled
-          title="Needs a separate permission — not implemented yet"
-          class="mt-3 w-full cursor-not-allowed rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400"
-        >
+        <Button variant="secondary" disabled title="Needs a separate permission — not implemented yet" class="mt-3 w-full justify-center">
           Trail
-        </button>
+        </Button>
       </div>
 
       <div class="flex-1 overflow-y-auto">
-        <h2 class="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase text-slate-500">
+        <h2 class="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
           In window ({{ positions.length }})
         </h2>
         <p v-if="positions.length === 0" class="p-4 text-sm text-slate-400">No employees currently in window.</p>
         <ul>
           <li v-for="position in positions" :key="position.employee_id">
             <button
+              type="button"
               @click="focusEmployee(position.employee_id)"
               :data-employee-id="position.employee_id"
               class="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-2 text-left text-sm hover:bg-slate-50"
@@ -234,5 +239,5 @@ onUnmounted(() => {
         </ul>
       </div>
     </aside>
-  </div>
+  </AppShell>
 </template>
