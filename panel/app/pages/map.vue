@@ -147,8 +147,18 @@ onMounted(() => {
       // font/sprite host, which is the point of self-hosting the tiles.
       layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
     },
-    center: [58.4, 23.6],
-    zoom: 7,
+    center: [58.5922, 23.6144], // Muscat
+    zoom: 11,
+    // Keeps the initial view — and any pan/zoom out from it — inside the
+    // self-hosted PMTiles extract's actual coverage (Oman's bbox; see
+    // DECISIONS.md's "Live map tiles" entry and README's extract command).
+    // Without this, zooming out or panning east/west past the extract's
+    // edge shows flat grey canvas with no tiles at all, not a graceful
+    // fallback — MapLibre has nothing to render past data it doesn't have.
+    maxBounds: [
+      [52.1, 16.6],
+      [59.95, 26.6],
+    ],
   })
   map.on('load', syncMarkers)
 })
@@ -160,7 +170,14 @@ onUnmounted(() => {
 
 <template>
   <AppShell title="Map" full-bleed>
-    <div ref="mapContainer" class="absolute inset-0"></div>
+    <!-- !absolute/!inset-0, not the plain utilities: maplibre-gl.css sets
+         `.maplibregl-map { position: relative }` on this same element (the
+         class MapLibre itself adds to whatever container we hand it), and
+         at equal specificity, whichever stylesheet loads second wins the
+         cascade — not reliably ours. Forcing !important is what actually
+         guarantees this stays absolutely positioned and fills its parent,
+         regardless of CSS load order. -->
+    <div ref="mapContainer" class="!absolute !inset-0"></div>
 
     <!-- Overlays the map rather than sitting beside it — see AppShell's
          full-bleed mode and the design pass's map-page direction. -->
