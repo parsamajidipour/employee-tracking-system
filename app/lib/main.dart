@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/permission_onboarding_screen.dart';
+import 'services/permission_service.dart';
 import 'state/auth_controller.dart';
 
 void main() {
@@ -37,10 +39,20 @@ class _SmartInspectionAppState extends State<SmartInspectionApp> {
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
       home: ListenableBuilder(
         listenable: _authController,
-        builder: (context, _) => switch (_authController.status) {
-          AuthStatus.loading => const _SplashScreen(),
-          AuthStatus.signedOut => LoginScreen(authController: _authController),
-          AuthStatus.signedIn => HomeScreen(authController: _authController),
+        builder: (context, _) {
+          if (_authController.status == AuthStatus.loading) {
+            return const _SplashScreen();
+          }
+          if (_authController.status == AuthStatus.signedOut) {
+            return LoginScreen(authController: _authController);
+          }
+          if (!_authController.onboardingCompleted) {
+            return PermissionOnboardingScreen(
+              permissionService: PermissionService(),
+              onComplete: _authController.completeOnboarding,
+            );
+          }
+          return HomeScreen(authController: _authController);
         },
       ),
     );

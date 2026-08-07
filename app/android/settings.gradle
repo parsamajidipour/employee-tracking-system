@@ -18,8 +18,16 @@ pluginManagement {
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "com.android.application" version "8.1.0" apply false
-    id "org.jetbrains.kotlin.android" version "1.8.22" apply false
+    // 8.7.0, not 8.1.0: needed to pair correctly with the Gradle 8.10.2
+    // wrapper and Kotlin 2.1.0 below — all three move together, not
+    // independently.
+    id "com.android.application" version "8.7.0" apply false
+    // 2.1.0, not 1.8.22: permission_handler_android's build script uses the
+    // kotlin { compilerOptions { ... } } DSL, which only exists from Kotlin
+    // 2.0 onward — the whole build resolves one Kotlin Gradle plugin
+    // version project-wide, so this has to move even though nothing in our
+    // own code needs it yet.
+    id "org.jetbrains.kotlin.android" version "2.1.0" apply false
 }
 
 include ":app"

@@ -19,6 +19,12 @@ class AuthController extends ChangeNotifier {
 
   AuthStatus status = AuthStatus.loading;
 
+  /// Whether the guided permission-onboarding flow has run at least once —
+  /// see AuthStorage.onboardingCompleted()'s docblock. Independent of
+  /// AuthStatus: an already-onboarded device that signs out and back in
+  /// does not see onboarding again.
+  bool onboardingCompleted = false;
+
   /// Set only by handleUnauthorized(), shown once on the login screen,
   /// then cleared — see clearRevokedMessage().
   String? revokedMessage;
@@ -39,7 +45,14 @@ class AuthController extends ChangeNotifier {
   /// extra round trip before landing on the home screen.
   Future<void> initialize() async {
     final token = await storage.token();
+    onboardingCompleted = await storage.onboardingCompleted();
     status = token != null ? AuthStatus.signedIn : AuthStatus.signedOut;
+    notifyListeners();
+  }
+
+  Future<void> completeOnboarding() async {
+    await storage.markOnboardingCompleted();
+    onboardingCompleted = true;
     notifyListeners();
   }
 

@@ -37,6 +37,7 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   http: ^1.6.0
   uuid: ^4.6.0
+  permission_handler: ^13.0.0
 
 dev_dependencies:
   flutter_test:
@@ -48,6 +49,16 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+
+# permission_handler_android's latest (14.0.0, what ^13.0.0 would otherwise
+# resolve to) ships a build.gradle.kts requiring AGP 9.x/Kotlin 2.3's
+# kotlin { compilerOptions {} } DSL — well beyond what this project's
+# toolchain (or Flutter's current default template) provides, and not
+# worth chasing for a permission plugin. 13.0.1 is the last version using
+# the older, simpler Groovy build script; it needs nothing this app's
+# toolchain doesn't already have.
+dependency_overrides:
+  permission_handler_android: 13.0.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

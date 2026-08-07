@@ -8,17 +8,28 @@ plugins {
 android {
     namespace = "com.smartinspection.tracking"
     // 36, not flutter.compileSdkVersion's default (35): flutter_secure_storage
-    // requires compiling against 36. Backward compatible with minSdk 26.
+    // requires compiling against 36. permission_handler_android's own
+    // compileSdk (35) is pinned lower via dependency_overrides in
+    // pubspec.yaml — see that file's comment for why. Backward compatible
+    // with minSdk 26.
     compileSdk = 36
-    ndkVersion = flutter.ndkVersion
+    // 27.0.12077973, not flutter.ndkVersion's default: flutter_secure_storage,
+    // path_provider_android, and permission_handler_android all request this
+    // specific NDK; the highest requested version wins and is backward
+    // compatible with anything lower.
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        // 17, not 1.8: permission_handler_android's own module targets Java
+        // 17 — every module in one Gradle build effectively needs a
+        // consistent-or-higher target, and 17 is also just where current
+        // AGP/Kotlin tooling already wants to be.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     defaultConfig {

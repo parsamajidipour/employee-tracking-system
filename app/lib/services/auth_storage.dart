@@ -10,6 +10,7 @@ class AuthStorage {
   static const _tokenKey = 'auth_token';
   static const _cachedWindowKey = 'cached_window_json';
   static const _cachedWindowSyncedAtKey = 'cached_window_synced_at';
+  static const _onboardingCompletedKey = 'permission_onboarding_completed';
 
   final FlutterSecureStorage _storage;
 
@@ -54,4 +55,14 @@ class AuthStorage {
     if (json == null || syncedAtRaw == null) return null;
     return (json, DateTime.parse(syncedAtRaw));
   }
+
+  /// Whether the guided permission-onboarding flow has run at least once —
+  /// distinct from whether every permission actually ended up granted. Once
+  /// true, the home screen (not onboarding) is what surfaces anything still
+  /// missing.
+  Future<bool> onboardingCompleted() async =>
+      await _storage.read(key: _onboardingCompletedKey) == 'true';
+
+  Future<void> markOnboardingCompleted() =>
+      _storage.write(key: _onboardingCompletedKey, value: 'true');
 }

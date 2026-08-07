@@ -3,6 +3,16 @@
          in every build type, not only debug. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Location: fine location must be granted before Android will even
+         show the background-location prompt — see PermissionService's
+         docblock. Foreground-service permissions are declared in step 2,
+         once a service actually exists to run. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+
     <application
         android:label="Smart Inspection"
         android:name="${applicationName}"
