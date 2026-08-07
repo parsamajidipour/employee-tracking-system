@@ -1,6 +1,4 @@
 # Env files (all apps)
-.env
-.env.*
 !.env.example
 !api/.env.example
 !panel/.env.example
