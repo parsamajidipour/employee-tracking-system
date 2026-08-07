@@ -11,6 +11,7 @@ class AuthStorage {
   static const _cachedWindowKey = 'cached_window_json';
   static const _cachedWindowSyncedAtKey = 'cached_window_synced_at';
   static const _onboardingCompletedKey = 'permission_onboarding_completed';
+  static const _lastUploadAtKey = 'last_upload_at';
 
   final FlutterSecureStorage _storage;
 
@@ -65,4 +66,12 @@ class AuthStorage {
 
   Future<void> markOnboardingCompleted() =>
       _storage.write(key: _onboardingCompletedKey, value: 'true');
+
+  Future<void> saveLastUploadAt(DateTime dateTime) =>
+      _storage.write(key: _lastUploadAtKey, value: dateTime.toIso8601String());
+
+  Future<DateTime?> lastUploadAt() async {
+    final raw = await _storage.read(key: _lastUploadAtKey);
+    return raw == null ? null : DateTime.parse(raw);
+  }
 }

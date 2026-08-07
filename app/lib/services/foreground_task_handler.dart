@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/shift_window.dart';
 import 'location_acquisition_service.dart';
+import 'track_upload_service.dart';
 import 'window_sync_service.dart';
 
 /// Sent instead of a JSON window payload when the main isolate's own fetch
@@ -29,6 +30,7 @@ void startCallback() {
 class TrackingTaskHandler extends TaskHandler {
   Timer? _stopTimer;
   final LocationAcquisitionService _acquisition = LocationAcquisitionService();
+  final TrackUploadService _upload = TrackUploadService();
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -49,6 +51,9 @@ class TrackingTaskHandler extends TaskHandler {
       }
       _reconcileWindow();
     });
+    // Same 30s tick, not a second timer — see TrackingServiceController's
+    // eventAction comment.
+    _upload.runUploadCycle();
   }
 
   @override

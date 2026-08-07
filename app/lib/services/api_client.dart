@@ -26,6 +26,11 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> postJson(String path, Map<String, dynamic> body) async {
+    final response = await _send('POST', path, body: body, authenticated: true);
+    return _decode(response);
+  }
+
   /// Used only for /v1/device/login, which is unauthenticated by
   /// definition (it's how a device gets its first token) — never sends a
   /// stored token, and a 401 from it means "wrong credentials", not
