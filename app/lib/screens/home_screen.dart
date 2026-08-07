@@ -5,14 +5,20 @@ import 'package:flutter/material.dart';
 import '../models/shift_window.dart';
 import '../models/window_snapshot.dart';
 import '../services/api_exception.dart';
+import '../services/tracking_service_controller.dart';
 import '../state/auth_controller.dart';
 import '../utils/format.dart';
 import '../widgets/tracking_status_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   final AuthController authController;
+  final TrackingServiceController trackingServiceController;
 
-  const HomeScreen({super.key, required this.authController});
+  const HomeScreen({
+    super.key,
+    required this.authController,
+    required this.trackingServiceController,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -62,6 +68,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _error = null;
         _loading = false;
       });
+      // Deliberately skipped for a stale (cached) snapshot: acting on cached
+      // data to start/stop a real service would be the same "second
+      // implementation of window logic" CLAUDE.md forbids for the resolver
+      // itself — this must only ever act on a response the server just gave.
+      if (!snapshot.stale) {
+        widget.trackingServiceController.applyWindowDecision(snapshot.response.current);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.isUnauthorized) {

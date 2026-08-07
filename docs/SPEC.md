@@ -103,6 +103,13 @@ Version prefix `/api/v1`. Mobile authenticates with a device-bound token.
 
 ## 6. Mobile behaviour (Android)
 
+- Implementation: `flutter_foreground_task` (service lifecycle, persistent
+  notification) plus `geolocator` (position acquisition), with `workmanager`
+  as a periodic-wake aid for starting tracking if the app was fully killed
+  when a window opened — stopping never needs this, since a running service
+  always schedules and fires its own exact stop with no external wake-up.
+  Chosen over `flutter_background_geolocation`, which requires a commercial
+  licence for Android release builds.
 - Foreground service with a persistent, non-dismissable notification while tracking.
 - Acquisition: `distanceFilter` 30m plus a 60s heartbeat. Reduce frequency when
   stationary. Not a fixed high-frequency interval.

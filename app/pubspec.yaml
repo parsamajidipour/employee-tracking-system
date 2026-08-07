@@ -38,6 +38,8 @@ dependencies:
   http: ^1.6.0
   uuid: ^4.6.0
   permission_handler: ^13.0.0
+  flutter_foreground_task: ^9.2.2
+  workmanager: 0.7.0
 
 dev_dependencies:
   flutter_test:

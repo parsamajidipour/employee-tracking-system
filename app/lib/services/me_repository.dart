@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/shift_window.dart';
 import '../models/window_snapshot.dart';
+import '../utils/format.dart';
 import 'api_client.dart';
 import 'api_exception.dart';
 import 'auth_storage.dart';
@@ -21,7 +22,7 @@ class MeRepository {
 
   Future<WindowSnapshot> fetchWindow() async {
     try {
-      final json = await apiClient.getJson('/api/v1/me/window?date=${_todayDateParam()}');
+      final json = await apiClient.getJson('/api/v1/me/window?date=${formatDateParam(DateTime.now())}');
       await storage.saveCachedWindow(jsonEncode(json));
       return WindowSnapshot(
         response: MeWindowResponse.fromJson(json),
@@ -46,13 +47,5 @@ class MeRepository {
       syncedAt: syncedAt,
       stale: true,
     );
-  }
-
-  String _todayDateParam() {
-    final now = DateTime.now();
-    final y = now.year.toString().padLeft(4, '0');
-    final m = now.month.toString().padLeft(2, '0');
-    final d = now.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
   }
 }

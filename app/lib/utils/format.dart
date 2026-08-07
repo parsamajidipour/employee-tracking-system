@@ -7,6 +7,16 @@ String formatTime(DateTime dateTime) {
   return '$hh:$mm';
 }
 
+/// "yyyy-MM-dd" — the ?date= query param shape both MeRepository and
+/// window_sync_service send, extracted here so the two don't each hand-roll
+/// the same padding logic.
+String formatDateParam(DateTime dateTime) {
+  final y = dateTime.year.toString().padLeft(4, '0');
+  final m = dateTime.month.toString().padLeft(2, '0');
+  final d = dateTime.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}
+
 String formatDateTime(DateTime dateTime) {
   final local = dateTime.toLocal();
   final dd = local.day.toString().padLeft(2, '0');
