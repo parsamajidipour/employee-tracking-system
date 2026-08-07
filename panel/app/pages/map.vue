@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Map as MapLibreMap, Marker as MapLibreMarker, addProtocol } from 'maplibre-gl'
+import { LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, addProtocol } from 'maplibre-gl'
 import { Protocol as PMTilesProtocol } from 'pmtiles'
 import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
 import type { StalenessBucket } from '~/composables/usePositions'
@@ -161,6 +161,24 @@ onMounted(() => {
     ],
   })
   map.on('load', syncMarkers)
+
+  // Fits to the initial snapshot's positions once, on arrival — not on
+  // every later live delta, which would yank the admin's view around every
+  // time someone moves. Falls back to the Muscat default center/zoom above
+  // when the snapshot is empty (nobody currently in window).
+  watch(
+    positions,
+    (snapshot) => {
+      const [first, ...rest] = snapshot
+      if (!first) return
+      const bounds = rest.reduce(
+        (b, position) => b.extend([position.lng, position.lat]),
+        new LngLatBounds([first.lng, first.lat], [first.lng, first.lat]),
+      )
+      map?.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 0 })
+    },
+    { once: true },
+  )
 })
 
 onUnmounted(() => {

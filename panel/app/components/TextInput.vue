@@ -20,9 +20,16 @@ const id = computed(() => `field-${(props.label ?? 'input').toLowerCase().replac
 <template>
   <div>
     <label v-if="label" :for="id" class="mb-1 block text-xs font-medium text-slate-500">{{ label }}</label>
+    <!-- Explicit :value/@input, not v-model: Vue's v-model directive
+         auto-casts via Number() for type="number" inputs, and Number('')
+         is 0, not NaN — clearing the field would silently write 0 into
+         this string-typed model instead of ''. Callers that need
+         null-on-empty (e.g. max_daily_minutes) depend on actually
+         seeing ''. -->
     <input
       :id="id"
-      v-model="model"
+      :value="model"
+      @input="model = ($event.target as HTMLInputElement).value"
       :type="type ?? 'text'"
       :placeholder="placeholder"
       :required="required"

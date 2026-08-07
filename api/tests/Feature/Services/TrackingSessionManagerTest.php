@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\TrackingSessionManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TrackingSessionManagerTest extends TestCase
@@ -77,5 +78,61 @@ class TrackingSessionManagerTest extends TestCase
 
         $this->assertSame(0, $closed);
         $this->assertNull(TrackingSession::where('employee_id', $this->employee->id)->first()->ended_at);
+    }
+
+    /**
+     * Reproduces the race openOrReuse() exists to survive: two accepted
+     * batches for the same employee, both seeing no open session, both
+     * trying to create one.
+     *
+     * A genuinely separate connection can't stand in for "the other batch"
+     * here — RefreshDatabase wraps this whole test (including setUp()'s
+     * team/employee fixtures) in one uncommitted transaction, invisible to
+     * any other connection, so a real second connection's insert would fail
+     * on a foreign-key violation before ever reaching the interesting race.
+     * Instead, a DB::listen() hook fires right after findOpen()'s own SELECT
+     * completes — the exact gap, on this same connection, between "no open
+     * session" and this manager's own create() call — and inserts the
+     * competitor there, as a sibling statement in the outer transaction
+     * rather than nested inside the DB::transaction() savepoint the
+     * subsequent create() opens. That placement matters: when create()'s own
+     * insert then hits the real unique-violation and its savepoint rolls
+     * back, only that failed insert is undone — the competitor, having
+     * landed before the savepoint began, survives it exactly as a genuinely
+     * concurrent request's own committed transaction would.
+     */
+    public function test_two_batches_racing_to_open_a_session_reread_and_reuse_the_winner(): void
+    {
+        $startedAt = $this->sunday->addDays(4)->setTime(9, 0);
+        $employeeId = $this->employee->id;
+        $winnerId = null;
+        $fired = false;
+
+        DB::listen(function ($query) use (&$fired, &$winnerId, $employeeId, $startedAt) {
+            if ($fired) {
+                return;
+            }
+            $sql = strtolower($query->sql);
+            if (! str_contains($sql, 'tracking_sessions') || ! str_starts_with(trim($sql), 'select')) {
+                return;
+            }
+
+            $fired = true;
+            $winnerId = DB::table('tracking_sessions')->insertGetId([
+                'employee_id' => $employeeId,
+                'started_at' => $startedAt,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        $result = $this->manager->openOrReuse($this->employee, $startedAt);
+
+        $this->assertNotNull($winnerId);
+        $this->assertSame($winnerId, $result->id);
+        $this->assertSame(
+            1,
+            TrackingSession::where('employee_id', $employeeId)->whereNull('ended_at')->count(),
+        );
     }
 }

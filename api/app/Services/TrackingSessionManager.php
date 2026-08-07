@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The single place a tracking_sessions row gets opened or closed. A session
@@ -41,10 +42,19 @@ final class TrackingSessionManager
         }
 
         try {
-            return TrackingSession::create([
+            // Wrapped in its own transaction so a caught unique-violation
+            // below only rolls back this savepoint, not the whole request's
+            // transaction — Postgres aborts an entire transaction on any
+            // error inside it (unlike MySQL), so without this, the conflict
+            // path would leave the connection unusable for whatever runs
+            // next (visible under RefreshDatabase's per-test wrapping
+            // transaction, but exactly as real under any transaction a
+            // caller might already be in). Same pattern as
+            // App\Services\DeviceService::login().
+            return DB::transaction(fn () => TrackingSession::create([
                 'employee_id' => $employee->id,
                 'started_at' => $startedAt,
-            ]);
+            ]));
         } catch (QueryException $e) {
             if (($e->errorInfo[0] ?? null) !== self::UNIQUE_VIOLATION_SQLSTATE) {
                 throw $e;
