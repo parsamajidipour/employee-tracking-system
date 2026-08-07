@@ -40,6 +40,10 @@ dependencies:
   permission_handler: ^13.0.0
   flutter_foreground_task: ^9.2.2
   workmanager: 0.7.0
+  geolocator: ^14.0.2
+  sqflite: ^2.4.1
+  path: ^1.9.0
+  battery_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:
@@ -59,8 +63,15 @@ dev_dependencies:
 # worth chasing for a permission plugin. 13.0.1 is the last version using
 # the older, simpler Groovy build script; it needs nothing this app's
 # toolchain doesn't already have.
+#
+# geolocator_android's latest (5.0.3, what ^14.0.2 would otherwise resolve
+# to) calls Color.toARGB32(), a dart:ui API that doesn't exist yet on this
+# environment's Flutter 3.27.4 (added in a later Flutter release). 4.6.2 is
+# the last version using Color.value instead — functionally identical for
+# how this app uses the plugin (it never sets a custom notification color).
 dependency_overrides:
   permission_handler_android: 13.0.1
+  geolocator_android: 4.6.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

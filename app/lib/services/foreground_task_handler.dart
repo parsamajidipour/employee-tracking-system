@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/shift_window.dart';
+import 'location_acquisition_service.dart';
 import 'window_sync_service.dart';
 
 /// Sent instead of a JSON window payload when the main isolate's own fetch
@@ -26,13 +28,27 @@ void startCallback() {
 /// via the same shrink-immediately/extend-only-after-success rule.
 class TrackingTaskHandler extends TaskHandler {
   Timer? _stopTimer;
+  final LocationAcquisitionService _acquisition = LocationAcquisitionService();
 
   @override
-  Future<void> onStart(DateTime timestamp, TaskStarter starter) => _reconcileWindow();
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    _acquisition.start();
+    await _reconcileWindow();
+  }
 
   @override
   void onRepeatEvent(DateTime timestamp) {
-    _reconcileWindow();
+    _checkLocationPermissionStillGranted().then((granted) {
+      // A permission revoked mid-session takes priority over the window
+      // check on this same tick — acquisition cannot continue without it
+      // regardless of what the window says, and there's no reason to wait
+      // for either the next window check or the scheduled stop to notice.
+      if (!granted) {
+        _stopNow();
+        return;
+      }
+      _reconcileWindow();
+    });
   }
 
   @override
@@ -56,6 +72,13 @@ class TrackingTaskHandler extends TaskHandler {
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
     _stopTimer?.cancel();
     _stopTimer = null;
+    await _acquisition.stop();
+  }
+
+  Future<bool> _checkLocationPermissionStillGranted() async {
+    final fineLocation = await Permission.location.status;
+    final backgroundLocation = await Permission.locationAlways.status;
+    return fineLocation.isGranted && backgroundLocation.isGranted;
   }
 
   Future<void> _reconcileWindow() async {
