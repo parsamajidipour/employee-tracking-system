@@ -5,10 +5,9 @@ import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
 import type { StalenessBucket } from '~/composables/usePositions'
 
 // MapLibre and Laravel Echo/pusher-js both touch window/WebSocket at module
-// load time — never safe to evaluate during SSR. Rendering this whole page
-// client-only sidesteps that outright, rather than chasing it library by
-// library with dynamic imports.
-definePageMeta({ ssr: false })
+// load time — never safe to evaluate during SSR. No longer this page's own
+// concern: the whole app is ssr:false now (see nuxt.config.ts), but this
+// page is exactly why that had to be true, so the reasoning stays here.
 
 interface WindowInfo {
   start: string

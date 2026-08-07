@@ -1,12 +1,6 @@
 <script setup lang="ts">
-interface AuthUser {
-  id: number
-  name: string
-  email: string
-}
-
 const route = useRoute()
-const user = ref<AuthUser | null>(null)
+const { user, refresh } = useAuthUser()
 
 const links = [
   { to: '/map', label: 'Map' },
@@ -14,12 +8,10 @@ const links = [
   { to: '/employees', label: 'Employees' },
 ]
 
-onMounted(async () => {
-  try {
-    user.value = await apiFetch<AuthUser>('/api/user')
-  } catch {
-    user.value = null
-  }
+// The auth middleware already fetches /api/user for any page reachable
+// with a session; this only covers it if that hasn't happened yet.
+onMounted(() => {
+  if (!user.value) refresh()
 })
 
 async function signOut() {

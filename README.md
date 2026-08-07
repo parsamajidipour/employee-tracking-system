@@ -116,17 +116,32 @@ container restarted (`docker compose restart api`), not rebuilt.
 
 ### Trying the login flow
 
-Create a test user, then log in from the panel at `/login`:
+`database/seeders/AdminUserSeeder.php` creates (or repairs) a default admin
+account — email `test@example.com`, password `password`, overridable via
+`SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` in `api/.env`. It's idempotent
+(`updateOrCreate`), so it always leaves that account active with the
+configured password regardless of what state it was in before — run it any
+time the dev database gets reset, or whenever login stops working and you
+suspect the account itself is the problem rather than the code:
 
 ```
-docker compose exec api php artisan tinker --execute="
-  \App\Models\User::firstOrCreate(['email' => 'test@example.com'], ['name' => 'Test User', 'password' => bcrypt('password')]);
-"
+docker compose exec api php artisan db:seed
 ```
 
-A successful login lands on `/`, which fetches `/api/user` and shows who
-you're signed in as — proof the CSRF cookie, session cookie, and CORS/Sanctum
-stateful-domain config are all wired correctly end to end.
+Or as part of a full reset:
+
+```
+docker compose exec api php artisan migrate:fresh --seed
+```
+
+The seeder refuses to run at all under `APP_ENV=production` — these are
+documented, publicly-known-default credentials, meant for disposable dev/
+staging databases only.
+
+Then log in from the panel at `/login`. A successful login lands on `/map`
+(redirected via `/`), which fetches `/api/user` and shows who you're signed
+in as in the sidebar — proof the CSRF cookie, session cookie, and CORS/
+Sanctum stateful-domain config are all wired correctly end to end.
 
 ## Running tests
 

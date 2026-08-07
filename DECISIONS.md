@@ -304,3 +304,32 @@ it — the whole employee-management surface is consistently hr/admin-only.
 **Consequences.** Any future supervisor-facing need for an employee list
 (e.g. searching by name in a UI element that doesn't show account data)
 should hit `/positions` or a new, narrower endpoint — not this one.
+
+## A seeder, not a migration, owns the default admin account
+
+**Decision.** `database/seeders/AdminUserSeeder.php` creates (or repairs,
+via `updateOrCreate`) a default admin account, credentials from
+`SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` (documented default:
+`test@example.com` / `password`). Wired into `DatabaseSeeder`, so
+`php artisan db:seed` or `migrate:fresh --seed` always leaves a working
+admin login behind. It refuses to run under `APP_ENV=production` — a
+hard-coded environment check inside the seeder itself, not just reliance
+on Artisan's interactive confirm-in-production prompt, since that can be
+bypassed with `--force` by a deploy script without anyone specifically
+deciding "yes, seed a documented-default admin account into production
+today."
+
+**Why.** A migration was the wrong place for this: migrations are schema,
+run unconditionally in every environment including production, and
+`CLAUDE.md` requires them to never be edited once shipped — none of that
+fits "create an account whose credentials are public knowledge." Before
+this, recreating a missing/broken admin account after a database reset
+was a manual `tinker` one-liner, redone by hand each time — it cost real
+debugging time more than once (mistaken for an actual login bug rather
+than recognized instantly as "the seed step didn't run").
+
+**Consequences.** The stock `DatabaseSeeder`'s old factory-created "Test
+User" is gone — it defaulted to `role=employee`, which was never actually
+a usable admin login to begin with. Anyone relying on that specific
+behavior (unlikely; nothing in this codebase did) needs the new
+`AdminUserSeeder` path instead.
