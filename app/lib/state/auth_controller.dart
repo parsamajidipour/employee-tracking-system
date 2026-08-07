@@ -33,7 +33,7 @@ class AuthController extends ChangeNotifier {
     apiClient = ApiClient(
       baseUrl: apiBaseUrl,
       storage: this.storage,
-      onUnauthorized: _handleUnauthorized,
+      onUnauthorized: handleUnauthorized,
     );
     meRepository = MeRepository(apiClient: apiClient, storage: this.storage);
   }
@@ -79,7 +79,13 @@ class AuthController extends ChangeNotifier {
     // extra rebuild for no visible change.
   }
 
-  Future<void> _handleUnauthorized() async {
+  /// Public so the background upload path (a separate isolate, with its own
+  /// AuthStorage instance) can trigger the exact same sign-out after it
+  /// clears the token and stops the service itself — see
+  /// track_upload_service.dart and main.dart's task-data listener. This is
+  /// the one place "revoked" turns into app state, called either directly
+  /// (this isolate's own 401) or via that cross-isolate signal.
+  Future<void> handleUnauthorized() async {
     await storage.clearToken();
     revokedMessage =
         'This device was deactivated. Contact your administrator to sign in again.';

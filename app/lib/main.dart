@@ -5,6 +5,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/permission_onboarding_screen.dart';
 import 'services/permission_service.dart';
+import 'services/track_upload_service.dart';
 import 'services/tracking_service_controller.dart';
 import 'services/workmanager_bridge.dart';
 import 'state/auth_controller.dart';
@@ -38,10 +39,22 @@ class _SmartInspectionAppState extends State<SmartInspectionApp> {
     // against /me/window if there's no session yet, same as every other
     // resync trigger in this app.
     registerPeriodicWindowCheck();
+    // The other end of TrackUploadService's cross-isolate 401 signal — the
+    // background isolate already cleared the token and stopped the
+    // service itself; this listener's only job is turning that into visible
+    // app state via the exact same path any in-app 401 uses.
+    FlutterForegroundTask.addTaskDataCallback(_onTaskData);
+  }
+
+  void _onTaskData(Object data) {
+    if (data == unauthorizedMarker) {
+      _authController.handleUnauthorized();
+    }
   }
 
   @override
   void dispose() {
+    FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     _authController.dispose();
     super.dispose();
   }

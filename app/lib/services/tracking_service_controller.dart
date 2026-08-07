@@ -13,6 +13,19 @@ import 'foreground_task_handler.dart';
 class TrackingServiceController {
   static const _channelId = 'tracking_channel';
 
+  // Guards against two overlapping applyWindowDecision() calls both seeing
+  // isRunning() == false and both calling startService() — this really
+  // happened (a system permission dialog closing fired
+  // didChangeAppLifecycleState(resumed) a beat after the initial fetch's own
+  // call), and two concurrent starts each spin up their own native
+  // FlutterEngine for the background isolate; the second construction tears
+  // down the first mid-bootstrap and crashes its Dart isolate with a
+  // MissingPluginException right as it tries to signal "ready" — which
+  // silently kills the service a few seconds later with no exact-stop
+  // Timer involved at all. _busy is checked and set with no `await` between
+  // them, so two synchronous entries into this function can never both pass.
+  bool _busy = false;
+
   void init() {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
@@ -60,15 +73,21 @@ class TrackingServiceController {
   /// the running service's own stop schedule updates immediately, rather
   /// than waiting up to its own next periodic tick.
   Future<void> applyWindowDecision(ShiftWindow? current) async {
-    if (await isRunning()) {
-      FlutterForegroundTask.sendDataToTask(
-        current == null ? noWindowMarker : jsonEncode(current.toJson()),
-      );
-      return;
-    }
+    if (_busy) return;
+    _busy = true;
+    try {
+      if (await isRunning()) {
+        FlutterForegroundTask.sendDataToTask(
+          current == null ? noWindowMarker : jsonEncode(current.toJson()),
+        );
+        return;
+      }
 
-    if (current != null) {
-      await startService();
+      if (current != null) {
+        await startService();
+      }
+    } finally {
+      _busy = false;
     }
   }
 }
