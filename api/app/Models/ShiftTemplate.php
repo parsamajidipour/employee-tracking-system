@@ -2,19 +2,20 @@
 
 namespace App\Models;
 
+use Database\Factories\ShiftTemplateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShiftTemplate extends Model
 {
-    /** @use HasFactory<\Database\Factories\ShiftTemplateFactory> */
+    /**
+     * @use HasFactory<ShiftTemplateFactory>
+     */
     use HasFactory;
 
     protected $fillable = [
-        'team_id',
         'name',
-        'timezone',
         'days_of_week',
         'start_time',
         'end_time',
@@ -27,11 +28,17 @@ class ShiftTemplate extends Model
     {
         return [
             'days_of_week' => 'array',
+            'grace_before_min' => 'integer',
+            'grace_after_min' => 'integer',
+            'max_daily_minutes' => 'integer',
         ];
     }
 
-    public function team(): BelongsTo
+    /**
+     * @return HasMany<EmployeeShift, $this>
+     */
+    public function employeeShifts(): HasMany
     {
-        return $this->belongsTo(Team::class);
+        return $this->hasMany(EmployeeShift::class, 'template_id');
     }
 }

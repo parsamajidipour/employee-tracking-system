@@ -20,6 +20,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
+        android:networkSecurityConfig="@xml/network_security_config"
         android:label="Smart Inspection"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

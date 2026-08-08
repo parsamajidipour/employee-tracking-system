@@ -6,13 +6,6 @@ use App\Models\ScheduleChangeLog;
 use App\Models\User;
 use Carbon\CarbonInterface;
 
-/**
- * The single place a schedule_change_log row gets written. Every mutation to
- * employee_shifts or shift_exceptions goes through here (CLAUDE.md) — one
- * call per row-level change, made from the controller performing the
- * mutation, since "actor" and "reason" are request-scoped, not part of the
- * mutated row itself.
- */
 final class ScheduleChangeLogger
 {
     /**

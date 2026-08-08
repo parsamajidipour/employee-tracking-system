@@ -1,8 +1,5 @@
-/// Mirrors App\ValueObjects\ShiftWindow::toApiArray() on the server exactly
-/// — start/end are already grace-adjusted ("effective" times), and there
-/// is deliberately no client-side window math anywhere in this app (see
-/// CLAUDE.md invariant 8: one resolver, never a second implementation).
-/// This class only ever displays what the server already decided.
+
+
 class ShiftWindow {
   final DateTime start;
   final DateTime end;
@@ -23,7 +20,6 @@ class ShiftWindow {
       };
 }
 
-/// GET /api/v1/me/window's whole response body.
 class MeWindowResponse {
   final ShiftWindow? current;
   final ShiftWindow? next;

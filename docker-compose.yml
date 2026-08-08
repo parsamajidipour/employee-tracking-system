@@ -2,45 +2,79 @@ services:
   postgres:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=50
+      - -c
+      - random_page_cost=1.1
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-api}
       POSTGRES_USER: ${POSTGRES_USER:-api}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init-test-db.sh:/docker-entrypoint-initdb.d/10-init-test-db.sh:ro
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-api} -d ${POSTGRES_DB:-api}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory
+      - 96mb
+      - --maxmemory-policy
+      - noeviction
+      - --save
+      - ""
+      - --appendonly
+      - "yes"
     volumes:
       - redis_data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          memory: 32M
 
   api:
     build:
       context: ./api
     restart: unless-stopped
     volumes:
-      # Bind-mount the source so code changes take effect on the next
-      # request with no rebuild. The anonymous volume on vendor/ shadows
-      # the mount for that one path, keeping the image's own
-      # composer-installed vendor/ in place instead of whatever (or
-      # nothing) is on the host — see README's "Dev environment" section
-      # for exactly which changes still require docker compose build.
       - ./api:/var/www/html
       - /var/www/html/vendor
     depends_on:
@@ -49,48 +83,66 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: ${POSTGRES_DB:-api}
       DB_USERNAME: ${POSTGRES_USER:-api}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
       REDIS_CLIENT: predis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # api/.env's REVERB_HOST/REVERB_PORT are host-perspective (for running
-      # `php artisan` directly on the host against this container's mapped
-      # port) — same class of mismatch DB_HOST/DB_PORT had before. When the
-      # app broadcasts from inside this container (App\Services\
-      # PositionPublisher), it needs the reverb:start process below at its
-      # container-internal address, not the host-mapped one.
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+      QUEUE_CONNECTION: redis
+      QUEUE_FAILED_DRIVER: "null"
+      SEED_FAKE_DATA: "true"
+      RUN_STARTUP_TESTS: "false"
       REVERB_HOST: localhost
       REVERB_PORT: 8080
-      # The Nuxt panel runs on the host (npm run dev), not in this stack —
-      # this is the port it listens on there.
-      SANCTUM_STATEFUL_DOMAINS: "localhost:${PANEL_PORT:-3000},127.0.0.1:${PANEL_PORT:-3000}"
-      CORS_ALLOWED_ORIGINS: "http://localhost:${PANEL_PORT:-3000}"
-    env_file:
-      - ./api/.env
+      SANCTUM_STATEFUL_DOMAINS: "localhost:${PANEL_PORT:-3000},127.0.0.1:${PANEL_PORT:-3000},${LAN_HOST:-localhost}:${PANEL_PORT:-3000}"
+      CORS_ALLOWED_ORIGINS: "http://localhost:${PANEL_PORT:-3000},http://127.0.0.1:${PANEL_PORT:-3000},http://${LAN_HOST:-localhost}:${PANEL_PORT:-3000}"
+      SESSION_DOMAIN: "${SESSION_DOMAIN:-}"
     ports:
       - "${API_PORT:-8000}:8000"
       - "${REVERB_PORT:-8080}:8080"
-    # --no-reload matters now that api/ is bind-mounted: `artisan serve`
-    # otherwise restarts its child process on every api/.env change and,
-    # on restart, strips almost all inherited env vars so the child
-    # re-reads .env from scratch — which discards the DB_HOST=postgres
-    # etc. set above in favor of api/.env's host-perspective values (meant
-    # for running `php artisan` directly on the host, not from a
-    # container). --no-reload keeps this container's real environment.
-    #
-    # reverb:start is backgrounded in its own subshell (not chained with
-    # `&&`) so migrate still runs to completion, and must succeed, before
-    # either long-running process starts — the same guarantee this command
-    # already had before reverb existed, just not blocked by reverb's own
-    # startup. No process manager here (single VPS, one container) — if
-    # reverb dies mid-container-life it stays down until the container is
-    # recreated; acceptable at this project's scale, revisit if it isn't.
-    command: sh -c "php artisan migrate --force && (php artisan reverb:start --host=0.0.0.0 --port=8080 &) && php artisan serve --no-reload --host=0.0.0.0 --port=8000"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  panel:
+    build:
+      context: ./panel
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NUXT_PUBLIC_API_PORT: "${API_PORT:-8000}"
+      NUXT_PUBLIC_REVERB_PORT: "${REVERB_PORT:-8080}"
+      NUXT_PUBLIC_REVERB_SCHEME: http
+      NUXT_PUBLIC_REVERB_APP_KEY: "${REVERB_APP_KEY:-}"
+    ports:
+      - "${PANEL_PORT:-3000}:3000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 384M
+        reservations:
+          memory: 64M
 
 volumes:
   postgres_data:

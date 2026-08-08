@@ -1,70 +1,73 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 enum TrackingDisplayState { active, off, unknownOffline }
 
-/// The one thing this screen must never get wrong: these are
-/// company-issued phones employees take home, so "off" has to be at least
-/// as unmistakable as "active" — not the usual pattern where the common
-/// state gets a bold treatment and the other one fades into a grey
-/// afterthought. Same size, same weight, same prominence for every state
-/// here; only the color and icon change.
-///
-/// unknownOffline exists for exactly one reason: a stale cached window
-/// must never render as a confident "active" or "off" claim. Whether
-/// tracking is really on or off right now is server truth this app hasn't
-/// heard yet — showing anything more definite than "unknown" here would
-/// be reassuring someone (or alarming them) with a guess dressed up as a
-/// fact.
 class TrackingStatusBanner extends StatelessWidget {
-  final TrackingDisplayState state;
-
   const TrackingStatusBanner({super.key, required this.state});
+
+  final TrackingDisplayState state;
 
   @override
   Widget build(BuildContext context) {
-    final (color, icon, title, subtitle) = switch (state) {
+    final colors = context.colors;
+
+    final (tint, icon, title, subtitle) = switch (state) {
       TrackingDisplayState.active => (
-          Colors.green.shade700,
-          Icons.location_on,
+          colors.success,
+          Icons.location_on_outlined,
           'Tracking active',
-          "You're inside your working-hours window.",
+          'You are inside your working-hours window.',
         ),
       TrackingDisplayState.off => (
-          const Color(0xFF37474F), // blue-grey 800 — deliberate, not red: this is the expected state outside working hours, not an error
-          Icons.location_off,
+          colors.neutral,
+          Icons.location_off_outlined,
           'Tracking off',
-          'Outside working hours — no location is being recorded.',
+          'Outside working hours. No location is being recorded.',
         ),
       TrackingDisplayState.unknownOffline => (
-          Colors.amber.shade800,
-          Icons.wifi_off,
+          colors.warning,
+          Icons.wifi_off_outlined,
           'Tracking state unknown',
-          "Offline — can't confirm whether tracking is on or off right now.",
+          'Offline. Cannot confirm whether tracking is on right now.',
         ),
     };
 
-    return Container(
+    return AnimatedContainer(
+      duration: context.motion(AppDurations.base),
+      curve: Curves.easeOutCubic,
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.10),
+        borderRadius: AppRadii.cardRadius,
+        border: Border.all(color: tint.withValues(alpha: 0.22)),
+      ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 36),
-          const SizedBox(width: 16),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.16),
+              borderRadius: AppRadii.controlRadius,
+            ),
+            child: Icon(icon, color: tint, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  style: context.text.titleMedium?.copyWith(
+                    color: colors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(color: Colors.white)),
+                const SizedBox(height: AppSpacing.xs),
+                Text(subtitle, style: context.text.bodySmall),
               ],
             ),
           ),

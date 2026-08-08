@@ -21,15 +21,8 @@ class DeviceAuthController extends Controller
         'device_conflict' => 'A device is already registered for this account. Revoke it first.',
     ];
 
-    public function __construct(private readonly DeviceService $devices)
-    {
-    }
+    public function __construct(private readonly DeviceService $devices) {}
 
-    /**
-     * Credentials are sent only here — see DECISIONS.md's "one active
-     * device per employee" entry. Every later mobile request uses the
-     * Sanctum token this returns, never username/password again.
-     */
     public function login(DeviceLoginRequest $request): JsonResponse
     {
         $result = $this->devices->login(

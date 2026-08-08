@@ -1,0 +1,65 @@
+#!/bin/sh
+set -eu
+
+passed=0
+failed=0
+
+pass() {
+    passed=$((passed + 1))
+    printf '\033[32m✓\033[0m %s\n' "$1"
+}
+
+fail() {
+    failed=$((failed + 1))
+    printf '\033[31m✗\033[0m %s\n' "$1"
+}
+
+skip() {
+    printf '\033[33m!\033[0m %s\n' "$1"
+}
+
+check() {
+    label="$1"
+    shift
+    if "$@" >/tmp/start-check.log 2>&1; then
+        pass "$label"
+    else
+        fail "$label"
+        cat /tmp/start-check.log
+        exit 1
+    fi
+}
+
+cd /var/www/html
+
+printf '\nLaravel startup checklist\n\n'
+
+check "Application key configured" php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); exit((string) config("app.key") !== "" ? 0 : 1);'
+check "PostgreSQL reachable" php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); Illuminate\Support\Facades\DB::select("select 1");'
+check "Redis reachable" php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); Illuminate\Support\Facades\Redis::connection()->ping();'
+check "Migrations completed" php artisan migrate --force --no-interaction
+
+if [ "${SEED_FAKE_DATA:-false}" = "true" ]; then
+    if php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); exit(App\Models\User::employees()->exists() ? 0 : 1);'; then
+        pass "Development data already exists"
+    else
+        check "Development data seeded" php artisan db:seed --force --no-interaction
+    fi
+else
+    check "Required administrator ensured" php artisan db:seed --class=Database\\Seeders\\AdminUserSeeder --force --no-interaction
+fi
+
+check "Route registration valid" php artisan route:list --except-vendor
+check "Configuration valid" php artisan config:cache
+check "Event cache generated" php artisan event:cache
+check "API-only build contains no server views" test ! -d resources/views
+
+if [ "${RUN_STARTUP_TESTS:-false}" = "true" ]; then
+    check "Automated test suite passed" php artisan test
+else
+    skip "Automated test suite skipped by configuration"
+fi
+
+printf '\n\033[32m✓ Startup ready: %s checks passed, %s failed\033[0m\n\n' "$passed" "$failed"
+
+exec /usr/bin/supervisord -c /etc/supervisord.conf

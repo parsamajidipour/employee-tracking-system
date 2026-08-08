@@ -8,12 +8,12 @@ const toasts = useToastState()
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm shadow-md"
-        :class="toast.variant === 'success' ? 'border-emerald-200 text-emerald-700' : 'border-red-200 text-red-700'"
+        class="flex items-center gap-2 rounded border bg-surface px-3 py-2 text-sm shadow-md"
+        :class="toast.variant === 'success' ? 'border-state-success/30 text-state-success' : 'border-state-danger/30 text-state-danger'"
       >
         <span
           class="inline-block h-1.5 w-1.5 flex-none rounded-full"
-          :class="toast.variant === 'success' ? 'bg-emerald-600' : 'bg-red-600'"
+          :class="toast.variant === 'success' ? 'bg-state-success' : 'bg-state-danger'"
         ></span>
         {{ toast.message }}
       </div>

@@ -4,7 +4,6 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\LocationPoint;
 use App\Models\ShiftTemplate;
-use App\Models\Team;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,10 +21,8 @@ class TrackControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $team = Team::factory()->create(['timezone' => 'Asia/Muscat']);
-        ShiftTemplate::factory()->create(['team_id' => $team->id]); // Sun-Thu 07:00-16:00
-        $this->employee = User::factory()->create(['team_id' => $team->id]);
+        ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
 
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
     }
@@ -81,7 +78,7 @@ class TrackControllerTest extends TestCase
         $response = $this->postJson('/api/v1/track', [
             'points' => [
                 [
-                    'lat' => 200, // out of range
+                    'lat' => 200,
                     'lng' => 58.4,
                     'is_mocked' => false,
                     'recorded_at' => CarbonImmutable::now()->toISOString(),

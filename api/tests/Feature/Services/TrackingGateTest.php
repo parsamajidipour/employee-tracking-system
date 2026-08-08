@@ -5,7 +5,6 @@ namespace Tests\Feature\Services;
 use App\Events\EmployeePositionUpdated;
 use App\Models\LocationPoint;
 use App\Models\ShiftTemplate;
-use App\Models\Team;
 use App\Models\TrackingSession;
 use App\Models\User;
 use App\Services\TrackingGate;
@@ -30,19 +29,11 @@ class TrackingGateTest extends TestCase
     {
         parent::setUp();
 
-        // RefreshDatabase resets the users id sequence back to 1 at the
-        // start of every fresh `php artisan test` run, but Redis (isolated
-        // to its own REDIS_DB, see phpunit.xml, but never wiped) persists
-        // across runs — without this, a `last_known:1` key left over from
-        // an earlier invocation collides with today's employee id 1 and
-        // makes a test's outcome depend on what a previous run left behind.
         Redis::connection()->flushdb();
 
         $this->gate = app(TrackingGate::class);
-
-        $team = Team::factory()->create(['timezone' => 'Asia/Muscat']);
-        ShiftTemplate::factory()->create(['team_id' => $team->id]); // Sun-Thu 07:00-16:00
-        $this->employee = User::factory()->create(['team_id' => $team->id]);
+        ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
 
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
     }
@@ -89,11 +80,8 @@ class TrackingGateTest extends TestCase
     public function test_point_recorded_in_window_but_received_hours_later_is_still_accepted(): void
     {
         $thursday = $this->sunday->addDays(4);
-        $recordedAt = $thursday->setTime(9, 0); // inside 07:00-16:00
+        $recordedAt = $thursday->setTime(9, 0);
 
-        // The gate processes it 11 hours later — well after the window
-        // closed — but the decision must be based on recorded_at, not on
-        // "now" at processing time (CLAUDE.md invariant 2).
         CarbonImmutable::setTestNow($thursday->setTime(20, 0));
 
         $result = $this->gate->process($this->employee, [$this->point($recordedAt)]);
@@ -105,7 +93,7 @@ class TrackingGateTest extends TestCase
     public function test_point_older_than_48_hours_is_rejected_regardless_of_window(): void
     {
         $thursday = $this->sunday->addDays(4);
-        $recordedAt = $thursday->subDays(3)->setTime(10, 0); // 72h old, but inside that day's window
+        $recordedAt = $thursday->subDays(3)->setTime(10, 0);
 
         CarbonImmutable::setTestNow($thursday->setTime(10, 0));
 
@@ -137,10 +125,6 @@ class TrackingGateTest extends TestCase
         $thursday = $this->sunday->addDays(4);
         CarbonImmutable::setTestNow($thursday->setTime(10, 0));
 
-        // Two separate batches (two separate requests, as the mobile app's
-        // ~30s flush would produce), not two points in one process() call —
-        // this is what actually exercises "later points reuse the open
-        // session" rather than just "one batch opens one session."
         $this->gate->process($this->employee, [$this->point($thursday->setTime(8, 0))]);
         $this->gate->process($this->employee, [$this->point($thursday->setTime(9, 0))]);
 
@@ -162,9 +146,6 @@ class TrackingGateTest extends TestCase
         $newer = $thursday->setTime(9, 30);
         $older = $thursday->setTime(9, 0);
 
-        // Order within the batch is the point: the older point is listed
-        // second (as an offline flush delivering a backlog out of order
-        // might send them) and must not win just by being processed last.
         $this->gate->process($this->employee, [
             $this->point($newer, ['lat' => 24.0, 'lng' => 59.0]),
             $this->point($older, ['lat' => 20.0, 'lng' => 50.0]),
@@ -172,9 +153,6 @@ class TrackingGateTest extends TestCase
 
         $lastKnown = json_decode(Redis::get("last_known:{$this->employee->id}"), true);
 
-        // json_decode gives an int back for a whole-number float (24.0 is
-        // encoded as `24`) — assertEquals, not assertSame, is the correct
-        // tool for a numeric-value comparison here, not a type one.
         $this->assertEquals(24.0, $lastKnown['lat']);
         $this->assertEquals(59.0, $lastKnown['lng']);
         $this->assertTrue(CarbonImmutable::parse($lastKnown['recorded_at'])->equalTo($newer));
@@ -188,9 +166,6 @@ class TrackingGateTest extends TestCase
         $newer = $thursday->setTime(9, 30);
         $older = $thursday->setTime(9, 0);
 
-        // The actual offline-queue failure mode: two separate requests, the
-        // fresher point arriving (and caching) first, an older, previously
-        // queued point delivered in a second batch afterwards.
         $this->gate->process($this->employee, [$this->point($newer, ['lat' => 24.0, 'lng' => 59.0])]);
         $this->gate->process($this->employee, [$this->point($older, ['lat' => 20.0, 'lng' => 50.0])]);
 

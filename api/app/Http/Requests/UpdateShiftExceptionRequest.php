@@ -12,10 +12,6 @@ class UpdateShiftExceptionRequest extends FormRequest
         return true;
     }
 
-    /**
-     * employee_id is intentionally not editable here, same reasoning as
-     * UpdateEmployeeShiftRequest.
-     */
     public function rules(): array
     {
         return [

@@ -3,11 +3,6 @@ import 'package:sqflite/sqflite.dart';
 
 const locationPointsTable = 'location_points';
 
-/// Opens (creating on first use) the on-device queue database. Safe to
-/// call from any isolate — sqflite, like flutter_secure_storage, talks
-/// through a platform channel rather than shared Dart memory, so the
-/// background task handler and the main isolate can each open their own
-/// handle to the same underlying file with no coordination needed.
 Future<Database> openLocationQueueDatabase() async {
   final databasesPath = await getDatabasesPath();
   final path = p.join(databasesPath, 'location_queue.db');

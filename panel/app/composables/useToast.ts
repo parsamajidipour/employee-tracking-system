@@ -4,8 +4,6 @@ interface ToastItem {
   variant: 'success' | 'error'
 }
 
-// Module-level shared state, rendered once by ToastContainer.vue in
-// app.vue — every page calls useToast() and pushes into the same list.
 const toasts = reactive<ToastItem[]>([])
 let nextId = 0
 

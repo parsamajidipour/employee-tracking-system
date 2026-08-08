@@ -1,6 +1,12 @@
-node_modules
-.nuxt
-.output
+.git
+node_modules/
+.nuxt/
+.output/
+.data/
+dist/
 .env
 .env.*
 !.env.example
+test-results/
+playwright-report/
+*.md

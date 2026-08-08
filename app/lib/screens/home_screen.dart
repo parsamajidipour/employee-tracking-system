@@ -11,18 +11,22 @@ import '../services/location_queue_repository.dart';
 import '../services/permission_service.dart';
 import '../services/tracking_service_controller.dart';
 import '../state/auth_controller.dart';
+import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_card.dart';
+import '../widgets/fade_slide_in.dart';
+import '../widgets/status_pill.dart';
 import '../widgets/tracking_status_banner.dart';
 
 class HomeScreen extends StatefulWidget {
-  final AuthController authController;
-  final TrackingServiceController trackingServiceController;
-
   const HomeScreen({
     super.key,
     required this.authController,
     required this.trackingServiceController,
   });
+
+  final AuthController authController;
+  final TrackingServiceController trackingServiceController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -38,8 +42,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _loading = false;
   Timer? _ticker;
 
-  // Fetched alongside the window, never queried synchronously mid-build —
-  // null only until the very first resolution completes.
   bool? _serviceRunning;
   int? _queueDepth;
   DateTime? _lastUploadAt;
@@ -49,11 +51,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Rebuilds every 15s purely so "last synced Xm ago" stays accurate
-    // without needing a refetch — no network activity, no background
-    // work, just redrawing already-held state against the current clock.
+
     _ticker = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
       _refreshServiceDerivedState();
     });
     _fetch();
@@ -69,25 +71,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // SPEC's "resync on app foreground" — covered here without any
-    // scheduled/background infrastructure, since this only ever fires
-    // while the app is already running in the foreground process.
     if (state == AppLifecycleState.resumed) {
       _fetch();
       _refreshServiceDerivedState();
     }
   }
 
-  /// Everything here is a local fact (service state, on-device queue,
-  /// on-device last-upload timestamp, permission status) — none of it
-  /// needs the network round trip _fetch() makes, so it's kept separate
-  /// and safe to call on its own, more often than a full window fetch.
   Future<void> _refreshServiceDerivedState() async {
     final running = await widget.trackingServiceController.isRunning();
     final queueDepth = await _queueRepository.count();
     final lastUploadAt = await _authStorage.lastUploadAt();
     final permissionSnapshot = await _permissionService.currentSnapshot();
-    if (!mounted) return;
+
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _serviceRunning = running;
       _queueDepth = queueDepth;
@@ -98,26 +97,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _fetch() async {
     setState(() => _loading = true);
+
     try {
       final snapshot = await widget.authController.meRepository.fetchWindow();
-      if (!mounted) return;
+
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _snapshot = snapshot;
         _error = null;
         _loading = false;
       });
-      // Deliberately skipped for a stale (cached) snapshot: acting on cached
-      // data to start/stop a real service would be the same "second
-      // implementation of window logic" CLAUDE.md forbids for the resolver
-      // itself — this must only ever act on a response the server just gave.
+
       if (!snapshot.stale) {
-        widget.trackingServiceController.applyWindowDecision(snapshot.response.current);
+        widget.trackingServiceController
+            .applyWindowDecision(snapshot.response.current);
       }
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (e.isUnauthorized) {
-        // AuthController already flipped to signedOut and the root widget
-        // is about to unmount this screen — nothing to render here.
         setState(() => _loading = false);
         return;
       }
@@ -126,9 +128,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
-        _error = 'Could not reach the server, and no previous data is cached yet.';
+        _error =
+            'Could not reach the server, and no previous data is cached yet.';
         _loading = false;
       });
     }
@@ -137,8 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Smart Inspection')),
-      body: _buildBody(),
+      body: SafeArea(child: _buildBody()),
     );
   }
 
@@ -146,231 +150,489 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final snapshot = _snapshot;
 
     if (snapshot == null && _loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
     }
 
     if (snapshot == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade600),
-              const SizedBox(height: 12),
-              Text(_error ?? 'Nothing to show yet.', textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _fetch, child: const Text('Retry')),
-            ],
-          ),
-        ),
-      );
+      return _EmptyState(message: _error, onRetry: _fetch);
     }
 
-    // Service state, not window presence (user's amendment) — a stale
-    // window is informational context on _LastSyncedRow below, never a
-    // reason to flip this banner. unknownOffline here means only "the
-    // service-status query itself hasn't resolved yet," e.g. the very
-    // first frame — not "window data might be old."
     final trackingState = switch (_serviceRunning) {
       null => TrackingDisplayState.unknownOffline,
       true => TrackingDisplayState.active,
       false => TrackingDisplayState.off,
     };
 
+    final permissions = _permissionSnapshot;
+    final needsAttention = permissions != null && !permissions.allGranted;
+
     return RefreshIndicator(
       onRefresh: () => Future.wait([_fetch(), _refreshServiceDerivedState()]),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.lg,
+          AppSpacing.screen,
+          AppSpacing.huge,
+        ),
         children: [
-          TrackingStatusBanner(state: trackingState),
-          const SizedBox(height: 16),
-          _WindowCard(title: 'Current window', window: snapshot.response.current, emptyText: 'No active window right now'),
-          const SizedBox(height: 12),
-          _WindowCard(title: 'Next window', window: snapshot.response.next, emptyText: 'No upcoming window scheduled'),
-          const SizedBox(height: 16),
-          _LastSyncedRow(snapshot: snapshot),
-          const SizedBox(height: 16),
-          _QueueStatusCard(queueDepth: _queueDepth, lastUploadAt: _lastUploadAt),
-          const SizedBox(height: 16),
-          if (_permissionSnapshot != null && !_permissionSnapshot!.allGranted)
-            _PermissionWarningCard(
-              snapshot: _permissionSnapshot!,
-              permissionService: _permissionService,
-              onChanged: _refreshServiceDerivedState,
+          FadeSlideIn(child: _Greeting(snapshot: snapshot)),
+          const SizedBox(height: AppSpacing.xl),
+          FadeSlideIn(
+            index: 1,
+            child: TrackingStatusBanner(state: trackingState),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          FadeSlideIn(
+            index: 2,
+            child: _TodayCard(
+              current: snapshot.response.current,
+              next: snapshot.response.next,
             ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          FadeSlideIn(
+            index: 3,
+            child: _SyncCard(
+              queueDepth: _queueDepth,
+              lastUploadAt: _lastUploadAt,
+            ),
+          ),
+          if (needsAttention) ...[
+            const SizedBox(height: AppSpacing.cardGap),
+            FadeSlideIn(
+              index: 4,
+              child: _PermissionCard(
+                snapshot: permissions,
+                permissionService: _permissionService,
+                onChanged: _refreshServiceDerivedState,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          FadeSlideIn(index: 5, child: _LastSyncedRow(snapshot: snapshot)),
         ],
       ),
     );
   }
 }
 
-class _WindowCard extends StatelessWidget {
-  final String title;
-  final ShiftWindow? window;
-  final String emptyText;
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.snapshot});
 
-  const _WindowCard({required this.title, required this.window, required this.emptyText});
+  final WindowSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey.shade600)),
-            const SizedBox(height: 8),
-            if (window == null)
-              Text(emptyText, style: TextStyle(color: Colors.grey.shade600))
-            else
+    final onShift = snapshot.response.current != null;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                '${formatTime(window!.start)} – ${formatTime(window!.end)}',
-                style: Theme.of(context).textTheme.headlineSmall,
+                'TODAY',
+                style: context.text.labelSmall?.copyWith(
+                  color: context.colors.primaryStrong,
+                ),
               ),
-          ],
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                onShift ? 'On shift' : 'Off shift',
+                style: context.text.titleLarge,
+              ),
+            ],
+          ),
         ),
+        StatusPill(
+          label: onShift ? 'In window' : 'Outside hours',
+          tone: onShift ? StatusTone.active : StatusTone.idle,
+        ),
+      ],
+    );
+  }
+}
+
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({required this.current, required this.next});
+
+  final ShiftWindow? current;
+  final ShiftWindow? next;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final window = current ?? next;
+    final isCurrent = current != null;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconTile(
+                icon: isCurrent
+                    ? Icons.play_circle_outline
+                    : Icons.schedule_outlined,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isCurrent ? 'Current window' : 'Next window',
+                      style: context.text.labelMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      window == null
+                          ? 'Nothing scheduled'
+                          : '${formatTime(window.start)} – ${formatTime(window.end)}',
+                      style: context.text.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (window != null) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _WindowProgress(window: window, active: isCurrent),
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          Divider(color: colors.border, height: 1),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, size: 18, color: colors.textSecondary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  isCurrent
+                      ? 'Your location is recorded until the window ends.'
+                      : 'No location is recorded outside your window.',
+                  style: context.text.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WindowProgress extends StatelessWidget {
+  const _WindowProgress({required this.window, required this.active});
+
+  final ShiftWindow window;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final total = window.end.difference(window.start).inSeconds;
+    final elapsed = DateTime.now().toUtc().difference(window.start).inSeconds;
+    final progress =
+        total <= 0 ? 0.0 : (elapsed / total).clamp(0.0, 1.0).toDouble();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: AppRadii.pillRadius,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: active ? progress : 0),
+            duration: context.motion(AppDurations.slow),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 8,
+              backgroundColor: colors.surfaceMuted,
+              valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          active
+              ? '${(progress * 100).round()}% of today\'s window elapsed'
+              : 'Starts ${formatRelative(window.start)}',
+          style: context.text.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _SyncCard extends StatelessWidget {
+  const _SyncCard({required this.queueDepth, required this.lastUploadAt});
+
+  final int? queueDepth;
+  final DateTime? lastUploadAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final depth = queueDepth;
+    final backingUp = depth != null && depth > 50;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Sync', style: context.text.titleMedium),
+              ),
+              StatusPill(
+                label: backingUp ? 'Backing up' : 'Healthy',
+                tone: backingUp ? StatusTone.warning : StatusTone.active,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _Metric(
+                  label: 'Queued points',
+                  value: depth == null ? '—' : '$depth',
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _Metric(
+                  label: 'Last upload',
+                  value: lastUploadAt == null
+                      ? 'Never'
+                      : formatRelative(lastUploadAt!),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: colors.surfaceMuted,
+        borderRadius: AppRadii.controlRadius,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: context.text.labelMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            style: context.text.titleMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 }
 
 class _LastSyncedRow extends StatelessWidget {
-  final WindowSnapshot snapshot;
-
   const _LastSyncedRow({required this.snapshot});
+
+  final WindowSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.sync, size: 16, color: Colors.grey.shade600),
-        const SizedBox(width: 6),
-        Text('Last synced ${formatRelative(snapshot.syncedAt)}', style: TextStyle(color: Colors.grey.shade600)),
-        if (snapshot.stale) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade100,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text('possibly stale', style: TextStyle(color: Colors.amber.shade900, fontSize: 12)),
+        Icon(Icons.sync, size: 14, color: colors.textTertiary),
+        const SizedBox(width: AppSpacing.sm),
+        Flexible(
+          child: Text(
+            'Last synced ${formatRelative(snapshot.syncedAt)}',
+            style: context.text.bodySmall?.copyWith(color: colors.textTertiary),
           ),
+        ),
+        if (snapshot.stale) ...[
+          const SizedBox(width: AppSpacing.sm),
+          const StatusPill(label: 'May be stale', tone: StatusTone.warning),
         ],
       ],
     );
   }
 }
 
-class _QueueStatusCard extends StatelessWidget {
-  final int? queueDepth;
-  final DateTime? lastUploadAt;
-
-  const _QueueStatusCard({required this.queueDepth, required this.lastUploadAt});
-
-  @override
-  Widget build(BuildContext context) {
-    final depth = queueDepth;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(Icons.storage, color: Colors.grey.shade600),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(depth == null ? 'Queued points: —' : 'Queued points: $depth'),
-                  const SizedBox(height: 2),
-                  Text(
-                    lastUploadAt == null
-                        ? 'No upload yet'
-                        : 'Last upload ${formatRelative(lastUploadAt!)}',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PermissionWarningCard extends StatelessWidget {
-  final PermissionSnapshot snapshot;
-  final PermissionService permissionService;
-  final VoidCallback onChanged;
-
-  const _PermissionWarningCard({
+class _PermissionCard extends StatelessWidget {
+  const _PermissionCard({
     required this.snapshot,
     required this.permissionService,
     required this.onChanged,
   });
 
+  final PermissionSnapshot snapshot;
+  final PermissionService permissionService;
+  final VoidCallback onChanged;
+
   @override
   Widget build(BuildContext context) {
-    final missing = <(String, Future<void> Function())>[
+    final colors = context.colors;
+
+    final missing = <(String, String, Future<void> Function())>[
       if (!snapshot.fineLocationGranted)
-        ('Location', () => permissionService.requestFineLocation()),
+        (
+          'Location',
+          'Needed to record a point at all.',
+          permissionService.requestFineLocation
+        ),
       if (!snapshot.backgroundLocationGranted)
-        ('Location in the background', () => permissionService.requestBackgroundLocation()),
+        (
+          'Location in the background',
+          'Keeps tracking while the screen is off.',
+          permissionService.requestBackgroundLocation
+        ),
       if (!snapshot.notificationsGranted)
-        ('Notifications', () => permissionService.requestNotifications()),
+        (
+          'Notifications',
+          'Shows the badge while tracking is on.',
+          permissionService.requestNotifications
+        ),
       if (!snapshot.batteryOptimizationExempt)
-        ('Battery optimisation exemption', () => permissionService.requestBatteryOptimizationExemption()),
+        (
+          'Battery optimisation',
+          'Stops Android pausing the service.',
+          permissionService.requestBatteryOptimizationExemption
+        ),
     ];
 
-    return Card(
-      color: Colors.amber.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.warning_amber, color: Colors.amber.shade900),
-                const SizedBox(width: 8),
-                Text(
-                  'Tracking needs attention',
-                  style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            for (final (label, request) in missing)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconTile(
+                icon: Icons.error_outline,
+                color: colors.warning,
+                background: colors.warning.withValues(alpha: 0.12),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: Text(label)),
-                    TextButton(
-                      onPressed: () async {
-                        await request();
-                        onChanged();
-                      },
-                      child: const Text('Grant'),
+                    Text('Needs attention', style: context.text.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tracking cannot run reliably yet.',
+                      style: context.text.bodySmall,
                     ),
                   ],
                 ),
               ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () async {
-                  await permissionService.openSettings();
-                  onChanged();
-                },
-                child: const Text('Open app settings'),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          for (final (label, why, request) in missing)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label, style: context.text.bodyLarge),
+                        Text(why, style: context.text.bodySmall),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  TextButton(
+                    onPressed: () async {
+                      await request();
+                      onChanged();
+                    },
+                    child: const Text('Grant'),
+                  ),
+                ],
               ),
             ),
-          ],
+          const SizedBox(height: AppSpacing.xs),
+          OutlinedButton(
+            onPressed: () async {
+              await permissionService.openSettings();
+              onChanged();
+            },
+            child: const Text('Open app settings'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.message, required this.onRetry});
+
+  final String? message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xxl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconTile(
+                icon: Icons.cloud_off_outlined,
+                size: 64,
+                color: colors.textSecondary,
+                background: colors.surfaceMuted,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Nothing to show yet',
+                style: context.text.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                message ?? 'Pull down to try again once you are back online.',
+                style: context.text.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+            ],
+          ),
         ),
       ),
     );

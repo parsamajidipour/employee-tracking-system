@@ -2,29 +2,22 @@
 
 namespace App\Models;
 
+use Database\Factories\EmployeeShiftFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmployeeShift extends Model
 {
-    /** @use HasFactory<\Database\Factories\EmployeeShiftFactory> */
+    /**
+     * @use HasFactory<EmployeeShiftFactory>
+     */
     use HasFactory;
 
     protected $fillable = [
         'employee_id',
         'template_id',
-        'effective_from',
-        'effective_to',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'effective_from' => 'datetime',
-            'effective_to' => 'datetime',
-        ];
-    }
 
     public function employee(): BelongsTo
     {

@@ -14,9 +14,7 @@ use Illuminate\Http\Response;
 
 class ShiftExceptionController extends Controller
 {
-    public function __construct(private readonly ScheduleChangeLogger $logger)
-    {
-    }
+    public function __construct(private readonly ScheduleChangeLogger $logger) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -41,8 +39,6 @@ class ShiftExceptionController extends Controller
             $exception->employee_id,
             before: null,
             after: $this->snapshot($exception),
-            // No effective_from concept for a dated exception — see
-            // App\Services\ScheduleChangeLogger's docblock.
             effectiveFrom: null,
             reason: $request->validated('reason'),
         );
@@ -92,10 +88,6 @@ class ShiftExceptionController extends Controller
     }
 
     /**
-     * leave/holiday deny the day outright and carry no times — forced to
-     * null here regardless of what was submitted, so stored data can never
-     * disagree with ShiftExceptionType::definesWindow().
-     *
      * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
      */

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// Mounted once in app.vue. Every useConfirm().confirm() call anywhere in
-// the app resolves through this single instance.
+
 const state = useConfirmState()
 
 function respond(value: boolean) {

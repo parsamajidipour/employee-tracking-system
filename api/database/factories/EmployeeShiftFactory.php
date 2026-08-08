@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\EmployeeShift;
 use App\Models\ShiftTemplate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EmployeeShift>
+ * @extends Factory<EmployeeShift>
  */
 class EmployeeShiftFactory extends Factory
 {
@@ -16,8 +17,6 @@ class EmployeeShiftFactory extends Factory
         return [
             'employee_id' => User::factory(),
             'template_id' => ShiftTemplate::factory(),
-            'effective_from' => now()->subMonth(),
-            'effective_to' => null,
         ];
     }
 }

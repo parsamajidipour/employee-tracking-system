@@ -5,11 +5,6 @@ import 'package:http/http.dart' as http;
 import 'api_exception.dart';
 import 'auth_storage.dart';
 
-/// The one place every HTTP call goes through. Its job beyond plumbing:
-/// catch a 401 on an authenticated call and report it upward as exactly
-/// that — the device was revoked — never retried, never swallowed. The
-/// caller (AuthController) decides what "revoked" means for app state;
-/// this class only recognizes the signal.
 class ApiClient {
   final String baseUrl;
   final AuthStorage storage;
@@ -31,11 +26,6 @@ class ApiClient {
     return _decode(response);
   }
 
-  /// Used only for /v1/device/login, which is unauthenticated by
-  /// definition (it's how a device gets its first token) — never sends a
-  /// stored token, and a 401 from it means "wrong credentials", not
-  /// "revoked". authenticated:false is what keeps those two 401 meanings
-  /// from ever being confused with each other.
   Future<Map<String, dynamic>> postJsonUnauthenticated(
     String path,
     Map<String, dynamic> body,
@@ -88,8 +78,6 @@ class ApiClient {
         return decoded['message'] as String;
       }
     } catch (_) {
-      // Body wasn't JSON (e.g. an HTML error page from a misconfigured
-      // base URL) — fall through to the generic message below.
     }
     return 'Something went wrong (${response.statusCode}).';
   }

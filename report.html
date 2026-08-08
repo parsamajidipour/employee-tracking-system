@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>گزارش معرفی پروژه Inspection</title>
+  <style>
+    @font-face{font-family:Vazir;src:url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir.woff2') format('woff2');font-display:swap}
+    :root{--bg:#eff5f8;--card:#fff;--text:#13333f;--muted:#6e8c99;--primary:#2f9ec0;--soft:#dcf0f6;--border:#e2ecf1;--success:#3fa98a}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Vazir,Tahoma,sans-serif;line-height:1.9}
+    main{max-width:1100px;margin:auto;padding:48px 20px}header{padding:34px;background:linear-gradient(135deg,#fff,#e7f5f9);border:1px solid var(--border);border-radius:28px}
+    h1{margin:0 0 8px;font-size:clamp(26px,4vw,42px)}h2{margin:0 0 18px;font-size:21px}p{margin:0;color:var(--muted)}
+    .tag{display:inline-block;margin-bottom:14px;padding:5px 13px;border-radius:99px;background:var(--soft);color:#1e7f9b;font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px}.card{padding:24px;background:var(--card);border:1px solid var(--border);border-radius:24px}
+    .wide{grid-column:1/-1}ul{margin:0;padding-right:20px}li{margin:7px 0}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;counter-reset:step}.step{position:relative;padding:18px 14px;background:#f6fafc;border-radius:16px;border:1px solid var(--border)}
+    .step:before{counter-increment:step;content:counter(step);display:grid;place-items:center;width:28px;height:28px;margin-bottom:10px;border-radius:50%;background:var(--primary);color:#fff;font-weight:bold}.step b{display:block;margin-bottom:4px}.step small{color:var(--muted)}
+    .note{margin-top:16px;padding:16px;border-right:4px solid var(--success);background:#f0faf7;border-radius:12px;color:#376a5c}code{direction:ltr;display:inline-block;color:#1e7f9b}
+    footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}@media(max-width:780px){main{padding:20px 12px}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.flow{grid-template-columns:1fr}header{padding:24px}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">سامانه مدیریت و ردیابی نیروی میدانی</span>
+    <h1>گزارش شناخت پروژه Inspection</h1>
+    <p>جمع‌بندی هدف، کاربردها و جریان کاری پروژه بر اساس مستندات Markdown مخزن</p>
+  </header>
+
+  <section class="grid">
+    <article class="card">
+      <h2>هدف اصلی</h2>
+      <p>نمایش موقعیت زنده کارکنان میدانی به سرپرستان، فقط در ساعات کاری تعریف‌شده؛ برای هماهنگی بهتر عملیات بدون نقض حریم خصوصی خارج از شیفت.</p>
+      <div class="note">خارج از پنجره کاری، هیچ داده مکانی ذخیره یا ارائه نمی‌شود. سیاست سیستم در حالت ابهام «رد کردن» است.</div>
+    </article>
+
+    <article class="card">
+      <h2>نوع و کاربرد سامانه</h2>
+      <ul>
+        <li>مدیریت الگو، استثنا و تغییرات برنامه کاری</li>
+        <li>نقشه زنده کارکنان حاضر در شیفت</li>
+        <li>نمایش مسیر تاریخی با مجوز و ثبت ممیزی</li>
+        <li>ارسال آفلاین موقعیت از اپ اندروید</li>
+        <li>خودمشاهده‌گری کارمند: شیفت، وضعیت و موقعیت خودش</li>
+      </ul>
+    </article>
+
+    <article class="card wide">
+      <h2>فلو اصلی پروژه</h2>
+      <div class="flow">
+        <div class="step"><b>تعریف شیفت</b><small>منابع انسانی برنامه و استثناها را در پنل ثبت می‌کند.</small></div>
+        <div class="step"><b>حل پنجره کاری</b><small>سرور زمان مجاز هر کارمند را از یک Resolver واحد محاسبه می‌کند.</small></div>
+        <div class="step"><b>جمع‌آوری موقعیت</b><small>اپ اندروید در زمان مجاز، با سرویس Foreground داده می‌گیرد و محلی صف می‌کند.</small></div>
+        <div class="step"><b>اعتبارسنجی و ذخیره</b><small>API هر نقطه را با <code>recorded_at</code> بررسی؛ نقاط خارج شیفت را برای همیشه رد می‌کند.</small></div>
+        <div class="step"><b>نمایش و ممیزی</b><small>نقشه با Snapshot و WebSocket به‌روز می‌شود؛ مشاهده مسیر تاریخی ثبت می‌گردد.</small></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>معماری و فناوری‌ها</h2>
+      <ul>
+        <li><b>Backend:</b> Laravel API و WebSocket</li>
+        <li><b>پنل:</b> Nuxt 4 با احراز هویت Sanctum</li>
+        <li><b>موبایل:</b> Flutter، ویژه Android</li>
+        <li><b>داده:</b> PostgreSQL + PostGIS و Redis</li>
+        <li><b>نقشه:</b> MapLibre و PMTiles میزبانی‌شده داخلی</li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <h2>امنیت، حریم خصوصی و نگهداری</h2>
+      <ul>
+        <li>مجوزدهی قابلیت‌محور و جداسازی وظایف</li>
+        <li>توکن وابسته به دستگاه و یک دستگاه فعال برای هر کارمند</li>
+        <li>ثبت تغییر برنامه و دسترسی به مسیر به‌صورت append-only</li>
+        <li>حذف قطعی نقاط مکانی پس از ۶۰ روز</li>
+        <li>ذخیره زمان‌ها با UTC و محاسبه شیفت در منطقه زمانی سامانه</li>
+      </ul>
+    </article>
+
+    <article class="card wide">
+      <h2>محدوده فاز اول</h2>
+      <p>اپ اندروید، صف آفلاین، دروازه شیفت، نقشه زنده، مسیر تاریخی، ویرایش برنامه و خودمشاهده‌گری کارمند در محدوده است. iOS، ژئوفنس، مدیریت وظایف، حقوق‌ودستمزد و گزارش‌گیری پیشرفته خارج از این فاز هستند.</p>
+    </article>
+  </section>
+  <footer>تهیه‌شده از CLAUDE.md، DECISIONS.md، READMEها و مستندات پوشه docs</footer>
+</main>
+</body>
+</html>

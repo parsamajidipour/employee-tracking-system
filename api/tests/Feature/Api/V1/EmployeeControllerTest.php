@@ -5,7 +5,6 @@ namespace Tests\Feature\Api\V1;
 use App\Enums\UserRole;
 use App\Models\Device;
 use App\Models\ShiftTemplate;
-use App\Models\Team;
 use App\Models\TrackingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -20,11 +19,8 @@ class EmployeeControllerTest extends TestCase
 
     public function test_index_lists_employees(): void
     {
-        // GET /employees is manage-schedules-gated (hr/admin), not
-        // view-locations — see AuthorizationTest and DECISIONS.md.
         $this->actingAs(User::factory()->hr()->create());
-        $team = Team::factory()->create();
-        $employee = User::factory()->create(['team_id' => $team->id, 'name' => 'Fahad Al-Balushi']);
+        $employee = User::factory()->create(['name' => 'Fahad Al-Balushi']);
 
         $response = $this->getJson('/api/v1/employees');
 
@@ -35,9 +31,8 @@ class EmployeeControllerTest extends TestCase
     public function test_window_returns_the_resolved_window_for_the_chosen_date(): void
     {
         $this->actingAs(User::factory()->supervisor()->create());
-        $team = Team::factory()->create(['timezone' => 'Asia/Muscat']);
-        ShiftTemplate::factory()->create(['team_id' => $team->id]); // Sun-Thu 07:00-16:00
-        $employee = User::factory()->create(['team_id' => $team->id]);
+        ShiftTemplate::factory()->create();
+        $employee = User::factory()->create();
 
         $sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
         $thursday = $sunday->addDays(4);
@@ -45,16 +40,15 @@ class EmployeeControllerTest extends TestCase
         $response = $this->getJson("/api/v1/employees/{$employee->id}/window?date={$thursday->toDateString()}");
 
         $response->assertOk();
-        $response->assertJsonPath('window.source', 'team_template');
+        $response->assertJsonPath('window.source', 'default_template');
         $response->assertJsonPath('window.start', $thursday->setTime(7, 0)->utc()->toISOString());
     }
 
     public function test_window_is_null_on_a_weekend_day_under_a_sunday_thursday_template(): void
     {
         $this->actingAs(User::factory()->supervisor()->create());
-        $team = Team::factory()->create(['timezone' => 'Asia/Muscat']);
-        ShiftTemplate::factory()->create(['team_id' => $team->id]); // Sun-Thu
-        $employee = User::factory()->create(['team_id' => $team->id]);
+        ShiftTemplate::factory()->create();
+        $employee = User::factory()->create();
 
         $sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
         $friday = $sunday->addDays(5);
@@ -69,9 +63,6 @@ class EmployeeControllerTest extends TestCase
     {
         $this->actingAs(User::factory()->supervisor()->create());
         $employee = User::factory()->create();
-        // The started_at column is a timestamp with no fractional seconds —
-        // start from a whole second so the round trip through Postgres
-        // doesn't truncate away microseconds the assertion doesn't expect.
         $startedAt = CarbonImmutable::now()->subHours(2)->startOfSecond();
         TrackingSession::factory()->create(['employee_id' => $employee->id, 'started_at' => $startedAt]);
 
@@ -96,12 +87,9 @@ class EmployeeControllerTest extends TestCase
         $response->assertJson(['started_at' => null]);
     }
 
-    public function test_store_creates_an_employee_attached_to_the_one_default_team(): void
+    public function test_store_creates_an_active_employee(): void
     {
         $this->actingAs(User::factory()->hr()->create());
-        // Seeded by the seed_default_team_and_backfill_users migration —
-        // every install has exactly one team; see DECISIONS.md.
-        $team = Team::first();
 
         $response = $this->postJson('/api/v1/employees', [
             'name' => 'New Hire',
@@ -116,7 +104,6 @@ class EmployeeControllerTest extends TestCase
         $this->assertNotNull($employee);
         $this->assertSame(UserRole::Employee, $employee->role);
         $this->assertTrue($employee->is_active);
-        $this->assertSame($team->id, $employee->team_id);
     }
 
     public function test_store_requires_a_unique_username(): void
@@ -158,7 +145,7 @@ class EmployeeControllerTest extends TestCase
 
     public function test_revoke_device_deletes_the_token_and_marks_the_device_revoked(): void
     {
-        Cache::flush(); // see DeviceAuthControllerTest::setUp() re: the login route's shared rate-limit cache
+        Cache::flush();
         $this->actingAs(User::factory()->hr()->create());
         $employee = User::factory()->create(['username' => 'alice', 'password' => Hash::make('secret123')]);
 

@@ -9,28 +9,19 @@ import 'location_acquisition_service.dart';
 import 'track_upload_service.dart';
 import 'window_sync_service.dart';
 
-/// Sent instead of a JSON window payload when the main isolate's own fetch
-/// found no current window — see TrackingServiceController.applyWindowDecision().
 const noWindowMarker = '__no_window__';
 
-/// The entry point Android/iOS invokes to start this task's own isolate.
-/// Registering the handler is *all* this does — everything else happens
-/// through TrackingTaskHandler's lifecycle callbacks below.
 @pragma('vm:entry-point')
 void startCallback() {
   FlutterForegroundTask.setTaskHandler(TrackingTaskHandler());
 }
 
-/// Owns the one thing this whole feature exists to get right: stopping
-/// tracking at the *exact* instant a window closes, never on some later
-/// poll. A scheduled Timer, not a periodic check, is what actually stops
-/// the service — the periodic tick (onRepeatEvent) and the cross-isolate
-/// message (onReceiveData) both only ever *update that Timer's target*,
-/// via the same shrink-immediately/extend-only-after-success rule.
 class TrackingTaskHandler extends TaskHandler {
   Timer? _stopTimer;
-  final LocationAcquisitionService _acquisition = LocationAcquisitionService();
   final TrackUploadService _upload = TrackUploadService();
+  late final LocationAcquisitionService _acquisition = LocationAcquisitionService(
+    onPointRecorded: _upload.runUploadCycle,
+  );
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -41,18 +32,13 @@ class TrackingTaskHandler extends TaskHandler {
   @override
   void onRepeatEvent(DateTime timestamp) {
     _checkLocationPermissionStillGranted().then((granted) {
-      // A permission revoked mid-session takes priority over the window
-      // check on this same tick — acquisition cannot continue without it
-      // regardless of what the window says, and there's no reason to wait
-      // for either the next window check or the scheduled stop to notice.
       if (!granted) {
         _stopNow();
         return;
       }
       _reconcileWindow();
     });
-    // Same 30s tick, not a second timer — see TrackingServiceController's
-    // eventAction comment.
+
     _upload.runUploadCycle();
   }
 
@@ -69,7 +55,6 @@ class TrackingTaskHandler extends TaskHandler {
       final json = jsonDecode(data) as Map<String, dynamic>;
       _applyFetchedWindow(ShiftWindow.fromJson(json));
     } catch (_) {
-      // Malformed payload — ignore; the next periodic tick recovers.
     }
   }
 
@@ -91,13 +76,6 @@ class TrackingTaskHandler extends TaskHandler {
       final window = await fetchCurrentWindow();
       _applyFetchedWindow(window);
     } catch (_) {
-      // A failed re-fetch changes nothing: the previously scheduled stop
-      // still fires at its already-known instant. We never extend
-      // tracking because we couldn't confirm a fetch — only a
-      // *successful* fetch is allowed to move the stop time later. A
-      // shortened window (including "no window at all") always applies
-      // immediately once a successful fetch reveals it; an extension
-      // only ever applies after a successful fetch confirms it.
     }
   }
 

@@ -4,7 +4,6 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\ScheduleChangeLog;
 use App\Models\ShiftException;
-use App\Models\Team;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,8 +22,7 @@ class ShiftExceptionControllerTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->hr()->create();
-        $team = Team::factory()->create();
-        $this->employee = User::factory()->create(['team_id' => $team->id]);
+        $this->employee = User::factory()->create();
 
         $this->actingAs($this->admin);
     }
@@ -32,7 +30,7 @@ class ShiftExceptionControllerTest extends TestCase
     public function test_index_filters_by_employee_id(): void
     {
         ShiftException::factory()->leave()->create(['employee_id' => $this->employee->id]);
-        ShiftException::factory()->leave()->create(); // a different employee
+        ShiftException::factory()->leave()->create();
 
         $response = $this->getJson("/api/v1/shift-exceptions?employee_id={$this->employee->id}");
 
@@ -46,7 +44,7 @@ class ShiftExceptionControllerTest extends TestCase
             'employee_id' => $this->employee->id,
             'date' => CarbonImmutable::now()->addDay()->toDateString(),
             'type' => 'leave',
-            'start_at' => '09:00', // must be ignored/forced null for a deny type
+            'start_at' => '09:00',
             'end_at' => '10:00',
             'reason' => 'Annual leave',
         ]);

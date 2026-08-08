@@ -1,7 +1,5 @@
-/// A point-in-time read of every permission background tracking depends on.
-/// Plain data, no logic — matches shift_window.dart's style. Produced by
-/// PermissionService.currentSnapshot(), consumed by the onboarding screen
-/// and (later) the home screen's permission-status section.
+
+
 class PermissionSnapshot {
   final bool fineLocationGranted;
   final bool backgroundLocationGranted;

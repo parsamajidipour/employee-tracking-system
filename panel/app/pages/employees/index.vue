@@ -14,6 +14,7 @@ interface Employee {
   role: 'admin' | 'hr' | 'supervisor' | 'employee'
   is_active: boolean
   device: Device | null
+  shifts: Array<{ id: number; name: string; start_time: string; end_time: string }>
 }
 
 const employees = ref<Employee[]>([])
@@ -41,7 +42,6 @@ async function load() {
 }
 
 function generatePassword(length = 14): string {
-  // No 0/O/1/l/I — an admin often reads this out loud or texts it over.
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
   const bytes = crypto.getRandomValues(new Uint8Array(length))
   return Array.from(bytes, (b) => chars[b % chars.length]).join('')
@@ -114,51 +114,88 @@ onMounted(load)
     </template>
 
     <Table
-      :headers="['Name', 'Username / email', 'Phone', 'Role', 'Active', 'Device', '']"
+      :headers="['Employee', 'Phone', 'Shifts', 'Status', 'Device', '']"
       :loading="loading"
       :error="error"
       :is-empty="employees.length === 0"
       empty-message="No employees yet — add one to get started."
     >
-      <tr v-for="employee in employees" :key="employee.id" class="text-slate-700">
-        <td class="px-4 py-3 font-medium text-slate-900">{{ employee.name }}</td>
-        <td class="px-4 py-3">{{ employee.username ?? employee.email ?? '—' }}</td>
-        <td class="px-4 py-3">{{ employee.phone ?? '—' }}</td>
-        <td class="px-4 py-3"><Badge>{{ employee.role }}</Badge></td>
-        <td class="px-4 py-3">
+      <tr v-for="employee in employees" :key="employee.id" class="text-ink">
+        <td class="px-5 py-3">
+          <div class="font-medium">{{ employee.name }}</div>
+          <div class="text-xs text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</div>
+        </td>
+        <td class="px-5 py-3">{{ employee.phone ?? '—' }}</td>
+        <td class="px-5 py-3">
+          <div v-if="employee.shifts.length" class="flex max-w-56 flex-wrap gap-1">
+            <Badge v-for="shift in employee.shifts" :key="shift.id" variant="neutral">
+              {{ shift.name }} · {{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}
+            </Badge>
+          </div>
+          <span v-else class="text-ink-faint">No shifts</span>
+        </td>
+        <td class="px-5 py-3">
           <Badge :variant="employee.is_active ? 'success' : 'neutral'">
             {{ employee.is_active ? 'Active' : 'Inactive' }}
           </Badge>
         </td>
-        <td class="px-4 py-3">
+        <td class="px-5 py-3">
           <template v-if="employee.device">
-            <div>{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
-            <div class="tabular-nums text-xs text-slate-400">
-              {{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleString() : 'never seen' }}
+            <div class="truncate">{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
+            <div class="text-xs text-ink-faint">
+              {{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleDateString() : 'never seen' }}
             </div>
           </template>
-          <span v-else class="text-slate-400">—</span>
+          <span v-else class="text-ink-faint">—</span>
         </td>
-        <td class="px-4 py-3 text-right whitespace-nowrap">
-          <Button size="sm" variant="secondary" :to="`/employees/${employee.id}`">Schedule</Button>
-          <Button size="sm" variant="secondary" class="ml-2" @click="openResetPassword(employee)">Reset password</Button>
-          <Button size="sm" :variant="employee.is_active ? 'danger' : 'secondary'" class="ml-2" @click="toggleActive(employee)">
-            {{ employee.is_active ? 'Deactivate' : 'Activate' }}
-          </Button>
-          <Button v-if="employee.device" size="sm" variant="danger" class="ml-2" @click="revokeDevice(employee)">
-            Revoke
-          </Button>
+        <td class="px-5 py-3">
+          <div class="flex items-center justify-end gap-1 whitespace-nowrap">
+            <NuxtLink
+              :to="`/employees/${employee.id}`"
+              class="rounded-small px-2 py-1.5 text-sm font-medium text-primary-strong transition-colors hover:bg-surface-muted"
+            >
+              Schedule
+            </NuxtLink>
+            <NuxtLink
+              :to="`/employees/${employee.id}/histories`"
+              class="rounded-small px-2 py-1.5 text-sm font-medium text-primary-strong transition-colors hover:bg-surface-muted"
+            >
+              Histories
+            </NuxtLink>
+            <button
+              type="button"
+              class="rounded-small px-2 py-1.5 text-sm text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+              @click="openResetPassword(employee)"
+            >
+              Reset password
+            </button>
+            <button
+              type="button"
+              class="rounded-small px-2 py-1.5 text-sm text-ink-soft transition-colors hover:bg-surface-muted hover:text-state-danger"
+              @click="toggleActive(employee)"
+            >
+              {{ employee.is_active ? 'Deactivate' : 'Activate' }}
+            </button>
+            <button
+              v-if="employee.device"
+              type="button"
+              class="rounded-small px-2 py-1.5 text-sm text-ink-soft transition-colors hover:bg-surface-muted hover:text-state-danger"
+              @click="revokeDevice(employee)"
+            >
+              Revoke device
+            </button>
+          </div>
         </td>
       </tr>
     </Table>
 
     <Modal v-model="resetPasswordOpen" title="Password reset">
       <p class="mb-3">
-        New password for <span class="font-medium text-slate-900">{{ resetPasswordTarget?.name }}</span>. This is shown
+        New password for <span class="font-medium text-ink">{{ resetPasswordTarget?.name }}</span>. This is shown
         once — copy it now.
       </p>
-      <div class="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-        <code class="flex-1 select-all font-mono text-sm tabular-nums text-slate-900">{{ generatedPassword }}</code>
+      <div class="flex items-center gap-2 rounded-control border border-hairline bg-surface-muted px-3 py-2">
+        <code class="flex-1 select-all font-mono text-sm tabular-nums text-ink">{{ generatedPassword }}</code>
         <Button size="sm" variant="secondary" @click="copyGeneratedPassword">Copy</Button>
       </div>
       <template #footer>

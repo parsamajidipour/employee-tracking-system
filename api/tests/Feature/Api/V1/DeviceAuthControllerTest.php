@@ -11,12 +11,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
-/**
- * App\Services\DeviceService and the POST /api/v1/device/login endpoint —
- * see DECISIONS.md's "one active device per employee" entry. Credentials
- * are sent only to this one endpoint; every later mobile request uses the
- * token it returns.
- */
 class DeviceAuthControllerTest extends TestCase
 {
     use RefreshDatabase;
@@ -25,11 +19,6 @@ class DeviceAuthControllerTest extends TestCase
     {
         parent::setUp();
 
-        // The login route is rate-limited (throttle:5,1) keyed by IP, and
-        // the testing cache store is an in-process array shared across
-        // every test in this run — without this, tests later in the suite
-        // that hit this same route inherit attempts from earlier ones and
-        // start seeing 429 instead of the status they're actually testing.
         Cache::flush();
     }
 
@@ -58,10 +47,9 @@ class DeviceAuthControllerTest extends TestCase
         $token = $response->json('token');
         $this->assertNotEmpty($token);
 
-        // Proves the token actually works, not just that one was returned.
         $this->withToken($token)
             ->postJson('/api/v1/track', ['points' => []])
-            ->assertStatus(422); // reaches validation under this token — not 401
+            ->assertStatus(422);
     }
 
     public function test_login_with_wrong_password_is_refused(): void

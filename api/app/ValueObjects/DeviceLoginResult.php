@@ -8,8 +8,7 @@ final readonly class DeviceLoginResult
         public bool $success,
         public ?string $token,
         public ?string $failureReason,
-    ) {
-    }
+    ) {}
 
     public static function success(string $token): self
     {

@@ -4,7 +4,6 @@ namespace Tests\Feature\Services;
 
 use App\Enums\TrackingSessionEndReason;
 use App\Models\ShiftTemplate;
-use App\Models\Team;
 use App\Models\TrackingSession;
 use App\Models\User;
 use App\Services\TrackingSessionManager;
@@ -28,10 +27,8 @@ class TrackingSessionManagerTest extends TestCase
         parent::setUp();
 
         $this->manager = app(TrackingSessionManager::class);
-
-        $team = Team::factory()->create(['timezone' => 'Asia/Muscat']);
-        ShiftTemplate::factory()->create(['team_id' => $team->id]); // Sun-Thu 07:00-16:00
-        $this->employee = User::factory()->create(['team_id' => $team->id]);
+        ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
 
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
     }
@@ -45,7 +42,6 @@ class TrackingSessionManagerTest extends TestCase
             'started_at' => $thursday->setTime(9, 0),
         ]);
 
-        // Well after the 07:00-16:00 window (and its zero grace) has ended.
         $now = $thursday->setTime(20, 0);
 
         $firstRun = $this->manager->closeEndedSessions($now);
@@ -56,8 +52,6 @@ class TrackingSessionManagerTest extends TestCase
         $this->assertSame(TrackingSessionEndReason::WindowClosed, $session->end_reason);
         $closedAt = $session->ended_at;
 
-        // Running again — including "late", well after the first run —
-        // must not touch the already-closed session a second time.
         $secondRun = $this->manager->closeEndedSessions($now->addHours(3));
         $this->assertSame(0, $secondRun);
 
@@ -80,27 +74,6 @@ class TrackingSessionManagerTest extends TestCase
         $this->assertNull(TrackingSession::where('employee_id', $this->employee->id)->first()->ended_at);
     }
 
-    /**
-     * Reproduces the race openOrReuse() exists to survive: two accepted
-     * batches for the same employee, both seeing no open session, both
-     * trying to create one.
-     *
-     * A genuinely separate connection can't stand in for "the other batch"
-     * here — RefreshDatabase wraps this whole test (including setUp()'s
-     * team/employee fixtures) in one uncommitted transaction, invisible to
-     * any other connection, so a real second connection's insert would fail
-     * on a foreign-key violation before ever reaching the interesting race.
-     * Instead, a DB::listen() hook fires right after findOpen()'s own SELECT
-     * completes — the exact gap, on this same connection, between "no open
-     * session" and this manager's own create() call — and inserts the
-     * competitor there, as a sibling statement in the outer transaction
-     * rather than nested inside the DB::transaction() savepoint the
-     * subsequent create() opens. That placement matters: when create()'s own
-     * insert then hits the real unique-violation and its savepoint rolls
-     * back, only that failed insert is undone — the competitor, having
-     * landed before the savepoint began, survives it exactly as a genuinely
-     * concurrent request's own committed transaction would.
-     */
     public function test_two_batches_racing_to_open_a_session_reread_and_reuse_the_winner(): void
     {
         $startedAt = $this->sunday->addDays(4)->setTime(9, 0);

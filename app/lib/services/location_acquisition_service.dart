@@ -6,21 +6,13 @@ import 'package:geolocator/geolocator.dart';
 import '../models/queued_location_point.dart';
 import 'location_queue_repository.dart';
 
-/// The 30m-distance-filter + 60s-heartbeat acquisition SPEC.md §6 requires
-/// — never a fixed high-frequency interval. Two sources feed the same
-/// queue: a distance-filter stream (fires on real movement) and a
-/// heartbeat Timer (fires even standing still, so a stationary employee
-/// still produces periodic points). "Reduced frequency when stationary" is
-/// satisfied by backing the heartbeat interval off — doubled each time the
-/// heartbeat itself finds no meaningful movement since the last one,
-/// capped, and reset the instant real movement is detected again (by
-/// either source). No separate stationary-detection algorithm beyond that.
 class LocationAcquisitionService {
-  static const _baseHeartbeat = Duration(seconds: 60);
-  static const _maxHeartbeat = Duration(minutes: 10);
-  static const _stationaryThresholdMeters = 15.0;
+  static const _baseHeartbeat = Duration(seconds: 5);
+  static const _maxHeartbeat = Duration(seconds: 15);
+  static const _stationaryThresholdMeters = 5.0;
 
   final LocationQueueRepository _repository;
+  final Future<void> Function()? _onPointRecorded;
   final Battery _battery = Battery();
 
   StreamSubscription<Position>? _distanceFilterSubscription;
@@ -28,14 +20,15 @@ class LocationAcquisitionService {
   Duration _heartbeatInterval = _baseHeartbeat;
   Position? _lastPosition;
 
-  LocationAcquisitionService({LocationQueueRepository? repository})
-      : _repository = repository ?? LocationQueueRepository();
+  LocationAcquisitionService({LocationQueueRepository? repository, Future<void> Function()? onPointRecorded})
+      : _repository = repository ?? LocationQueueRepository(),
+        _onPointRecorded = onPointRecorded;
 
   void start() {
     _distanceFilterSubscription = Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 30,
+        distanceFilter: 5,
       ),
     ).listen(_onMovementDetected);
 
@@ -83,8 +76,6 @@ class LocationAcquisitionService {
 
       await _recordPosition(position);
     } catch (_) {
-      // A single failed heartbeat isn't fatal — the next one, at whatever
-      // interval was already scheduled, tries again.
     } finally {
       _scheduleHeartbeat();
     }
@@ -104,5 +95,6 @@ class LocationAcquisitionService {
       isMocked: position.isMocked,
       recordedAt: position.timestamp,
     ));
+    await _onPointRecorded?.call();
   }
 }

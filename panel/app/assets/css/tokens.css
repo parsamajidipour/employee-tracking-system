@@ -1,0 +1,223 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #2f9ec0;
+  --primary-strong: #1e7f9b;
+  --primary-soft: #dcf0f6;
+  --gradient-top: #4fbdd8;
+  --gradient-bottom: #228dad;
+
+  --background: #eff5f8;
+  --surface: #ffffff;
+  --surface-muted: #f6fafc;
+  --border: #e2ecf1;
+
+  --text-primary: #13333f;
+  --text-secondary: #6e8c99;
+  --text-tertiary: #9db6c1;
+
+  --success: #3fa98a;
+  --warning: #d9973b;
+  --danger: #d2635e;
+  --neutral: #8aa5b1;
+
+  --radius-card: 24px;
+  --radius-control: 16px;
+  --radius-small: 12px;
+
+  --shadow-card: 0 8px 24px rgba(19, 51, 63, 0.06);
+  --shadow-raised: 0 12px 32px rgba(19, 51, 63, 0.1);
+
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --ease: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --primary: #4fbdd8;
+    --primary-strong: #2f9ec0;
+    --primary-soft: #12323d;
+
+    --background: #0e1e26;
+    --surface: #162c36;
+    --surface-muted: #1b333e;
+    --border: #22404c;
+
+    --text-primary: #eaf4f8;
+    --text-secondary: #9db6c1;
+    --text-tertiary: #6e8c99;
+
+    --success: #57c3a3;
+    --warning: #e8af5c;
+    --danger: #e2807b;
+    --neutral: #7e9aa6;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  h1 {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+  }
+
+  .floating {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .overline {
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--primary-strong);
+  }
+
+  .muted {
+    color: var(--text-secondary);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 17px;
+  }
+
+  .field {
+    width: 100%;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    padding: 12px 16px;
+    color: var(--text-primary);
+    transition: border-color var(--motion-fast) var(--ease);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+
+  .field::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    transition: background-color var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease),
+      border-color var(--motion-fast) var(--ease);
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #ffffff;
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-strong);
+  }
+
+  .btn-primary:disabled {
+    background: var(--border);
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--primary-strong);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover {
+    background: var(--surface-muted);
+  }
+
+  .enter {
+    animation: enter var(--motion-base) var(--ease) both;
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -7,13 +7,6 @@ import 'api_client.dart';
 import 'api_exception.dart';
 import 'auth_storage.dart';
 
-/// GET /me/window, with the offline fallback SPEC section 6 calls for: if
-/// the network attempt fails for any reason other than the device having
-/// been revoked, fall back to the last successfully-fetched response
-/// rather than showing nothing. A 401 is never treated this way — that
-/// means the session itself is gone, not that the network is flaky, and
-/// showing stale "you're fine" data right after that would defeat the
-/// point of the deactivation notice.
 class MeRepository {
   final ApiClient apiClient;
   final AuthStorage storage;

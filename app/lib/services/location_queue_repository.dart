@@ -1,9 +1,6 @@
 import '../models/queued_location_point.dart';
 import 'location_queue_database.dart';
 
-/// Every acquired point goes through insert() before anything else ever
-/// happens to it — the queue is the durable record; upload (step 4) is
-/// just draining it.
 class LocationQueueRepository {
   Future<void> insert(QueuedLocationPoint point) async {
     final db = await openLocationQueueDatabase();
@@ -32,9 +29,6 @@ class LocationQueueRepository {
     await db.delete(locationPointsTable, where: 'id IN ($placeholders)', whereArgs: ids);
   }
 
-  /// Deletes without ever uploading — the 48h rule is enforced here, not
-  /// just server-side, so the client doesn't waste a request on a point
-  /// the server would reject anyway.
   Future<void> purgeOlderThan(DateTime cutoff) async {
     final db = await openLocationQueueDatabase();
     await db.delete(locationPointsTable, where: 'recorded_at < ?', whereArgs: [cutoff.toIso8601String()]);

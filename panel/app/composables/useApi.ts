@@ -5,16 +5,14 @@ function readCookie(name: string): string | null {
 }
 
 export async function ensureCsrfCookie(): Promise<void> {
-  const { public: { apiBase } } = useRuntimeConfig()
-  await $fetch('/sanctum/csrf-cookie', { baseURL: apiBase, credentials: 'include' })
+  await $fetch('/sanctum/csrf-cookie', { baseURL: apiOrigin(), credentials: 'include' })
 }
 
 export async function apiFetch<T>(path: string, opts: Record<string, any> = {}): Promise<T> {
-  const { public: { apiBase } } = useRuntimeConfig()
   const xsrfToken = readCookie('XSRF-TOKEN')
 
   return $fetch<T>(path, {
-    baseURL: apiBase,
+    baseURL: apiOrigin(),
     credentials: 'include',
     ...opts,
     headers: {

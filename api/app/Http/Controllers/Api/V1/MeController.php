@@ -5,14 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Services\ShiftWindowResolver;
 use Carbon\CarbonImmutable;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class MeController extends Controller
 {
-    public function __construct(private readonly ShiftWindowResolver $resolver)
-    {
-    }
+    public function __construct(private readonly ShiftWindowResolver $resolver) {}
 
     public function window(Request $request): JsonResponse
     {

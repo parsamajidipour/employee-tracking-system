@@ -1,29 +1,21 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.smartinspection.tracking"
-    // 36, not flutter.compileSdkVersion's default (35): flutter_secure_storage
-    // requires compiling against 36. permission_handler_android's own
-    // compileSdk (35) is pinned lower via dependency_overrides in
-    // pubspec.yaml — see that file's comment for why. Backward compatible
-    // with minSdk 26.
+    namespace = "ranjbarali.parsamajidipour.smartinspection"
     compileSdk = 36
-    // 27.0.12077973, not flutter.ndkVersion's default: flutter_secure_storage,
-    // path_provider_android, and permission_handler_android all request this
-    // specific NDK; the highest requested version wins and is backward
-    // compatible with anything lower.
     ndkVersion = "27.0.12077973"
 
     compileOptions {
-        // 17, not 1.8: permission_handler_android's own module targets Java
-        // 17 — every module in one Gradle build effectively needs a
-        // consistent-or-higher target, and 17 is also just where current
-        // AGP/Kotlin tooling already wants to be.
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -33,21 +25,31 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.smartinspection.tracking"
-        // 26, not flutter.minSdkVersion's default — set explicitly per this
-        // project's requirements, not left to whatever Flutter currently
-        // defaults to.
-        minSdk = 26
+        applicationId = "ranjbarali.parsamajidipour.smartinspection"
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
+                storeFile = keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null
+                storePassword = keystoreProperties["storePassword"]
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

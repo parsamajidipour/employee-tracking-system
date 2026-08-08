@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Enums\ShiftExceptionType;
+use App\Models\ShiftException;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ShiftException>
+ * @extends Factory<ShiftException>
  */
 class ShiftExceptionFactory extends Factory
 {

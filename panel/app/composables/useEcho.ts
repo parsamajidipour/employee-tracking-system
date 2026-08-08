@@ -1,22 +1,13 @@
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
 
-/**
- * pusher-js's built-in channel-auth transport never sets `withCredentials`
- * on its XHR (see node_modules/pusher-js/src/runtimes/isomorphic/auth/
- * xhr_auth.ts) — fine for same-origin Pusher/Reverb setups, wrong here,
- * where the panel and api/ are different origins and the auth request must
- * carry the Sanctum session cookie. `channelAuthorization.customHandler`
- * replaces that transport outright with the same credentialed apiFetch()
- * every other authenticated request in this app already uses.
- */
 export function createEcho(): Echo<'reverb'> {
   const { public: config } = useRuntimeConfig()
 
   return new Echo({
     broadcaster: 'reverb',
     key: config.reverbAppKey,
-    wsHost: config.reverbHost,
+    wsHost: websocketHost(),
     wsPort: Number(config.reverbPort),
     wssPort: Number(config.reverbPort),
     forceTLS: config.reverbScheme === 'https',

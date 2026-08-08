@@ -3,7 +3,6 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\ShiftTemplate;
-use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,30 +11,26 @@ class ShiftTemplateControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_filters_by_team_id(): void
+    public function test_index_returns_every_template_ordered_by_name(): void
     {
         $this->actingAs(User::factory()->hr()->create());
-        $teamA = Team::factory()->create();
-        $teamB = Team::factory()->create();
-        ShiftTemplate::factory()->create(['team_id' => $teamA->id, 'name' => 'Team A default']);
-        ShiftTemplate::factory()->create(['team_id' => $teamB->id, 'name' => 'Team B default']);
+        ShiftTemplate::factory()->create(['name' => 'Night']);
+        ShiftTemplate::factory()->create(['name' => 'Day']);
 
-        $response = $this->getJson("/api/v1/shift-templates?team_id={$teamA->id}");
+        $response = $this->getJson('/api/v1/shift-templates');
 
         $response->assertOk();
-        $response->assertJsonCount(1);
-        $response->assertJsonFragment(['name' => 'Team A default']);
+        $response->assertJsonCount(2);
+        $response->assertJsonPath('0.name', 'Day');
+        $response->assertJsonPath('1.name', 'Night');
     }
 
     public function test_store_creates_a_template(): void
     {
         $this->actingAs(User::factory()->hr()->create());
-        $team = Team::factory()->create();
 
         $response = $this->postJson('/api/v1/shift-templates', [
-            'team_id' => $team->id,
             'name' => 'Standard',
-            'timezone' => 'Asia/Muscat',
             'days_of_week' => [0, 1, 2, 3, 4],
             'start_time' => '07:00',
             'end_time' => '16:00',
@@ -44,18 +39,15 @@ class ShiftTemplateControllerTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $this->assertDatabaseHas('shift_templates', ['team_id' => $team->id, 'name' => 'Standard']);
+        $this->assertDatabaseHas('shift_templates', ['name' => 'Standard']);
     }
 
     public function test_store_rejects_a_day_of_week_out_of_range(): void
     {
         $this->actingAs(User::factory()->hr()->create());
-        $team = Team::factory()->create();
 
         $response = $this->postJson('/api/v1/shift-templates', [
-            'team_id' => $team->id,
             'name' => 'Standard',
-            'timezone' => 'Asia/Muscat',
             'days_of_week' => [7],
             'start_time' => '07:00',
             'end_time' => '16:00',
@@ -71,9 +63,7 @@ class ShiftTemplateControllerTest extends TestCase
         $template = ShiftTemplate::factory()->create();
 
         $update = $this->putJson("/api/v1/shift-templates/{$template->id}", [
-            'team_id' => $template->team_id,
             'name' => 'Renamed',
-            'timezone' => 'Asia/Muscat',
             'days_of_week' => [0, 1, 2, 3, 4],
             'start_time' => '08:00',
             'end_time' => '17:00',

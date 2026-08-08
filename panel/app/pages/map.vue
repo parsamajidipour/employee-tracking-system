@@ -1,19 +1,9 @@
 <script setup lang="ts">
-import { LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, addProtocol } from 'maplibre-gl'
+import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, addProtocol, setWorkerUrl } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { Protocol as PMTilesProtocol } from 'pmtiles'
 import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
 import type { StalenessBucket } from '~/composables/usePositions'
-
-// MapLibre and Laravel Echo/pusher-js both touch window/WebSocket at module
-// load time — never safe to evaluate during SSR. No longer this page's own
-// concern: the whole app is ssr:false now (see nuxt.config.ts), but this
-// page is exactly why that had to be true, so the reasoning stays here.
-
-interface WindowInfo {
-  start: string
-  end: string
-  source: string
-}
 
 const { positions, now, stalenessBucket } = usePositions()
 
@@ -22,8 +12,9 @@ let map: MapLibreMap | undefined
 const markers = new Map<number, MapLibreMarker>()
 
 const selectedEmployeeId = ref<number | null>(null)
-const selectedWindow = ref<WindowInfo | null>(null)
-const sessionStartedAt = ref<string | null>(null)
+const selectedDistanceM = ref<number | null>(null)
+const showTrail = ref(false)
+const trailPoints = ref<Array<{ lng: number; lat: number; recorded_at: string }>>([])
 const detailLoading = ref(false)
 const detailError = ref(false)
 
@@ -31,37 +22,76 @@ const selectedPosition = computed(
   () => positions.value.find((position) => position.employee_id === selectedEmployeeId.value) ?? null,
 )
 
-// fresh uses the app's one accent colour (blue-600) — the same colour as
-// every interactive element — per the design pass's "single accent colour
-// used only for interactive elements and the 'fresh' marker state." Aging/
-// stale stay semantic amber/red, not accent.
-const STALENESS_COLOR: Record<StalenessBucket, string> = {
-  fresh: '#2563eb',
-  aging: '#d97706',
-  stale: '#dc2626',
+const OFFLINE_COLOR = '#d97706'
+
+function employeeColor(employeeId: number): string {
+  return `hsl(${(employeeId * 137.508) % 360} 68% 45%)`
 }
 
-function markerElement(): HTMLDivElement {
+function markerColor(employeeId: number, recordedAt: string): string {
+  return stalenessBucket(recordedAt) === 'offline' ? OFFLINE_COLOR : employeeColor(employeeId)
+}
+
+function markerElement(name: string): HTMLDivElement {
   const el = document.createElement('div')
-  el.className = 'h-4 w-4 rounded-full border-2 border-white shadow-md cursor-pointer'
+  el.className = 'group relative h-4 w-4 cursor-pointer rounded-full border-2 border-white shadow-md'
+  const label = document.createElement('span')
+  label.textContent = name
+  label.className = 'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-ink opacity-0 shadow-raised transition-opacity group-hover:opacity-100'
+  el.appendChild(label)
   return el
+}
+
+function renderTrail() {
+  if (!map?.getSource('employee-trail')) return
+  const coordinates = showTrail.value ? trailPoints.value.map((point) => [point.lng, point.lat]) : []
+  ;(map.getSource('employee-trail') as GeoJSONSource).setData({
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'LineString', coordinates },
+  })
+  if (selectedEmployeeId.value !== null) {
+    map.setPaintProperty('employee-trail-line', 'line-color', employeeColor(selectedEmployeeId.value))
+  }
+}
+
+async function loadTrail() {
+  if (!showTrail.value || selectedEmployeeId.value === null) {
+    trailPoints.value = []
+    renderTrail()
+    return
+  }
+
+  const result = await apiFetch<{ distance_m: number; points: Array<{ lng: number; lat: number; recorded_at: string }> }>(
+    `/api/v1/employees/${selectedEmployeeId.value}/trail`,
+  )
+  selectedDistanceM.value = result.distance_m
+  trailPoints.value = result.points
+  renderTrail()
+}
+
+async function toggleTrail() {
+  showTrail.value = !showTrail.value
+  try {
+    await loadTrail()
+  } catch {
+    showTrail.value = false
+    detailError.value = true
+  }
 }
 
 async function selectEmployee(employeeId: number) {
   selectedEmployeeId.value = employeeId
   detailLoading.value = true
   detailError.value = false
-  selectedWindow.value = null
-  sessionStartedAt.value = null
+  selectedDistanceM.value = null
+  showTrail.value = false
+  trailPoints.value = []
+  renderTrail()
 
   try {
-    const today = new Date().toISOString().slice(0, 10)
-    const [windowResult, sessionResult] = await Promise.all([
-      apiFetch<{ date: string; window: WindowInfo | null }>(`/api/v1/employees/${employeeId}/window?date=${today}`),
-      apiFetch<{ started_at: string | null }>(`/api/v1/employees/${employeeId}/session`),
-    ])
-    selectedWindow.value = windowResult.window
-    sessionStartedAt.value = sessionResult.started_at
+    const result = await apiFetch<{ distance_m: number }>(`/api/v1/employees/${employeeId}/distance?days=1`)
+    selectedDistanceM.value = result.distance_m
   } catch {
     detailError.value = true
   } finally {
@@ -71,6 +101,9 @@ async function selectEmployee(employeeId: number) {
 
 function closeDetail() {
   selectedEmployeeId.value = null
+  showTrail.value = false
+  trailPoints.value = []
+  renderTrail()
 }
 
 function focusEmployee(employeeId: number) {
@@ -86,11 +119,11 @@ function syncMarkers() {
 
   for (const position of positions.value) {
     seen.add(position.employee_id)
-    const color = STALENESS_COLOR[stalenessBucket(position.recorded_at)]
+    const color = markerColor(position.employee_id, position.recorded_at)
     let marker = markers.get(position.employee_id)
 
     if (!marker) {
-      const el = markerElement()
+      const el = markerElement(position.name)
       el.dataset.employeeId = String(position.employee_id)
       el.addEventListener('click', () => selectEmployee(position.employee_id))
       marker = new MapLibreMarker({ element: el }).setLngLat([position.lng, position.lat]).addTo(map)
@@ -111,21 +144,49 @@ function syncMarkers() {
   }
 }
 
-// Deep: a Position's fields changing (a delta for an id already on the
-// map) needs the same marker-sync pass as an id appearing/disappearing.
 watch(positions, syncMarkers, { deep: true })
-// Staleness colour depends on elapsed time alone — must still recompute
-// between deltas, not just when one arrives.
+
+watch(positions, (snapshot) => {
+  if (!showTrail.value || selectedEmployeeId.value === null) return
+  const position = snapshot.find((item) => item.employee_id === selectedEmployeeId.value)
+  if (!position) return
+  const last = trailPoints.value.at(-1)
+  if (last && new Date(last.recorded_at).getTime() >= new Date(position.recorded_at).getTime()) return
+  trailPoints.value.push({ lng: position.lng, lat: position.lat, recorded_at: position.recorded_at })
+  renderTrail()
+}, { deep: true })
+
 watch(now, syncMarkers)
 
+function calmFlavor() {
+  return {
+    ...namedFlavor('light'),
+    background: '#eff5f8',
+    earth: '#eaeef1',
+    water: '#cadfea',
+    park_a: '#dcebe0',
+    park_b: '#d4e6da',
+    wood_a: '#dcebe0',
+    wood_b: '#d4e6da',
+    scrub_a: '#e2ebe3',
+    scrub_b: '#dbe6dd',
+    sand: '#efeade',
+    beach: '#efeade',
+    buildings: '#dde4e9',
+    city_label: '#13333f',
+    state_label: '#6e8c99',
+    country_label: '#6e8c99',
+    ocean_label: '#7fa5b5',
+    subplace_label: '#6e8c99',
+  }
+}
+
 onMounted(() => {
-  // Self-hosted PMTiles basemap (see DECISIONS.md's "Live map tiles" entry)
-  // — addProtocol is a global registration, harmless to repeat on
-  // remount, but only ever needed once per page load.
+  setWorkerUrl(maplibreWorkerUrl)
   addProtocol('pmtiles', new PMTilesProtocol().tile)
 
   const { public: config } = useRuntimeConfig()
-  const basemapUrl = `${config.apiBase}/api/basemap/oman.pmtiles`
+  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
 
   map = new MapLibreMap({
     container: mapContainer.value!,
@@ -138,33 +199,32 @@ onMounted(() => {
           attribution: '© OpenStreetMap contributors',
         },
       },
-      // No `glyphs`/`sprite` URL, deliberately: text labels still render —
-      // MapLibre falls back to local system fonts when no glyphs endpoint
-      // is configured — but POI icons don't (no local fallback exists for
-      // sprite images), which is fine for this plain-Tailwind,
-      // no-design-pass page. Either way, nothing reaches a third-party
-      // font/sprite host, which is the point of self-hosting the tiles.
-      layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
+
+      layers: protomapsLayers('protomaps', calmFlavor(), { lang: 'en' }),
     },
-    center: [58.5922, 23.6144], // Muscat
+    center: [58.5922, 23.6144],
     zoom: 11,
-    // Keeps the initial view — and any pan/zoom out from it — inside the
-    // self-hosted PMTiles extract's actual coverage (Oman's bbox; see
-    // DECISIONS.md's "Live map tiles" entry and README's extract command).
-    // Without this, zooming out or panning east/west past the extract's
-    // edge shows flat grey canvas with no tiles at all, not a graceful
-    // fallback — MapLibre has nothing to render past data it doesn't have.
+
     maxBounds: [
       [52.1, 16.6],
       [59.95, 26.6],
     ],
   })
-  map.on('load', syncMarkers)
+  map.on('load', () => {
+    map?.addSource('employee-trail', {
+      type: 'geojson',
+      data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } },
+    })
+    map?.addLayer({
+      id: 'employee-trail-line',
+      type: 'line',
+      source: 'employee-trail',
+      paint: { 'line-color': '#2f9ec0', 'line-width': 4, 'line-opacity': 0.9 },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    })
+    syncMarkers()
+  })
 
-  // Fits to the initial snapshot's positions once, on arrival — not on
-  // every later live delta, which would yank the admin's view around every
-  // time someone moves. Falls back to the Muscat default center/zoom above
-  // when the snapshot is empty (nobody currently in window).
   watch(
     positions,
     (snapshot) => {
@@ -186,88 +246,80 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AppShell title="Map" full-bleed>
-    <!-- !absolute/!inset-0, not the plain utilities: maplibre-gl.css sets
-         `.maplibregl-map { position: relative }` on this same element (the
-         class MapLibre itself adds to whatever container we hand it), and
-         at equal specificity, whichever stylesheet loads second wins the
-         cascade — not reliably ours. Forcing !important is what actually
-         guarantees this stays absolutely positioned and fills its parent,
-         regardless of CSS load order. -->
+  <AppShell title="Live map" full-bleed>
+
     <div ref="mapContainer" class="!absolute !inset-0"></div>
 
-    <!-- Overlays the map rather than sitting beside it — see AppShell's
-         full-bleed mode and the design pass's map-page direction. -->
-    <aside
-      class="absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-80 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
-    >
-      <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-slate-200 p-4">
-        <div class="mb-2 flex items-start justify-between">
-          <h2 class="text-sm font-semibold text-slate-900">{{ selectedPosition?.name ?? 'Employee' }}</h2>
-          <button type="button" @click="closeDetail" class="text-slate-400 hover:text-slate-600" aria-label="Close">✕</button>
+    <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-80 flex-col overflow-hidden">
+      <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline p-4">
+        <div class="flex items-start justify-between gap-2">
+          <h2 class="truncate font-semibold">{{ selectedPosition?.name ?? 'Employee' }}</h2>
+          <button
+            type="button"
+            class="-mr-1 -mt-1 rounded-small p-1 text-ink-faint transition-colors hover:text-ink"
+            aria-label="Close"
+            @click="closeDetail"
+          >
+            &#10005;
+          </button>
         </div>
 
-        <p class="mb-3 text-xs text-slate-500">{{ selectedPosition?.team_name ?? 'No team' }}</p>
+        <p v-if="detailLoading" class="muted mt-3 text-sm">Loading details…</p>
 
-        <div v-if="detailLoading" class="text-xs text-slate-500">Loading details…</div>
-        <div v-else class="space-y-2 text-xs text-slate-700">
-          <InlineAlert v-if="detailError">Could not load window/session details.</InlineAlert>
+        <div v-else class="mt-3">
+          <InlineAlert v-if="detailError">Could not load distance details.</InlineAlert>
 
-          <div>
-            <span class="font-medium text-slate-900">Today's window:</span>
-            <span v-if="selectedWindow" class="tabular-nums">
-              {{ new Date(selectedWindow.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }} –
-              {{ new Date(selectedWindow.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-              <span class="text-slate-400">(graced)</span>
-            </span>
-            <span v-else class="text-slate-400">No window today</span>
-          </div>
-
-          <div class="tabular-nums">
-            <span class="font-medium text-slate-900">Session start:</span>
-            {{ sessionStartedAt ? new Date(sessionStartedAt).toLocaleTimeString() : '—' }}
-          </div>
-
-          <div v-if="selectedPosition" data-testid="detail-last-update" class="tabular-nums">
-            <span class="font-medium text-slate-900">Last update:</span>
-            {{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}
-          </div>
-
-          <div v-if="selectedPosition" class="tabular-nums">
-            <span class="font-medium text-slate-900">Accuracy:</span>
-            {{ selectedPosition.accuracy_m !== null ? `${selectedPosition.accuracy_m} m` : '—' }}
-          </div>
-
-          <div v-if="selectedPosition" class="tabular-nums">
-            <span class="font-medium text-slate-900">Battery:</span>
-            {{ selectedPosition.battery_pct !== null ? `${selectedPosition.battery_pct}%` : '—' }}
-          </div>
+          <dl class="space-y-2 text-sm">
+            <div class="flex items-baseline justify-between gap-3">
+              <dt class="muted">Status</dt>
+              <dd :class="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'text-success' : 'text-state-warning'">
+                {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
+              </dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-3">
+              <dt class="muted">Distance today</dt>
+              <dd class="tabular font-semibold">{{ selectedDistanceM === null ? '—' : `${(selectedDistanceM / 1000).toFixed(2)} km` }}</dd>
+            </div>
+            <div v-if="selectedPosition" data-testid="detail-last-update" class="flex items-baseline justify-between gap-3">
+              <dt class="muted">Last update</dt>
+              <dd class="tabular">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
+            </div>
+          </dl>
+          <button
+            type="button"
+            class="mt-4 flex w-full items-center gap-3 rounded-control border border-hairline bg-surface-muted p-3 text-left text-sm font-medium transition-colors hover:border-primary"
+            @click="toggleTrail"
+          >
+            <span
+              class="grid h-6 w-6 place-items-center rounded-small border transition-colors"
+              :style="showTrail ? { backgroundColor: employeeColor(selectedEmployeeId!), borderColor: employeeColor(selectedEmployeeId!), color: '#fff' } : {}"
+            >{{ showTrail ? '✓' : '' }}</span>
+            <span>Show current shift trail</span>
+          </button>
         </div>
-
-        <Button variant="secondary" disabled title="Needs a separate permission — not implemented yet" class="mt-3 w-full justify-center">
-          Trail
-        </Button>
       </div>
 
-      <div class="flex-1 overflow-y-auto">
-        <h2 class="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div class="flex min-h-0 flex-1 flex-col">
+        <h2 class="flex-none px-4 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-[0.8px] text-ink-soft">
           In window ({{ positions.length }})
         </h2>
-        <p v-if="positions.length === 0" class="p-4 text-sm text-slate-400">No employees currently in window.</p>
-        <ul>
+        <p v-if="positions.length === 0" class="px-4 pb-4 text-sm text-ink-faint">
+          No employees currently in window.
+        </p>
+        <ul v-else class="min-h-0 flex-1 overflow-y-auto pb-2">
           <li v-for="position in positions" :key="position.employee_id">
             <button
               type="button"
-              @click="focusEmployee(position.employee_id)"
               :data-employee-id="position.employee_id"
-              class="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-2 text-left text-sm hover:bg-slate-50"
-              :class="{ 'bg-slate-100': selectedEmployeeId === position.employee_id }"
+              class="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface-muted"
+              :class="{ 'bg-surface-muted font-medium': selectedEmployeeId === position.employee_id }"
+              @click="focusEmployee(position.employee_id)"
             >
               <span
                 class="h-2.5 w-2.5 flex-none rounded-full"
-                :style="{ backgroundColor: STALENESS_COLOR[stalenessBucket(position.recorded_at)] }"
+                :style="{ backgroundColor: markerColor(position.employee_id, position.recorded_at) }"
               ></span>
-              <span class="flex-1 truncate text-slate-900">{{ position.name }}</span>
+              <span class="flex-1 truncate">{{ position.name }}</span>
             </button>
           </li>
         </ul>

@@ -48,9 +48,10 @@ if you want to run `api/` outside Docker too.
    source, and is gitignored — download/build it once per clone:
 
    ```
-   go install github.com/protomaps/go-pmtiles@latest
+   curl -sL -o /tmp/pm.tgz https://github.com/protomaps/go-pmtiles/releases/latest/download/go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+   tar -xzf /tmp/pm.tgz -C /tmp
    mkdir -p api/storage/app/basemap
-   "$(go env GOPATH)/bin/go-pmtiles" extract \
+   /tmp/pmtiles extract \
      "https://build.protomaps.com/$(date -u +%Y%m%d).pmtiles" \
      api/storage/app/basemap/oman.pmtiles \
      --bbox=52.0000004,16.4649608,60.0545770,26.7026780 \
@@ -59,8 +60,8 @@ if you want to run `api/` outside Docker too.
 
    This reads only the ~80MB of tiles inside Oman's bounding box out of
    Protomaps' ~120GB daily planet build via HTTP range requests — it does
-   not download the whole archive. Requires Go; `go-pmtiles` is a single
-   static binary with no other dependencies. If `build.protomaps.com`
+   not download the whole archive. `go-pmtiles` ships as a prebuilt static
+   binary, so no Go toolchain is needed. If `build.protomaps.com`
    doesn't have today's date yet (builds land a few hours into the UTC
    day), try `date -u -d yesterday +%Y%m%d` instead. `api/` is bind-mounted
    into the container (see below), so the file is picked up with no rebuild

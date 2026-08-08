@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\TrackingSession;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\TrackingSession>
+ * @extends Factory<TrackingSession>
  */
 class TrackingSessionFactory extends Factory
 {

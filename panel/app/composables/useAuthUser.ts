@@ -4,10 +4,6 @@ interface AuthUser {
   email: string
 }
 
-/**
- * Shared across the auth middleware and AppSidebar via useState, so a
- * navigation only ever fetches /api/user once, not once per consumer.
- */
 export function useAuthUser() {
   const user = useState<AuthUser | null>('auth-user', () => null)
 

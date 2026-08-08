@@ -14,7 +14,7 @@ class ShiftWindowTest extends TestCase
         return new ShiftWindow(
             CarbonImmutable::parse('2026-08-06 07:00:00', 'UTC'),
             CarbonImmutable::parse('2026-08-06 16:00:00', 'UTC'),
-            ShiftWindowSource::TeamTemplate,
+            ShiftWindowSource::DefaultTemplate,
             $graceBeforeMin,
             $graceAfterMin,
         );

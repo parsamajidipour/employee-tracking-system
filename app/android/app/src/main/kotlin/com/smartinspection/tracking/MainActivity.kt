@@ -1,4 +1,4 @@
-package com.smartinspection.tracking
+package ranjbarali.parsamajidipour.smartinspection
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,8 +1,5 @@
-/// A point sitting in the local queue, not yet uploaded. Field names match
-/// `StoreTrackRequest`'s validation on the server exactly (`lat`, `lng`,
-/// `accuracy_m`, `speed_mps`, `heading_deg`, `battery_pct`, `is_mocked`
-/// required bool, `recorded_at` required date) — `toApiJson()` is a
-/// straight pass-through, no renaming to remember at the call site.
+
+
 class QueuedLocationPoint {
   final int? id;
   final double lat;

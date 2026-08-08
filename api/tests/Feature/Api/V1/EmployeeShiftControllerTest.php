@@ -5,7 +5,6 @@ namespace Tests\Feature\Api\V1;
 use App\Models\EmployeeShift;
 use App\Models\ScheduleChangeLog;
 use App\Models\ShiftTemplate;
-use App\Models\Team;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,9 +25,8 @@ class EmployeeShiftControllerTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->hr()->create();
-        $team = Team::factory()->create();
-        $this->template = ShiftTemplate::factory()->create(['team_id' => $team->id]);
-        $this->employee = User::factory()->create(['team_id' => $team->id]);
+        $this->template = ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
 
         $this->actingAs($this->admin);
     }
@@ -43,7 +41,7 @@ class EmployeeShiftControllerTest extends TestCase
     public function test_index_filters_by_employee_id(): void
     {
         EmployeeShift::factory()->create(['employee_id' => $this->employee->id, 'template_id' => $this->template->id]);
-        EmployeeShift::factory()->create(); // a different employee
+        EmployeeShift::factory()->create();
 
         $response = $this->getJson("/api/v1/employee-shifts?employee_id={$this->employee->id}");
 
@@ -53,10 +51,6 @@ class EmployeeShiftControllerTest extends TestCase
 
     public function test_store_creates_a_row_and_writes_an_append_only_log_entry(): void
     {
-        // startOfSecond(): Postgres `timestamp` storage (via Laravel's
-        // default cast format) truncates microseconds, so comparing a
-        // round-tripped value against one that still carries them would
-        // fail equalTo() on precision alone, not on anything meaningful.
         $effectiveFrom = CarbonImmutable::now()->addDay()->startOfSecond();
 
         $response = $this->postJson('/api/v1/employee-shifts', [
@@ -138,9 +132,6 @@ class EmployeeShiftControllerTest extends TestCase
 
     public function test_update_without_effective_from_succeeds_even_though_the_existing_value_is_already_past(): void
     {
-        // The row's own effective_from is in the past (it's already active)
-        // — invariant 6 only blocks *setting* a past effective_from, not
-        // editing an otherwise-unrelated field on a row that already has one.
         $shift = EmployeeShift::factory()->create([
             'employee_id' => $this->employee->id,
             'template_id' => $this->template->id,

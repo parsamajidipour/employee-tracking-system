@@ -11,22 +11,20 @@ class ShiftTemplateRequest extends FormRequest
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
-            'team_id' => ['required', 'exists:teams,id'],
             'name' => ['required', 'string', 'max:255'],
-            // Informational only, per the migration comment — the resolver
-            // never reads this column. Still required so the row can't be
-            // created without stating one.
-            'timezone' => ['required', 'string', 'timezone'],
-            'days_of_week' => ['required', 'array', 'min:1'],
-            'days_of_week.*' => ['integer', 'between:0,6'],
+            'days_of_week' => ['required', 'array', 'min:1', 'max:7'],
+            'days_of_week.*' => ['integer', 'between:0,6', 'distinct'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
-            'grace_before_min' => ['nullable', 'integer', 'min:0'],
-            'grace_after_min' => ['nullable', 'integer', 'min:0'],
-            'max_daily_minutes' => ['nullable', 'integer', 'min:0'],
+            'grace_before_min' => ['nullable', 'integer', 'min:0', 'max:720'],
+            'grace_after_min' => ['nullable', 'integer', 'min:0', 'max:720'],
+            'max_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
         ];
     }
 }

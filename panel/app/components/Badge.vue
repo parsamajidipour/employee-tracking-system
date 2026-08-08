@@ -1,21 +1,28 @@
 <script setup lang="ts">
-// Status tags only — neutral/success/warning/danger are semantic, not the
-// app's single interactive accent. See DECISIONS.md-style reasoning in the
-// design pass: accent (blue) is reserved for interactive elements and the
-// map's "fresh" marker state, not for badges like this one.
-withDefaults(defineProps<{ variant?: 'neutral' | 'success' | 'warning' | 'danger' }>(), { variant: 'neutral' })
+withDefaults(defineProps<{ variant?: 'neutral' | 'success' | 'warning' | 'danger' }>(), {
+  variant: 'neutral',
+})
 </script>
 
 <template>
   <span
-    class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+    class="pill"
     :class="{
-      'bg-slate-100 text-slate-600': variant === 'neutral',
-      'bg-emerald-50 text-emerald-700': variant === 'success',
-      'bg-amber-50 text-amber-700': variant === 'warning',
-      'bg-red-50 text-red-700': variant === 'danger',
+      'bg-state-neutral/12 text-state-neutral': variant === 'neutral',
+      'bg-state-success/12 text-state-success': variant === 'success',
+      'bg-state-warning/12 text-state-warning': variant === 'warning',
+      'bg-state-danger/12 text-state-danger': variant === 'danger',
     }"
   >
+    <span
+      class="h-2 w-2 flex-none rounded-full"
+      :class="{
+        'bg-state-neutral': variant === 'neutral',
+        'bg-state-success': variant === 'success',
+        'bg-state-warning': variant === 'warning',
+        'bg-state-danger': variant === 'danger',
+      }"
+    ></span>
     <slot />
   </span>
 </template>

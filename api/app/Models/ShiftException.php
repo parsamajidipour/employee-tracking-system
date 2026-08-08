@@ -3,13 +3,16 @@
 namespace App\Models;
 
 use App\Enums\ShiftExceptionType;
+use Database\Factories\ShiftExceptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ShiftException extends Model
 {
-    /** @use HasFactory<\Database\Factories\ShiftExceptionFactory> */
+    /**
+     * @use HasFactory<ShiftExceptionFactory>
+     */
     use HasFactory;
 
     protected $fillable = [

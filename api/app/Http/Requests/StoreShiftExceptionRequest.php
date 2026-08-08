@@ -18,9 +18,6 @@ class StoreShiftExceptionRequest extends FormRequest
             'employee_id' => ['required', 'exists:users,id'],
             'date' => ['required', 'date_format:Y-m-d'],
             'type' => ['required', Rule::in(['leave', 'holiday', 'overtime', 'early_end'])],
-            // start_at/end_at only mean something for overtime/early_end —
-            // the controller forces them to null for leave/holiday
-            // regardless of what's submitted here.
             'start_at' => ['required_if:type,overtime,early_end', 'nullable', 'date_format:H:i'],
             'end_at' => ['required_if:type,overtime,early_end', 'nullable', 'date_format:H:i'],
             'note' => ['nullable', 'string', 'max:1000'],
