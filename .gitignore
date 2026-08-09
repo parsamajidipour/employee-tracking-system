@@ -1,12 +1,6 @@
 # Env files and local credentials (all apps)
-.env
-.env.*
 !.env.example
-api/.env
-api/.env.*
 !api/.env.example
-panel/.env
-panel/.env.*
 !panel/.env.example
 information.txt
 
@@ -68,3 +62,4 @@ app/android/**/*.jks
 
 # Built artefacts
 dist/
+backups/
