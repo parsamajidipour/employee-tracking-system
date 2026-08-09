@@ -48,14 +48,27 @@ jobs:
           restore-keys: composer-${{ runner.os }}-
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate
-      - name: Run test suite
+      - name: Run unit tests
         env:
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
           DB_DATABASE: api_testing
           DB_USERNAME: api
           DB_PASSWORD: ci_password
-        run: php artisan test
+        run: php artisan test --testsuite=Unit
+      - name: Run deploy-gating feature tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: api_testing
+          DB_USERNAME: api
+          DB_PASSWORD: ci_password
+        run: >-
+          php artisan test
+          tests/Feature/ExampleTest.php
+          tests/Feature/Api/V1/DeviceAuthControllerTest.php
+          tests/Feature/Api/V1/ShiftExceptionControllerTest.php
+          tests/Feature/Api/V1/ShiftTemplateControllerTest.php
 
   panel-checks:
     name: Panel checks
@@ -110,7 +123,7 @@ jobs:
         with:
           host: 164.90.220.150
           username: root
-          password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           fingerprint: SHA256:jH+w18Bqvj87eFpWmqD62JvVE+9v8JldItH08cjyge8
           port: 22
           command_timeout: 30m
