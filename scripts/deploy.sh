@@ -5,7 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 readonly COMPOSE_FILE=docker-compose.prod.yml
 readonly ENV_FILE=.env
-readonly SERVER_IP=164.90.220.150
+readonly SERVER_IP=164.90.163.27
 
 docker_compose() {
   if docker info >/dev/null 2>&1; then
