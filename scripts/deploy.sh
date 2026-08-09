@@ -69,7 +69,7 @@ if docker_compose ps --status running postgres --quiet 2>/dev/null | grep -q .; 
 fi
 
 docker_compose config --quiet
-docker_compose pull
+docker_compose build --pull
 docker_compose up -d --remove-orphans --wait
 
 curl --fail --silent --show-error --retry 12 --retry-delay 5 "http://127.0.0.1:8000/up" >/dev/null
