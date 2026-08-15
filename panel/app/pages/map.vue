@@ -206,6 +206,7 @@ onMounted(() => {
           type: 'vector',
           url: `pmtiles://${basemapUrl}`,
           attribution: '© OpenStreetMap contributors',
+          maxzoom: 14,
         },
       },
 
@@ -248,7 +249,7 @@ onMounted(() => {
         (b, position) => b.extend([position.lng, position.lat]),
         new LngLatBounds([first.lng, first.lat], [first.lng, first.lat]),
       )
-      map?.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 0 })
+      map?.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 0 })
     },
     { once: true },
   )

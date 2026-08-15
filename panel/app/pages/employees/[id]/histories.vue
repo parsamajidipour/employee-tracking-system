@@ -60,7 +60,7 @@ function renderTrail() {
   })
   if (points.length) {
     const bounds = points.slice(1).reduce((box, point) => box.extend([point.lng, point.lat]), new LngLatBounds([points[0]!.lng, points[0]!.lat], [points[0]!.lng, points[0]!.lat]))
-    map.fitBounds(bounds, { padding: 72, maxZoom: 16, duration: 500 })
+    map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: 500 })
   }
 }
 
@@ -109,7 +109,7 @@ onMounted(async () => {
     container: mapContainer.value!,
     style: {
       version: 8,
-      sources: { protomaps: { type: 'vector', url: `pmtiles://${apiOrigin()}/api/basemap/oman.pmtiles`, attribution: '© OpenStreetMap contributors' } },
+      sources: { protomaps: { type: 'vector', url: `pmtiles://${apiOrigin()}/api/basemap/oman.pmtiles`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
       layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
     },
     center: [58.5922, 23.6144], zoom: 10,
