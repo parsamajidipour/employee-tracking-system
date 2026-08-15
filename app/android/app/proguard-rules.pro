@@ -7,3 +7,6 @@
 -keep class dev.flutter.plugins.** { *; }
 
 -dontwarn io.flutter.embedding.**
+
+-dontwarn com.google.android.play.core.**
+-dontwarn io.flutter.app.FlutterPlayStoreSplitApplication

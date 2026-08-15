@@ -131,9 +131,9 @@ onUnmounted(() => map?.remove())
       <div class="card p-4"><p class="text-xs text-ink-faint">Selected activity</p><strong class="mt-1 block text-xl tabular-nums">{{ selectedDate ?? '—' }}</strong></div>
     </div>
 
-    <section class="relative mb-5 h-[560px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card">
+    <section class="relative mb-4 h-[320px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card sm:h-[560px]">
       <div ref="mapContainer" class="absolute inset-0" />
-      <aside class="floating absolute right-4 top-4 w-[min(340px,calc(100%-2rem))] p-4">
+      <aside class="floating absolute right-4 top-4 hidden w-[min(340px,calc(100%-2rem))] p-4 sm:block">
         <div class="mb-4 flex items-center justify-between gap-3">
           <div><p class="overline">Activity card</p><h2>{{ selectedDate ?? 'Select a day' }}</h2></div>
           <span v-if="trailLoading" class="text-xs text-ink-faint">Loading…</span>
@@ -151,6 +151,24 @@ onUnmounted(() => map?.remove())
         <div class="mt-4 flex gap-4 border-t border-hairline pt-3 text-xs text-ink-soft"><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-success" />Start</span><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-danger" />End</span></div>
       </aside>
     </section>
+
+    <div class="card mb-5 p-4 sm:hidden">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div><p class="overline">Activity card</p><h2>{{ selectedDate ?? 'Select a day' }}</h2></div>
+        <span v-if="trailLoading" class="text-xs text-ink-faint">Loading…</span>
+      </div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div><p class="text-xs text-ink-faint">Distance</p><strong class="tabular-nums">{{ distance(trail?.distance_m ?? 0) }}</strong></div>
+        <div><p class="text-xs text-ink-faint">Active duration</p><strong class="tabular-nums">{{ activeDuration }}</strong></div>
+        <div><p class="text-xs text-ink-faint">First point</p><strong class="tabular-nums">{{ time(trail?.first_point_at) }}</strong></div>
+        <div><p class="text-xs text-ink-faint">Last point</p><strong class="tabular-nums">{{ time(trail?.last_point_at) }}</strong></div>
+        <div><p class="text-xs text-ink-faint">Average speed</p><strong class="tabular-nums">{{ speed(trail?.average_speed_mps) }}</strong></div>
+        <div><p class="text-xs text-ink-faint">Maximum speed</p><strong class="tabular-nums">{{ speed(trail?.max_speed_mps) }}</strong></div>
+        <div><p class="text-xs text-ink-faint">GPS accuracy</p><strong class="tabular-nums">{{ trail?.average_accuracy_m == null ? '—' : `${trail.average_accuracy_m.toFixed(1)} m` }}</strong></div>
+        <div><p class="text-xs text-ink-faint">Recorded points</p><strong class="tabular-nums">{{ trail?.points_count ?? 0 }}</strong></div>
+      </div>
+      <div class="mt-4 flex gap-4 border-t border-hairline pt-3 text-xs text-ink-soft"><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-success" />Start</span><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-danger" />End</span></div>
+    </div>
 
     <Table :headers="['Date', 'Started', 'Ended', 'Points', 'Distance', '']" :loading="loading" :is-empty="histories.length === 0" empty-message="No retained tracking history for this employee.">
       <tr v-for="row in histories" :key="row.date" class="cursor-pointer text-ink transition-colors hover:bg-surface-muted" :class="selectedDate === row.date ? 'bg-primary-soft' : ''" @click="selectDay(row.date)">

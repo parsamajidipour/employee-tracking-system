@@ -15,7 +15,7 @@ enum UserRole: string
     public function capabilities(): array
     {
         return match ($this) {
-            self::Admin => [Capability::ManageSchedules, Capability::ViewLocations],
+            self::Admin => [Capability::ManageSchedules, Capability::ViewLocations, Capability::ManageReleases],
             self::Hr => [Capability::ManageSchedules],
             self::Supervisor => [Capability::ViewLocations],
             self::Employee => [],

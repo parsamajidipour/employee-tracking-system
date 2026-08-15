@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\SessionController;
+use App\Http\Controllers\Api\V1\AppReleaseController;
 use App\Http\Controllers\Api\V1\DeviceAuthController;
 use App\Http\Controllers\Api\V1\AdminProfileController;
 use App\Http\Controllers\Api\V1\EmployeeController;
@@ -14,6 +15,9 @@ use App\Http\Controllers\BasemapController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/basemap/oman.pmtiles', [BasemapController::class, 'oman']);
+
+Route::get('/v1/app/latest-version', [AppReleaseController::class, 'latest']);
+Route::get('/app-releases/{appRelease}/download', [AppReleaseController::class, 'download'])->name('app-releases.download');
 
 Route::post('/login', [SessionController::class, 'store'])->middleware('throttle:10,1');
 Route::post('/v1/device/login', [DeviceAuthController::class, 'login'])->middleware('throttle:5,1');
@@ -46,6 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::apiResource('shift-templates', ShiftTemplateController::class)->except('show');
             Route::apiResource('shift-exceptions', ShiftExceptionController::class)->except('show');
+        });
+
+        Route::middleware('capability:manage-releases')->group(function () {
+            Route::get('/app-releases', [AppReleaseController::class, 'index']);
+            Route::post('/app-releases', [AppReleaseController::class, 'store']);
+            Route::delete('/app-releases/{appRelease}', [AppReleaseController::class, 'destroy']);
         });
     });
 });

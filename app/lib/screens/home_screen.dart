@@ -6,6 +6,7 @@ import '../models/permission_snapshot.dart';
 import '../models/shift_window.dart';
 import '../models/window_snapshot.dart';
 import '../services/api_exception.dart';
+import '../services/app_update_service.dart';
 import '../services/auth_storage.dart';
 import '../services/location_queue_repository.dart';
 import '../services/permission_service.dart';
@@ -17,6 +18,7 @@ import '../widgets/app_card.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/status_pill.dart';
 import '../widgets/tracking_status_banner.dart';
+import '../widgets/update_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -36,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final LocationQueueRepository _queueRepository = LocationQueueRepository();
   final AuthStorage _authStorage = AuthStorage();
   final PermissionService _permissionService = PermissionService();
+  late final AppUpdateService _updateService =
+      AppUpdateService(apiClient: widget.authController.apiClient);
 
   WindowSnapshot? _snapshot;
   String? _error;
@@ -60,6 +64,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
     _fetch();
     _refreshServiceDerivedState();
+    _checkForUpdate();
+  }
+
+  Future<void> _checkForUpdate() async {
+    final info = await _updateService.checkForUpdate();
+    if (info == null || !mounted) return;
+
+    await showUpdateDialog(context, info: info, updateService: _updateService);
+  }
+
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(AppSpacing.xxl),
+        child: AppCard(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Sign out?', style: context.text.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Tracking stops and you will need to sign in again to resume.',
+                style: context.text.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Sign out'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await widget.trackingServiceController.stopService();
+    await widget.authController.signOut();
   }
 
   @override
@@ -176,7 +228,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           AppSpacing.huge,
         ),
         children: [
-          FadeSlideIn(child: _Greeting(snapshot: snapshot)),
+          FadeSlideIn(
+            child: _Greeting(snapshot: snapshot, onSignOut: _confirmSignOut),
+          ),
           const SizedBox(height: AppSpacing.xl),
           FadeSlideIn(
             index: 1,
@@ -218,13 +272,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 }
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.snapshot});
+  const _Greeting({required this.snapshot, required this.onSignOut});
 
   final WindowSnapshot snapshot;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
     final onShift = snapshot.response.current != null;
+    final colors = context.colors;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +292,7 @@ class _Greeting extends StatelessWidget {
               Text(
                 'TODAY',
                 style: context.text.labelSmall?.copyWith(
-                  color: context.colors.primaryStrong,
+                  color: colors.primaryStrong,
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -250,6 +306,12 @@ class _Greeting extends StatelessWidget {
         StatusPill(
           label: onShift ? 'In window' : 'Outside hours',
           tone: onShift ? StatusTone.active : StatusTone.idle,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        IconButton(
+          onPressed: onSignOut,
+          tooltip: 'Sign out',
+          icon: Icon(Icons.logout_outlined, color: colors.textSecondary),
         ),
       ],
     );

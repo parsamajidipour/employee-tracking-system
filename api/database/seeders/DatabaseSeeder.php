@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             StaffSeeder::class,
             ScheduleSeeder::class,
             TrackingDemoSeeder::class,
+            AppReleaseSeeder::class,
         ]);
     }
 }

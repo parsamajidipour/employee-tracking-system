@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
+    <!-- Sideloaded APK, no Play Store update channel: launching the package
+         installer for a downloaded APK requires this permission on API 26+. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
     <!-- The foreground service itself (flutter_foreground_task), typed as
          location — required by API 34+ to declare the specific type
          alongside the general FOREGROUND_SERVICE permission. -->

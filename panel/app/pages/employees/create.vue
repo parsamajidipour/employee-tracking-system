@@ -66,7 +66,7 @@ async function submit() {
 
 <template>
   <AppShell title="Add employee">
-    <form @submit.prevent="submit" class="max-w-3xl space-y-4 rounded border border-hairline bg-surface p-4">
+    <form @submit.prevent="submit" class="card max-w-3xl space-y-4 p-5 sm:p-6">
       <InlineAlert v-if="error">{{ error }}</InlineAlert>
 
       <TextInput v-model="form.name" label="Name" required />

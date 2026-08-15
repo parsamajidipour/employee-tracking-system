@@ -67,4 +67,10 @@ class AuthController extends ChangeNotifier {
     status = AuthStatus.signedOut;
     notifyListeners();
   }
+
+  Future<void> signOut() async {
+    await storage.clearToken();
+    status = AuthStatus.signedOut;
+    notifyListeners();
+  }
 }

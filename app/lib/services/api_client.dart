@@ -21,6 +21,11 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> getJsonUnauthenticated(String path) async {
+    final response = await _send('GET', path, authenticated: false);
+    return _decode(response);
+  }
+
   Future<Map<String, dynamic>> postJson(String path, Map<String, dynamic> body) async {
     final response = await _send('POST', path, body: body, authenticated: true);
     return _decode(response);

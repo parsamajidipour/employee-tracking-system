@@ -333,3 +333,32 @@ User" is gone — it defaulted to `role=employee`, which was never actually
 a usable admin login to begin with. Anyone relying on that specific
 behavior (unlikely; nothing in this codebase did) needs the new
 `AdminUserSeeder` path instead.
+
+## In-app update checking is a server-hosted release table, not a store
+
+**Decision.** `app_releases` (`AppRelease`) holds one row per uploaded
+`.apk`: `version_code`, `version_name`, a private-disk `file_path`,
+`release_notes`, `is_mandatory`. `GET /api/v1/app/latest-version` and
+`GET /api/app-releases/{id}/download` are public and unauthenticated —
+same reasoning as `BasemapController`: the mobile app needs to check for
+and fetch an update before or without a valid session, and neither
+response exposes anything sensitive. Uploading a release is gated behind
+a new `Capability::ManageReleases`, admin-only, from the panel.
+
+**Why.** The app is a single sideloaded universal APK (see `CLAUDE.md`,
+Android packaging), not Play Store-distributed, so there is no platform
+update channel to lean on. The team asked for a real update-check
+mechanism, not just a version bump, so the phone needs somewhere to ask
+"is there something newer than what I'm running" and somewhere to
+download it from. A dedicated table (not, say, files dropped in
+`storage/app/releases` and inferred from directory listing) keeps
+`version_code` uniqueness enforced by a DB constraint and lets the panel
+show/retract past releases without touching the filesystem directly.
+
+**Consequences.** `version_code` is admin-supplied at upload time, not
+parsed out of the APK server-side — parsing a binary Android manifest
+would need a package outside the `laravel/*`/`spatie/*` allowlist for no
+real benefit, since the admin already knows the number from the build
+that just ran. The admin panel and `app/pubspec.yaml`'s `+build` number
+must be bumped together by hand; nothing enforces that they match beyond
+the admin typing the right value into the upload form.

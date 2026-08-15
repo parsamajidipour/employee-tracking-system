@@ -250,7 +250,7 @@ onUnmounted(() => {
 
     <div ref="mapContainer" class="!absolute !inset-0"></div>
 
-    <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-80 flex-col overflow-hidden">
+    <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(320px,calc(100%-2rem))] flex-col overflow-hidden">
       <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline p-4">
         <div class="flex items-start justify-between gap-2">
           <h2 class="truncate font-semibold">{{ selectedPosition?.name ?? 'Employee' }}</h2>
