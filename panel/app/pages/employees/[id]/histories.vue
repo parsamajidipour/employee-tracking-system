@@ -32,7 +32,6 @@ const trailLoading = ref(false)
 const error = ref<string | null>(null)
 const mapContainer = ref<HTMLDivElement | null>(null)
 const basemapError = ref<string | null>(null)
-const mapDebug = reactive({ zoom: '—', styleLoaded: false, canvasSize: '—', tileErrors: 0, sourceLoaded: false })
 let map: MapLibreMap | undefined
 
 const totalDistance = computed(() => histories.value.reduce((sum, row) => sum + Number(row.distance_m), 0))
@@ -122,7 +121,6 @@ onMounted(() => {
   })
   map.on('error', (e) => {
     if (!basemapError.value) basemapError.value = 'The map could not be loaded.'
-    mapDebug.tileErrors++
     console.error('MapLibre error', e.error)
   })
   map.on('load', () => {
@@ -131,13 +129,6 @@ onMounted(() => {
     map?.addSource('history-terminals', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     map?.addLayer({ id: 'history-terminal-points', type: 'circle', source: 'history-terminals', paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'kind'], 'Start', '#3fa98a', '#d2635e'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
     renderTrail()
-  })
-  map.on('idle', () => {
-    if (!map) return
-    mapDebug.zoom = map.getZoom().toFixed(2)
-    mapDebug.styleLoaded = !!map.isStyleLoaded()
-    mapDebug.canvasSize = `${map.getCanvas().width}×${map.getCanvas().height}`
-    mapDebug.sourceLoaded = !!map.isSourceLoaded('protomaps')
   })
   load()
 })
@@ -157,12 +148,9 @@ onUnmounted(() => map?.remove())
     </div>
 
     <section class="relative mb-4 h-[320px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card sm:h-[560px]">
-      <div ref="mapContainer" class="absolute inset-0" />
+      <div ref="mapContainer" class="!absolute !inset-0" />
       <div v-if="basemapError" class="absolute inset-x-4 top-4 z-10">
         <InlineAlert>{{ basemapError }}</InlineAlert>
-      </div>
-      <div class="absolute bottom-2 left-2 z-10 rounded-small bg-surface/90 px-2 py-1 font-mono text-[10px] text-ink-soft shadow-card">
-        zoom={{ mapDebug.zoom }} style={{ mapDebug.styleLoaded }} canvas={{ mapDebug.canvasSize }} src={{ mapDebug.sourceLoaded }} errs={{ mapDebug.tileErrors }}
       </div>
       <aside class="floating absolute right-4 top-4 hidden w-[min(340px,calc(100%-2rem))] p-4 sm:block">
         <div class="mb-4 flex items-center justify-between gap-3">
