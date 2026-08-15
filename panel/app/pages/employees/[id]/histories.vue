@@ -95,21 +95,25 @@ async function load() {
   }
 }
 
-onMounted(async () => {
-  try {
-    const basemapCheck = await fetch(`${apiOrigin()}/api/basemap/oman.pmtiles`, { method: 'HEAD' })
-    if (!basemapCheck.ok) basemapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
-  } catch {
-    basemapError.value = 'Could not reach the map tile server.'
-  }
-
+onMounted(() => {
   setWorkerUrl(maplibreWorkerUrl)
   addProtocol('pmtiles', new PMTilesProtocol().tile)
+
+  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
+
+  fetch(basemapUrl, { method: 'HEAD' })
+    .then((response) => {
+      if (!response.ok) basemapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
+    })
+    .catch(() => {
+      basemapError.value = 'Could not reach the map tile server.'
+    })
+
   map = new MapLibreMap({
     container: mapContainer.value!,
     style: {
       version: 8,
-      sources: { protomaps: { type: 'vector', url: `pmtiles://${apiOrigin()}/api/basemap/oman.pmtiles`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
+      sources: { protomaps: { type: 'vector', url: `pmtiles://${basemapUrl}`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
       layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
     },
     center: [58.5922, 23.6144], zoom: 10,
@@ -126,7 +130,7 @@ onMounted(async () => {
     map?.addLayer({ id: 'history-terminal-points', type: 'circle', source: 'history-terminals', paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'kind'], 'Start', '#3fa98a', '#d2635e'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
     renderTrail()
   })
-  await load()
+  load()
 })
 
 onUnmounted(() => map?.remove())
