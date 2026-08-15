@@ -10,7 +10,7 @@ read_env() {
 
 if [ "$MODE" = "prod" ]; then
     API_HOST="$(read_env SERVER_HOST)"
-    API_PORT="$(read_env PROD_API_PORT)"
+    API_PORT="$(read_env API_PORT)"
     API_SCHEME="$(read_env SERVER_SCHEME)"
 else
     API_HOST="$(read_env LAN_HOST)"
