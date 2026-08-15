@@ -8,6 +8,7 @@ import type { StalenessBucket } from '~/composables/usePositions'
 const { positions, now, stalenessBucket } = usePositions()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
+const basemapError = ref<string | null>(null)
 let map: MapLibreMap | undefined
 const markers = new Map<number, MapLibreMarker>()
 
@@ -188,6 +189,14 @@ onMounted(() => {
   const { public: config } = useRuntimeConfig()
   const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
 
+  fetch(basemapUrl, { method: 'HEAD' })
+    .then((response) => {
+      if (!response.ok) basemapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
+    })
+    .catch(() => {
+      basemapError.value = 'Could not reach the map tile server.'
+    })
+
   map = new MapLibreMap({
     container: mapContainer.value!,
     style: {
@@ -209,6 +218,11 @@ onMounted(() => {
       [52.1, 16.6],
       [59.95, 26.6],
     ],
+  })
+
+  map.on('error', (e) => {
+    if (!basemapError.value) basemapError.value = 'The map could not be loaded.'
+    console.error('MapLibre error', e.error)
   })
   map.on('load', () => {
     map?.addSource('employee-trail', {
@@ -249,6 +263,10 @@ onUnmounted(() => {
   <AppShell title="Live map" full-bleed>
 
     <div ref="mapContainer" class="!absolute !inset-0"></div>
+
+    <div v-if="basemapError" class="absolute left-4 right-4 top-4 z-10 sm:right-auto sm:w-[min(400px,calc(100%-2rem))]">
+      <InlineAlert>{{ basemapError }}</InlineAlert>
+    </div>
 
     <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(320px,calc(100%-2rem))] flex-col overflow-hidden">
       <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline p-4">

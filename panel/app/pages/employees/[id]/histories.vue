@@ -31,6 +31,7 @@ const loading = ref(true)
 const trailLoading = ref(false)
 const error = ref<string | null>(null)
 const mapContainer = ref<HTMLDivElement | null>(null)
+const basemapError = ref<string | null>(null)
 let map: MapLibreMap | undefined
 
 const totalDistance = computed(() => histories.value.reduce((sum, row) => sum + Number(row.distance_m), 0))
@@ -95,6 +96,13 @@ async function load() {
 }
 
 onMounted(async () => {
+  try {
+    const basemapCheck = await fetch(`${apiOrigin()}/api/basemap/oman.pmtiles`, { method: 'HEAD' })
+    if (!basemapCheck.ok) basemapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
+  } catch {
+    basemapError.value = 'Could not reach the map tile server.'
+  }
+
   setWorkerUrl(maplibreWorkerUrl)
   addProtocol('pmtiles', new PMTilesProtocol().tile)
   map = new MapLibreMap({
@@ -106,6 +114,10 @@ onMounted(async () => {
     },
     center: [58.5922, 23.6144], zoom: 10,
     maxBounds: [[52.1, 16.6], [59.95, 26.6]],
+  })
+  map.on('error', (e) => {
+    if (!basemapError.value) basemapError.value = 'The map could not be loaded.'
+    console.error('MapLibre error', e.error)
   })
   map.on('load', () => {
     map?.addSource('history-trail', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } } })
@@ -133,6 +145,9 @@ onUnmounted(() => map?.remove())
 
     <section class="relative mb-4 h-[320px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card sm:h-[560px]">
       <div ref="mapContainer" class="absolute inset-0" />
+      <div v-if="basemapError" class="absolute inset-x-4 top-4 z-10">
+        <InlineAlert>{{ basemapError }}</InlineAlert>
+      </div>
       <aside class="floating absolute right-4 top-4 hidden w-[min(340px,calc(100%-2rem))] p-4 sm:block">
         <div class="mb-4 flex items-center justify-between gap-3">
           <div><p class="overline">Activity card</p><h2>{{ selectedDate ?? 'Select a day' }}</h2></div>
