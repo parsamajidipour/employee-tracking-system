@@ -19,7 +19,7 @@ class BasemapController extends Controller
 
         return response()->file($path, [
             'Content-Type' => 'application/octet-stream',
-            'Cache-Control' => 'public, max-age=604800, immutable',
+            'Cache-Control' => 'public, max-age=3600, must-revalidate',
         ]);
     }
 }
