@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ShiftWindowSource;
+use App\Models\EmployeeShift;
 use App\Models\ShiftException;
 use App\Models\ShiftTemplate;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\ValueObjects\ShiftWindow;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 final class ShiftWindowResolver
@@ -59,11 +61,21 @@ final class ShiftWindowResolver
             return $window === null ? collect() : collect([$window]);
         }
 
-        return $employee->employeeShifts()->with('template')->orderBy('template_id')->get()
-            ->map(fn ($shift) => $this->buildTemplateWindow($shift->template, $localDate, $timezone, ShiftWindowSource::EmployeeShift))
-            ->filter()
-            ->sortBy(fn (ShiftWindow $window) => $window->effectiveStart()->getTimestamp())
-            ->values();
+        $anchorStartLocal = CarbonImmutable::parse($localDate, $timezone)->utc();
+
+        $shifts = $this->shiftsActiveAt($employee, $anchorStartLocal)->get();
+
+        if ($shifts->isNotEmpty()) {
+            return $shifts
+                ->map(fn ($shift) => $this->buildTemplateWindow($shift->template, $localDate, $timezone, ShiftWindowSource::EmployeeShift))
+                ->filter()
+                ->sortBy(fn (ShiftWindow $window) => $window->effectiveStart()->getTimestamp())
+                ->values();
+        }
+
+        $window = $this->buildTemplateWindow($this->pickTemplateFor($localDate), $localDate, $timezone, ShiftWindowSource::DefaultTemplate);
+
+        return $window === null ? collect() : collect([$window]);
     }
 
     public function resolveNext(User $employee, CarbonInterface $after): ?ShiftWindow
@@ -100,14 +112,14 @@ final class ShiftWindowResolver
             return $exception->type->isDeny() ? null : $this->buildExceptionWindow($exception, $anchorDate, $timezone);
         }
 
-        $shift = $employee->employeeShifts()->with('template')->orderBy('template_id')->get()
-            ->first(fn ($shift) => in_array(Carbon::parse($anchorDate)->dayOfWeek, $shift->template->days_of_week, true));
+        $anchorStartLocal = CarbonImmutable::parse($anchorDate, $timezone)->utc();
+        $shift = $this->shiftsActiveAt($employee, $anchorStartLocal)->first();
 
         if ($shift !== null) {
             return $this->buildTemplateWindow($shift->template, $anchorDate, $timezone, ShiftWindowSource::EmployeeShift);
         }
 
-        return null;
+        return $this->buildTemplateWindow($this->pickTemplateFor($anchorDate), $anchorDate, $timezone, ShiftWindowSource::DefaultTemplate);
     }
 
     private function resolveFromExceptions(User $employee, CarbonImmutable $instant, string $today, string $yesterday, string $timezone): ShiftWindow|false|null
@@ -142,22 +154,41 @@ final class ShiftWindowResolver
 
     private function resolveFromEmployeeShifts(User $employee, CarbonImmutable $instant, string $today, string $yesterday, string $timezone): ShiftWindow|false|null
     {
-        $shifts = $employee->employeeShifts()->with('template')->orderBy('template_id')->get();
+        $startOfYesterdayLocal = CarbonImmutable::parse($yesterday, $timezone)->utc();
+        $shiftAtYesterdayAnchor = $this->shiftsActiveAt($employee, $startOfYesterdayLocal)->first();
 
-        if ($shifts->isEmpty()) {
-            return false;
+        $windowYesterday = $shiftAtYesterdayAnchor !== null
+            ? $this->buildTemplateWindow($shiftAtYesterdayAnchor->template, $yesterday, $timezone, ShiftWindowSource::EmployeeShift)
+            : null;
+        if ($windowYesterday !== null && $windowYesterday->contains($instant)) {
+            return $windowYesterday;
         }
 
-        foreach ([$yesterday, $today] as $date) {
-            foreach ($shifts as $shift) {
-                $window = $this->buildTemplateWindow($shift->template, $date, $timezone, ShiftWindowSource::EmployeeShift);
-                if ($window !== null && $window->contains($instant)) {
-                    return $window;
-                }
-            }
+        $shiftAtInstant = $this->shiftsActiveAt($employee, $instant)->first();
+
+        if ($shiftAtInstant === null) {
+            return null;
         }
 
-        return false;
+        $windowToday = $this->buildTemplateWindow($shiftAtInstant->template, $today, $timezone, ShiftWindowSource::EmployeeShift);
+
+        return $windowToday !== null && $windowToday->contains($instant)
+            ? $windowToday
+            : false;
+    }
+
+    /**
+     * @return Builder<EmployeeShift>
+     */
+    private function shiftsActiveAt(User $employee, CarbonImmutable $instant)
+    {
+        return $employee->employeeShifts()
+            ->where('effective_from', '<=', $instant)
+            ->where(function ($query) use ($instant) {
+                $query->whereNull('effective_to')->orWhere('effective_to', '>', $instant);
+            })
+            ->orderByDesc('effective_from')
+            ->with('template');
     }
 
     private function resolveFromDefaultTemplates(CarbonImmutable $instant, string $today, string $yesterday, string $timezone): ?ShiftWindow

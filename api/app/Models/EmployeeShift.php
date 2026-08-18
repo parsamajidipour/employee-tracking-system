@@ -17,7 +17,17 @@ class EmployeeShift extends Model
     protected $fillable = [
         'employee_id',
         'template_id',
+        'effective_from',
+        'effective_to',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'effective_from' => 'datetime',
+            'effective_to' => 'datetime',
+        ];
+    }
 
     public function employee(): BelongsTo
     {

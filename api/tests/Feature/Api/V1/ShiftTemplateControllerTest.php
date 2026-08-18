@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\EmployeeShift;
+use App\Models\ScheduleChangeLog;
 use App\Models\ShiftTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,5 +76,27 @@ class ShiftTemplateControllerTest extends TestCase
         $destroy = $this->deleteJson("/api/v1/shift-templates/{$template->id}");
         $destroy->assertNoContent();
         $this->assertDatabaseMissing('shift_templates', ['id' => $template->id]);
+    }
+
+    public function test_destroy_removes_assigned_employees_shifts_and_logs_each_one(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $template = ShiftTemplate::factory()->create();
+        $employee = User::factory()->create();
+        $shift = EmployeeShift::factory()->create([
+            'employee_id' => $employee->id,
+            'template_id' => $template->id,
+        ]);
+
+        $destroy = $this->deleteJson("/api/v1/shift-templates/{$template->id}");
+
+        $destroy->assertNoContent();
+        $this->assertDatabaseMissing('shift_templates', ['id' => $template->id]);
+        $this->assertDatabaseMissing('employee_shifts', ['id' => $shift->id]);
+
+        $log = ScheduleChangeLog::where('target_employee_id', $employee->id)->first();
+        $this->assertNotNull($log);
+        $this->assertSame($template->id, $log->before['template_id']);
+        $this->assertNull($log->after);
     }
 }

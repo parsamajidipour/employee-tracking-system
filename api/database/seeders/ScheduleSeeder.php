@@ -40,11 +40,12 @@ class ScheduleSeeder extends Seeder
             $shift = EmployeeShift::create([
                 'employee_id' => $employee->id,
                 'template_id' => $assignment['template']->id,
+                'effective_from' => now()->subMonth(),
             ]);
 
             $this->logger->record($actor, $employee->id, null, $shift->only([
-                'employee_id', 'template_id',
-            ]), null, 'Initial assignment');
+                'employee_id', 'template_id', 'effective_from', 'effective_to',
+            ]), $shift->effective_from, 'Initial assignment');
         }
 
         $exceptions = [

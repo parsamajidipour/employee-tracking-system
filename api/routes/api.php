@@ -1,11 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\SessionController;
+use App\Http\Controllers\Api\V1\AdminProfileController;
 use App\Http\Controllers\Api\V1\AppReleaseController;
 use App\Http\Controllers\Api\V1\DeviceAuthController;
-use App\Http\Controllers\Api\V1\AdminProfileController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EmployeeHistoryController;
+use App\Http\Controllers\Api\V1\EmployeeShiftController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\PositionController;
 use App\Http\Controllers\Api\V1\ShiftExceptionController;
@@ -50,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::apiResource('shift-templates', ShiftTemplateController::class)->except('show');
             Route::apiResource('shift-exceptions', ShiftExceptionController::class)->except('show');
+            Route::apiResource('employee-shifts', EmployeeShiftController::class)->except('show');
         });
 
         Route::middleware('capability:manage-releases')->group(function () {

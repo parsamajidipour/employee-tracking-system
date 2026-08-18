@@ -43,8 +43,8 @@ class EmployeeController extends Controller
 
             $employee->employeeShifts()->createMany(
                 array_map(
-                    fn (int $templateId) => ['template_id' => $templateId],
-                    $request->validated('shift_template_ids'),
+                    fn (int $templateId) => ['template_id' => $templateId, 'effective_from' => now()],
+                    $request->validated('shift_template_ids') ?? [],
                 ),
             );
 
@@ -61,7 +61,7 @@ class EmployeeController extends Controller
         DB::transaction(function () use ($employee, $templateIds): void {
             $employee->employeeShifts()->delete();
             $employee->employeeShifts()->createMany(
-                array_map(fn (int $templateId) => ['template_id' => $templateId], $templateIds),
+                array_map(fn (int $templateId) => ['template_id' => $templateId, 'effective_from' => now()], $templateIds),
             );
         });
 

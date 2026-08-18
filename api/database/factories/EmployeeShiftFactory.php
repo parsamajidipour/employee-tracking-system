@@ -17,6 +17,8 @@ class EmployeeShiftFactory extends Factory
         return [
             'employee_id' => User::factory(),
             'template_id' => ShiftTemplate::factory(),
+            'effective_from' => now()->subMonth(),
+            'effective_to' => null,
         ];
     }
 }

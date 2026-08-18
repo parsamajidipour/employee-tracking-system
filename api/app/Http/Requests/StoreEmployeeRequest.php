@@ -23,7 +23,7 @@ class StoreEmployeeRequest extends FormRequest
             'username' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:users,username'],
             'password' => ['required', 'string', Password::min(8)],
             'is_active' => ['boolean'],
-            'shift_template_ids' => ['present', 'array'],
+            'shift_template_ids' => ['sometimes', 'array'],
             'shift_template_ids.*' => ['integer', 'distinct', 'exists:shift_templates,id'],
         ];
     }

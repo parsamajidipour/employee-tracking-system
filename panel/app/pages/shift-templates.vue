@@ -10,6 +10,11 @@ interface ShiftTemplate {
   max_daily_minutes: number | null
 }
 
+interface EmployeeShiftPreview {
+  id: number
+  employee: { id: number; name: string } | null
+}
+
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const templates = ref<ShiftTemplate[]>([])
@@ -102,7 +107,20 @@ async function submit() {
 }
 
 async function remove(template: ShiftTemplate) {
-  if (!(await confirm(`Delete shift template "${template.name}"? This cannot be undone.`, { variant: 'danger', title: 'Delete template' }))) return
+  let affected: EmployeeShiftPreview[] = []
+  try {
+    affected = await apiFetch<EmployeeShiftPreview[]>(`/api/v1/employee-shifts?template_id=${template.id}`)
+  } catch {
+    affected = []
+  }
+
+  const names = affected.map((shift) => shift.employee?.name).filter((name): name is string => !!name)
+  const message = names.length > 0
+    ? `Delete shift template "${template.name}"? ${names.length} employee${names.length > 1 ? 's' : ''} will lose this shift and become unscheduled: ${names.join(', ')}.`
+    : `Delete shift template "${template.name}"? This cannot be undone.`
+
+  if (!(await confirm(message, { variant: 'danger', title: 'Delete template' }))) return
+
   try {
     await apiFetch(`/api/v1/shift-templates/${template.id}`, { method: 'DELETE' })
     toast.success('Shift template deleted.')

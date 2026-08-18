@@ -49,6 +49,18 @@ class EmployeeShiftControllerTest extends TestCase
         $response->assertJsonCount(1);
     }
 
+    public function test_index_filters_by_template_id_and_includes_the_employee_name(): void
+    {
+        EmployeeShift::factory()->create(['employee_id' => $this->employee->id, 'template_id' => $this->template->id]);
+        EmployeeShift::factory()->create();
+
+        $response = $this->getJson("/api/v1/employee-shifts?template_id={$this->template->id}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1);
+        $response->assertJsonPath('0.employee.name', $this->employee->name);
+    }
+
     public function test_store_creates_a_row_and_writes_an_append_only_log_entry(): void
     {
         $effectiveFrom = CarbonImmutable::now()->addDay()->startOfSecond();
