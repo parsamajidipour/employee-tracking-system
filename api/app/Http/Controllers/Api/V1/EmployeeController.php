@@ -99,6 +99,18 @@ class EmployeeController extends Controller
         return response()->noContent();
     }
 
+    public function destroy(User $employee): Response
+    {
+        abort_unless($employee->role === UserRole::Employee, 404);
+
+        $employee->tokens()->delete();
+        $employee->employeeShifts()->delete();
+        $employee->update(['is_active' => false]);
+        $employee->delete();
+
+        return response()->noContent();
+    }
+
     public function window(Request $request, User $employee, ShiftWindowResolver $resolver): JsonResponse
     {
         $validated = $request->validate([

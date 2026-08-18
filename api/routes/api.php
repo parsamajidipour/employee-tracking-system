@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/employees/{employee}/password', [EmployeeController::class, 'resetPassword']);
             Route::delete('/employees/{employee}/device', [EmployeeController::class, 'revokeDevice']);
             Route::put('/employees/{employee}/shifts', [EmployeeController::class, 'syncShifts']);
+            Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy']);
 
             Route::apiResource('shift-templates', ShiftTemplateController::class)->except('show');
             Route::apiResource('shift-exceptions', ShiftExceptionController::class)->except('show');

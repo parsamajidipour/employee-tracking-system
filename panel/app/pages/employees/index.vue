@@ -104,6 +104,21 @@ async function revokeDevice(employee: Employee) {
   }
 }
 
+async function removeEmployee(employee: Employee) {
+  const confirmed = await confirm(
+    `Delete ${employee.name}? They will be removed from the roster, their device access revoked, and their shift assignment cleared.`,
+    { title: 'Delete employee', variant: 'danger' },
+  )
+  if (!confirmed) return
+  try {
+    await apiFetch(`/api/v1/employees/${employee.id}`, { method: 'DELETE' })
+    toast.success('Employee deleted.')
+    await load()
+  } catch {
+    toast.error('Delete failed.')
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -183,6 +198,18 @@ onMounted(load)
               @click="revokeDevice(employee)"
             >
               Revoke device
+            </button>
+            <button
+              type="button"
+              class="rounded-small p-1.5 text-ink-soft transition-colors hover:bg-surface-muted hover:text-state-danger"
+              title="Delete employee"
+              aria-label="Delete employee"
+              @click="removeEmployee(employee)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+                <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" />
+              </svg>
             </button>
           </div>
         </td>

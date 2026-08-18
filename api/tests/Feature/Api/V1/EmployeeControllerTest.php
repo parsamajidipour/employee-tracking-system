@@ -172,4 +172,42 @@ class EmployeeControllerTest extends TestCase
 
         $response->assertNoContent();
     }
+
+    public function test_destroy_soft_deletes_the_employee_and_removes_it_from_the_index(): void
+    {
+        Cache::flush();
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create(['is_active' => true, 'username' => 'gone', 'password' => Hash::make('secret123')]);
+        $template = ShiftTemplate::factory()->create();
+        $employee->employeeShifts()->create(['template_id' => $template->id, 'effective_from' => now()]);
+
+        $this->postJson('/api/v1/device/login', [
+            'username' => 'gone',
+            'password' => 'secret123',
+            'device_identifier' => 'device-1',
+        ])->assertOk();
+
+        $response = $this->deleteJson("/api/v1/employees/{$employee->id}");
+
+        $response->assertNoContent();
+        $this->assertSoftDeleted('users', ['id' => $employee->id]);
+        $this->assertFalse($employee->refresh()->is_active);
+        $this->assertDatabaseCount('employee_shifts', 0);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+
+        $index = $this->getJson('/api/v1/employees');
+        $index->assertOk();
+        $index->assertJsonMissing(['id' => $employee->id]);
+    }
+
+    public function test_destroy_rejects_a_non_employee_role(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $supervisor = User::factory()->supervisor()->create();
+
+        $response = $this->deleteJson("/api/v1/employees/{$supervisor->id}");
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('users', ['id' => $supervisor->id, 'deleted_at' => null]);
+    }
 }
