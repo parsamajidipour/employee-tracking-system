@@ -31,24 +31,26 @@ class EmployeeControllerTest extends TestCase
     public function test_window_returns_the_resolved_window_for_the_chosen_date(): void
     {
         $this->actingAs(User::factory()->supervisor()->create());
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
 
         $sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
         $thursday = $sunday->addDays(4);
+        $employee->employeeShifts()->create(['template_id' => $template->id, 'effective_from' => $sunday->subMonth()]);
 
         $response = $this->getJson("/api/v1/employees/{$employee->id}/window?date={$thursday->toDateString()}");
 
         $response->assertOk();
-        $response->assertJsonPath('window.source', 'default_template');
+        $response->assertJsonPath('window.source', 'employee_shift');
         $response->assertJsonPath('window.start', $thursday->setTime(7, 0)->utc()->toISOString());
     }
 
     public function test_window_is_null_on_a_weekend_day_under_a_sunday_thursday_template(): void
     {
         $this->actingAs(User::factory()->supervisor()->create());
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $employee->employeeShifts()->create(['template_id' => $template->id, 'effective_from' => now()->subMonth()]);
 
         $sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
         $friday = $sunday->addDays(5);

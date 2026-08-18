@@ -73,8 +73,15 @@ per shift template. Never compare a raw timestamp to a raw `start_time` without
 going through the resolver.
 
 **No teams.** There is no `teams` table and no `team_id` anywhere. This is one
-organisation. Shift templates are organisation-wide, and the resolver's last level
-is "the default template for this day of week", not "the team's template".
+organisation. Shift templates are organisation-wide reusable definitions (name,
+days, times, grace), but they are opt-in, never ambient: a template governs an
+employee only through an explicit `employee_shifts` row. Creating a shift
+template must never, by itself, start tracking anyone. The resolver has no
+"default template" level — if an employee has no active `employee_shifts` row
+covering the instant (and no exception), the answer is null, full stop. This
+was tried the other way (an implicit organisation-wide fallback template) and
+reverted in this session specifically because it silently started tracking
+employees nobody had assigned a shift to.
 
 **Laravel style.** Stay on the framework's own rails. Controllers are thin: they
 validate through a FormRequest, call a service, and return a Resource. Business

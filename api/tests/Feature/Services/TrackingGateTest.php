@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services;
 
 use App\Events\EmployeePositionUpdated;
+use App\Models\EmployeeShift;
 use App\Models\LocationPoint;
 use App\Models\ShiftTemplate;
 use App\Models\TrackingSession;
@@ -32,10 +33,16 @@ class TrackingGateTest extends TestCase
         Redis::connection()->flushdb();
 
         $this->gate = app(TrackingGate::class);
-        ShiftTemplate::factory()->create();
-        $this->employee = User::factory()->create();
-
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
+
+        $template = ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
+        EmployeeShift::factory()->create([
+            'employee_id' => $this->employee->id,
+            'template_id' => $template->id,
+            'effective_from' => $this->sunday->subMonth()->utc(),
+            'effective_to' => null,
+        ]);
     }
 
     protected function tearDown(): void

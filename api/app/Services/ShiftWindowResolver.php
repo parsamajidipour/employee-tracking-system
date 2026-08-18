@@ -18,11 +18,6 @@ final class ShiftWindowResolver
 {
     private const NEXT_WINDOW_LOOKAHEAD_DAYS = 8;
 
-    /**
-     * @var Collection<int, ShiftTemplate>|null
-     */
-    private ?Collection $defaultTemplates = null;
-
     public function resolve(User $employee, CarbonInterface $instant): ?ShiftWindow
     {
         $instant = CarbonImmutable::instance($instant)->utc();
@@ -38,11 +33,8 @@ final class ShiftWindowResolver
         }
 
         $level = $this->resolveFromEmployeeShifts($employee, $instant, $today, $yesterday, $timezone);
-        if ($level !== null) {
-            return $level === false ? null : $level;
-        }
 
-        return $this->resolveFromDefaultTemplates($instant, $today, $yesterday, $timezone);
+        return $level === false ? null : $level;
     }
 
     public function resolveForDate(User $employee, string $localDate): ?ShiftWindow
@@ -73,9 +65,7 @@ final class ShiftWindowResolver
                 ->values();
         }
 
-        $window = $this->buildTemplateWindow($this->pickTemplateFor($localDate), $localDate, $timezone, ShiftWindowSource::DefaultTemplate);
-
-        return $window === null ? collect() : collect([$window]);
+        return collect();
     }
 
     public function resolveNext(User $employee, CarbonInterface $after): ?ShiftWindow
@@ -119,7 +109,7 @@ final class ShiftWindowResolver
             return $this->buildTemplateWindow($shift->template, $anchorDate, $timezone, ShiftWindowSource::EmployeeShift);
         }
 
-        return $this->buildTemplateWindow($this->pickTemplateFor($anchorDate), $anchorDate, $timezone, ShiftWindowSource::DefaultTemplate);
+        return null;
     }
 
     private function resolveFromExceptions(User $employee, CarbonImmutable $instant, string $today, string $yesterday, string $timezone): ShiftWindow|false|null
@@ -189,39 +179,6 @@ final class ShiftWindowResolver
             })
             ->orderByDesc('effective_from')
             ->with('template');
-    }
-
-    private function resolveFromDefaultTemplates(CarbonImmutable $instant, string $today, string $yesterday, string $timezone): ?ShiftWindow
-    {
-        $windowYesterday = $this->buildTemplateWindow($this->pickTemplateFor($yesterday), $yesterday, $timezone, ShiftWindowSource::DefaultTemplate);
-        if ($windowYesterday !== null && $windowYesterday->contains($instant)) {
-            return $windowYesterday;
-        }
-
-        $windowToday = $this->buildTemplateWindow($this->pickTemplateFor($today), $today, $timezone, ShiftWindowSource::DefaultTemplate);
-        if ($windowToday !== null && $windowToday->contains($instant)) {
-            return $windowToday;
-        }
-
-        return null;
-    }
-
-    private function pickTemplateFor(string $anchorDate): ?ShiftTemplate
-    {
-        $dayOfWeek = Carbon::parse($anchorDate)->dayOfWeek;
-
-        return $this->defaultTemplates()
-            ->filter(fn (ShiftTemplate $template) => in_array($dayOfWeek, $template->days_of_week, true))
-            ->sortBy('id')
-            ->first();
-    }
-
-    /**
-     * @return Collection<int, ShiftTemplate>
-     */
-    private function defaultTemplates(): Collection
-    {
-        return $this->defaultTemplates ??= ShiftTemplate::orderBy('id')->get();
     }
 
     private function buildExceptionWindow(?ShiftException $exception, string $anchorDate, string $timezone): ?ShiftWindow

@@ -31,13 +31,17 @@ class PositionControllerTest extends TestCase
 
     public function test_snapshot_excludes_employees_outside_their_window(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
 
         $inWindowEmployee = User::factory()->create();
         $onLeaveEmployee = User::factory()->create();
 
         $sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
         $thursday = $sunday->addDays(4);
+
+        foreach ([$inWindowEmployee, $onLeaveEmployee] as $employee) {
+            $employee->employeeShifts()->create(['template_id' => $template->id, 'effective_from' => $sunday->subMonth()]);
+        }
 
         ShiftException::factory()->leave()->create([
             'employee_id' => $onLeaveEmployee->id,
@@ -77,12 +81,13 @@ class PositionControllerTest extends TestCase
 
     public function test_snapshot_row_includes_name_telemetry_and_effective_end(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
 
         $employee = User::factory()->create(['name' => 'Fahad']);
 
         $sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
         $thursday = $sunday->addDays(4);
+        $employee->employeeShifts()->create(['template_id' => $template->id, 'effective_from' => $sunday->subMonth()]);
         CarbonImmutable::setTestNow($thursday->setTime(10, 0));
 
         app(TrackingGate::class)->process($employee, [[

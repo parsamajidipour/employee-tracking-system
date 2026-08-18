@@ -20,13 +20,18 @@ class MeControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        ShiftTemplate::factory()->create([
+        $template = ShiftTemplate::factory()->create([
             'grace_before_min' => 10,
             'grace_after_min' => 15,
         ]);
         $this->employee = User::factory()->create();
 
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
+
+        $this->employee->employeeShifts()->create([
+            'template_id' => $template->id,
+            'effective_from' => $this->sunday->subMonth(),
+        ]);
 
         Sanctum::actingAs($this->employee);
     }
@@ -49,7 +54,7 @@ class MeControllerTest extends TestCase
         $response->assertJson(['current' => null]);
         $response->assertJsonPath('next.start', $thursday->setTime(6, 50)->utc()->toISOString());
         $response->assertJsonPath('next.end', $thursday->setTime(16, 15)->utc()->toISOString());
-        $response->assertJsonPath('next.source', 'default_template');
+        $response->assertJsonPath('next.source', 'employee_shift');
     }
 
     public function test_current_window_exposes_graced_times_when_inside_a_window(): void

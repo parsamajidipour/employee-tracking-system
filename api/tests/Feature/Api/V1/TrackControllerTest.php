@@ -21,10 +21,14 @@ class TrackControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        ShiftTemplate::factory()->create();
-        $this->employee = User::factory()->create();
-
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
+
+        $template = ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
+        $this->employee->employeeShifts()->create([
+            'template_id' => $template->id,
+            'effective_from' => $this->sunday->subMonth(),
+        ]);
     }
 
     protected function tearDown(): void

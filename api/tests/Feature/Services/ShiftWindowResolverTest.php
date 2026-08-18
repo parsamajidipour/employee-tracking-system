@@ -28,11 +28,21 @@ class ShiftWindowResolverTest extends TestCase
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
     }
 
-
-    public function test_instant_inside_a_plain_template_window_resolves(): void
+    private function assignShift(User $employee, ShiftTemplate $template, ?CarbonImmutable $effectiveFrom = null): EmployeeShift
     {
-        ShiftTemplate::factory()->create();
+        return EmployeeShift::factory()->create([
+            'employee_id' => $employee->id,
+            'template_id' => $template->id,
+            'effective_from' => ($effectiveFrom ?? $this->sunday->subMonth())->utc(),
+            'effective_to' => null,
+        ]);
+    }
+
+    public function test_instant_inside_an_assigned_shift_window_resolves(): void
+    {
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         $instant = $thursday->setTime(10, 0);
@@ -40,14 +50,15 @@ class ShiftWindowResolverTest extends TestCase
         $window = $this->resolver->resolve($employee, $instant);
 
         $this->assertNotNull($window);
-        $this->assertSame(ShiftWindowSource::DefaultTemplate, $window->source);
+        $this->assertSame(ShiftWindowSource::EmployeeShift, $window->source);
         $this->assertTrue($window->contains($instant->utc()));
     }
 
-    public function test_instant_outside_a_plain_template_window_resolves_to_null(): void
+    public function test_instant_outside_an_assigned_shift_window_resolves_to_null(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         $instant = $thursday->setTime(18, 0);
@@ -55,41 +66,30 @@ class ShiftWindowResolverTest extends TestCase
         $this->assertNull($this->resolver->resolve($employee, $instant));
     }
 
-    public function test_employee_with_no_template_at_all_resolves_to_null(): void
+    public function test_employee_with_no_shift_at_all_resolves_to_null(): void
     {
+        ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
 
         $this->assertNull($this->resolver->resolve($employee, CarbonImmutable::now()));
     }
 
-    public function test_employee_shift_overrides_the_default_template(): void
+    public function test_a_shift_template_with_no_assignments_never_produces_a_window_for_other_employees(): void
     {
-        ShiftTemplate::factory()->create();
-        $override = ShiftTemplate::factory()->create([
-            'start_time' => '09:00:00',
-            'end_time' => '17:00:00',
-        ]);
-        $employee = User::factory()->create();
+        $template = ShiftTemplate::factory()->create();
+        $assigned = User::factory()->create();
+        $unassigned = User::factory()->create();
+        $this->assignShift($assigned, $template);
 
         $thursday = $this->sunday->addDays(4);
-        EmployeeShift::factory()->create([
-            'employee_id' => $employee->id,
-            'template_id' => $override->id,
-            'effective_from' => $thursday->subMonth()->utc(),
-            'effective_to' => null,
-        ]);
+        $instant = $thursday->setTime(10, 0);
 
-        $instant = $thursday->setTime(16, 30);
-
-        $window = $this->resolver->resolve($employee, $instant);
-
-        $this->assertNotNull($window);
-        $this->assertSame(ShiftWindowSource::EmployeeShift, $window->source);
+        $this->assertNotNull($this->resolver->resolve($assigned, $instant));
+        $this->assertNull($this->resolver->resolve($unassigned, $instant));
     }
 
-    public function test_employee_shift_before_its_effective_from_falls_back_to_default_template(): void
+    public function test_employee_shift_before_its_effective_from_resolves_to_null(): void
     {
-        ShiftTemplate::factory()->create();
         $override = ShiftTemplate::factory()->create([
             'start_time' => '09:00:00',
             'end_time' => '17:00:00',
@@ -97,24 +97,15 @@ class ShiftWindowResolverTest extends TestCase
         $employee = User::factory()->create();
 
         $thursday = $this->sunday->addDays(4);
-        EmployeeShift::factory()->create([
-            'employee_id' => $employee->id,
-            'template_id' => $override->id,
-            'effective_from' => $thursday->addWeek()->utc(),
-            'effective_to' => null,
-        ]);
+        $this->assignShift($employee, $override, $thursday->addWeek());
 
         $instant = $thursday->setTime(10, 0);
 
-        $window = $this->resolver->resolve($employee, $instant);
-
-        $this->assertNotNull($window);
-        $this->assertSame(ShiftWindowSource::DefaultTemplate, $window->source);
+        $this->assertNull($this->resolver->resolve($employee, $instant));
     }
 
     public function test_employee_shift_expired_yesterday_does_not_apply_today(): void
     {
-        ShiftTemplate::factory()->create();
         $override = ShiftTemplate::factory()->create([
             'start_time' => '09:00:00',
             'end_time' => '17:00:00',
@@ -131,16 +122,14 @@ class ShiftWindowResolverTest extends TestCase
 
         $instant = $thursday->setTime(10, 0);
 
-        $window = $this->resolver->resolve($employee, $instant);
-
-        $this->assertNotNull($window);
-        $this->assertSame(ShiftWindowSource::DefaultTemplate, $window->source);
+        $this->assertNull($this->resolver->resolve($employee, $instant));
     }
 
-    public function test_leave_exception_produces_null_on_a_day_the_template_says_is_working(): void
+    public function test_leave_exception_vetoes_a_day_the_assigned_shift_says_is_working(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         ShiftException::factory()->leave()->create([
@@ -155,7 +144,6 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_overtime_exception_extends_the_window(): void
     {
-        ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
 
         $thursday = $this->sunday->addDays(4);
@@ -174,8 +162,9 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_utc_instant_resolves_correctly_against_configured_timezone(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         $instant = CarbonImmutable::parse($thursday->toDateString().' 03:00:00', 'UTC');
@@ -188,11 +177,12 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_grace_before_and_after_at_both_edges(): void
     {
-        ShiftTemplate::factory()->create([
+        $template = ShiftTemplate::factory()->create([
             'grace_before_min' => 10,
             'grace_after_min' => 15,
         ]);
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
 
@@ -202,10 +192,11 @@ class ShiftWindowResolverTest extends TestCase
         $this->assertNull($this->resolver->resolve($employee, $thursday->setTime(16, 15, 0)));
     }
 
-    public function test_friday_resolves_to_null_under_a_sunday_thursday_template(): void
+    public function test_friday_resolves_to_null_under_a_sunday_thursday_shift(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $friday = $this->sunday->addDays(5);
         $instant = $friday->setTime(10, 0);
@@ -215,12 +206,13 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_night_shift_crossing_midnight_resolves_on_both_sides(): void
     {
-        ShiftTemplate::factory()->create([
+        $template = ShiftTemplate::factory()->create([
             'start_time' => '22:00:00',
             'end_time' => '06:00:00',
             'days_of_week' => [0, 1, 2, 3, 4],
         ]);
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $wednesday = $this->sunday->addDays(3);
         $thursday = $this->sunday->addDays(4);
@@ -239,12 +231,13 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_leave_exception_vetoes_a_night_shift_bleeding_in_from_the_day_before(): void
     {
-        ShiftTemplate::factory()->create([
+        $template = ShiftTemplate::factory()->create([
             'start_time' => '22:00:00',
             'end_time' => '06:00:00',
             'days_of_week' => [0, 1, 2, 3, 4],
         ]);
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         ShiftException::factory()->leave()->create([
@@ -297,20 +290,13 @@ class ShiftWindowResolverTest extends TestCase
         $this->assertSame('09', $windowAfter->start->setTimezone('Asia/Muscat')->format('H'));
     }
 
-    public function test_employee_shift_silent_on_a_day_does_not_fall_back_to_default_template(): void
+    public function test_employee_shift_silent_on_a_day_resolves_to_null(): void
     {
-        ShiftTemplate::factory()->create();
         $partTime = ShiftTemplate::factory()->create([
             'days_of_week' => [0, 2, 4],
         ]);
         $employee = User::factory()->create();
-
-        EmployeeShift::factory()->create([
-            'employee_id' => $employee->id,
-            'template_id' => $partTime->id,
-            'effective_from' => $this->sunday->subYear()->utc(),
-            'effective_to' => null,
-        ]);
+        $this->assignShift($employee, $partTime, $this->sunday->subYear());
 
         $monday = $this->sunday->addDays(1);
         $instant = $monday->setTime(10, 0);
@@ -320,8 +306,9 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_resolve_next_returns_todays_later_window_when_before_todays_start(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         $after = $thursday->setTime(5, 0);
@@ -334,8 +321,9 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_resolve_next_skips_the_weekend_when_currently_inside_thursdays_window(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         $after = $thursday->setTime(10, 0);
@@ -349,8 +337,9 @@ class ShiftWindowResolverTest extends TestCase
 
     public function test_resolve_next_skips_a_leave_day_and_lands_on_the_following_working_day(): void
     {
-        ShiftTemplate::factory()->create();
+        $template = ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
+        $this->assignShift($employee, $template);
 
         $thursday = $this->sunday->addDays(4);
         ShiftException::factory()->leave()->create([
@@ -367,8 +356,9 @@ class ShiftWindowResolverTest extends TestCase
         $this->assertTrue($next->effectiveStart()->equalTo($nextSunday->setTime(7, 0)->utc()));
     }
 
-    public function test_resolve_next_returns_null_when_no_template_exists(): void
+    public function test_resolve_next_returns_null_when_no_shift_is_assigned(): void
     {
+        ShiftTemplate::factory()->create();
         $employee = User::factory()->create();
 
         $this->assertNull($this->resolver->resolveNext($employee, CarbonImmutable::now()));

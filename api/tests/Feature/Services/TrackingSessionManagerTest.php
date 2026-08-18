@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services;
 
 use App\Enums\TrackingSessionEndReason;
+use App\Models\EmployeeShift;
 use App\Models\ShiftTemplate;
 use App\Models\TrackingSession;
 use App\Models\User;
@@ -27,10 +28,16 @@ class TrackingSessionManagerTest extends TestCase
         parent::setUp();
 
         $this->manager = app(TrackingSessionManager::class);
-        ShiftTemplate::factory()->create();
-        $this->employee = User::factory()->create();
-
         $this->sunday = CarbonImmutable::parse('next Sunday', 'Asia/Muscat')->startOfDay();
+
+        $template = ShiftTemplate::factory()->create();
+        $this->employee = User::factory()->create();
+        EmployeeShift::factory()->create([
+            'employee_id' => $this->employee->id,
+            'template_id' => $template->id,
+            'effective_from' => $this->sunday->subMonth()->utc(),
+            'effective_to' => null,
+        ]);
     }
 
     public function test_the_close_job_is_idempotent(): void
