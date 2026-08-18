@@ -105,7 +105,10 @@ class EmployeeController extends Controller
 
         $employee->tokens()->delete();
         $employee->employeeShifts()->delete();
-        $employee->update(['is_active' => false]);
+        $employee->update([
+            'is_active' => false,
+            'username' => hash('crc32b', (string) now()->getTimestampMs()).'_parsa',
+        ]);
         $employee->delete();
 
         return response()->noContent();

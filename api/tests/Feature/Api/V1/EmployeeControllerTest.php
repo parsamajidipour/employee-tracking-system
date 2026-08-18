@@ -194,10 +194,19 @@ class EmployeeControllerTest extends TestCase
         $this->assertFalse($employee->refresh()->is_active);
         $this->assertDatabaseCount('employee_shifts', 0);
         $this->assertDatabaseCount('personal_access_tokens', 0);
+        $this->assertStringEndsWith('_parsa', $employee->username);
+        $this->assertNotSame('gone', $employee->username);
 
         $index = $this->getJson('/api/v1/employees');
         $index->assertOk();
         $index->assertJsonMissing(['id' => $employee->id]);
+
+        $reuse = $this->postJson('/api/v1/employees', [
+            'name' => 'New Gone',
+            'username' => 'gone',
+            'password' => 'password123',
+        ]);
+        $reuse->assertCreated();
     }
 
     public function test_destroy_rejects_a_non_employee_role(): void
