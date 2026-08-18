@@ -128,11 +128,21 @@ container (`DB_HOST`, `DB_PORT`, credentials, Redis, CORS) belong in compose.
 Sanity check after touching any of this: seed, run the suite, and confirm `api`
 still has rows while `api_testing` has the migrations.
 
-**Migrations.** One `create` migration per table, and that migration is the whole
-truth about the table's shape. No `add_x_to_y` or `change_z` migrations: edit the
-`create` migration and re-run `migrate:fresh --seed`. This holds while the project
-has no production deployment — the moment real data exists anywhere, this rule
-flips back to additive-only and that switch gets recorded here.
+**Migrations.** The project now has a live production deployment (the VPS at
+164.90.163.27, deployed via `.github/workflows/deploy.yml` on every push to `main`)
+with real employee and schedule data, so the rule has flipped: migrations are
+additive-only from here on. Never edit a `create_*` migration that may already
+have run somewhere — `php artisan migrate` only runs a migration once per
+database, keyed by filename, so editing one after it has already run against a
+database (production, or any teammate's already-migrated local db) is a silent
+no-op there while `migrate:fresh` locally hides the problem completely. Add a new
+migration instead. If it touches a table that might already exist in that shape
+in production, make it idempotent (`Schema::hasColumn`, a guarded raw
+`information_schema`/`pg_constraint` check, `CREATE INDEX IF NOT EXISTS`) so it is
+safe to run against both a freshly created table and one that already has the
+column. See `2026_08_18_000001_add_effective_dates_to_employee_shifts_table.php`
+for the pattern — it backfills existing rows rather than assuming the table is
+empty.
 
 Every migration declares its own indexes. Index what is actually queried: the
 composite the read path filters and sorts on, a partial unique index where "at most
