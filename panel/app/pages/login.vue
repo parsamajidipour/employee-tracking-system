@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: false })
+
 const email = ref('')
 const password = ref('')
 const error = ref('')

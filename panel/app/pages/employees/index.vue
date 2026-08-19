@@ -114,7 +114,7 @@ onMounted(load)
       :is-empty="employees.length === 0"
       empty-message="No employees yet — add one to get started."
     >
-      <tr v-for="employee in employees" :key="employee.id" class="group row-h text-ink">
+      <tr v-for="employee in employees" :key="employee.id" class="row-h text-ink hover:bg-surface-sunken/60">
         <td class="px-4">
           <div class="text-[13px] font-medium">{{ employee.name }}</div>
           <div class="text-[11.5px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</div>
@@ -143,7 +143,7 @@ onMounted(load)
           <span v-else class="text-[12.5px] text-ink-faint">—</span>
         </td>
         <td class="px-4">
-          <div class="flex items-center justify-end gap-0.5 whitespace-nowrap opacity-100 transition-opacity duration-fast lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+          <div class="flex items-center justify-end gap-0.5 whitespace-nowrap">
             <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2 py-1.5 text-[12.5px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
               Schedule
             </NuxtLink>

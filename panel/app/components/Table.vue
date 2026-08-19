@@ -19,7 +19,7 @@ withDefaults(
           <th
             v-for="header in headers"
             :key="header"
-            class="overline whitespace-nowrap px-4 py-2.5 text-left font-semibold"
+            class="eyebrow whitespace-nowrap px-4 py-2.5 text-left font-semibold"
           >
             {{ header }}
           </th>

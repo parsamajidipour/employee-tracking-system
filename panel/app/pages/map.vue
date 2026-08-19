@@ -221,7 +221,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col">
-        <h2 class="overline flex-none px-4 pb-2 pt-4">
+        <h2 class="eyebrow flex-none px-4 pb-2 pt-4">
           In window ({{ positions.length }})
         </h2>
         <EmptyState v-if="positions.length === 0" icon="map-pin" message="No employees currently in window." class="px-4 pb-4" />

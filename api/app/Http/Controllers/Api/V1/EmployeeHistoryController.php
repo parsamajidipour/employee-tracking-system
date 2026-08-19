@@ -90,8 +90,59 @@ class EmployeeHistoryController extends Controller
             'last_point_at' => $summary->last_point_at,
             'points_count' => (int) ($summary->points_count ?? 0),
             'shifts' => $shifts,
-            'points' => $points,
+            'points' => $this->decimatePoints($points)->values(),
         ]);
+    }
+
+    /**
+     * A busy day at a 10s heartbeat can produce thousands of points. Distance
+     * aggregates (`$shiftDistances`, `$summary`) are computed above from the full
+     * set before this runs, so decimation here only thins what gets rendered on
+     * the trail map — nearby points collapse into one, per shift so a shift's
+     * first/last point (the map's start/end markers) is never thinned away.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $points
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function decimatePoints($points, float $minMeters = 12.0, int $hardCapPerShift = 400)
+    {
+        return $points
+            ->groupBy('shift_index')
+            ->flatMap(function ($group) use ($minMeters, $hardCapPerShift) {
+                $group = $group->values();
+                if ($group->count() <= 2) {
+                    return $group;
+                }
+
+                $kept = collect([$group->first()]);
+                foreach ($group->slice(1, -1) as $point) {
+                    $lastKept = $kept->last();
+                    $distance = $this->haversineMeters($lastKept['lat'], $lastKept['lng'], $point['lat'], $point['lng']);
+                    if ($distance >= $minMeters) {
+                        $kept->push($point);
+                    }
+                }
+                $kept->push($group->last());
+
+                if ($kept->count() <= $hardCapPerShift) {
+                    return $kept;
+                }
+
+                $stride = (int) ceil($kept->count() / $hardCapPerShift);
+
+                return $kept->values()->filter(fn ($point, $index) => $index % $stride === 0 || $index === $kept->count() - 1);
+            })
+            ->sortBy('recorded_at');
+    }
+
+    private function haversineMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371000;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $h = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
+        return 2 * $earthRadius * asin(min(1.0, sqrt($h)));
     }
 
     /**

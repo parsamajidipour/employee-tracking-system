@@ -12,7 +12,7 @@ const props = withDefaults(
 
 const classes = computed(() => [
   'btn font-semibold',
-  props.size === 'sm' ? 'h-9 px-3 text-[12.5px]' : '',
+  props.size === 'sm' ? 'h-10 px-3.5 text-[13.5px]' : '',
   props.disabled ? 'cursor-not-allowed opacity-50 pointer-events-none' : '',
   {
     'bg-primary text-white shadow-ambient hover:bg-primary-strong': props.variant === 'primary',
