@@ -26,6 +26,13 @@ export default defineNuxtConfig({
       ],
     },
   },
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        types: ['google.maps'],
+      },
+    },
+  },
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '',
