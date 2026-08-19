@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 withDefaults(
   defineProps<{
     headers: string[]
@@ -8,34 +7,41 @@ withDefaults(
     isEmpty?: boolean
     emptyMessage?: string
   }>(),
-  { loading: false, error: null, isEmpty: false, emptyMessage: 'Nothing here yet.' },
+  { emptyMessage: 'Nothing here yet.' },
 )
 </script>
 
 <template>
-  <div class="card overflow-x-auto">
-    <table class="w-full border-collapse text-left text-sm tabular">
+  <div class="surface-flat overflow-x-auto">
+    <table class="w-full text-left text-[13px]">
       <thead>
-        <tr class="border-b border-hairline bg-surface-muted">
-          <th v-for="h in headers" :key="h" class="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.8px] text-ink-soft">
-            {{ h }}
+        <tr class="border-b border-hairline">
+          <th
+            v-for="header in headers"
+            :key="header"
+            class="overline whitespace-nowrap px-4 py-2.5 text-left font-semibold"
+          >
+            {{ header }}
           </th>
         </tr>
       </thead>
       <tbody class="divide-y divide-hairline">
         <tr v-if="loading">
-          <td :colspan="headers.length" class="px-5 py-12 text-center text-sm text-ink-faint">Loading…</td>
-        </tr>
-        <tr v-else-if="error">
-          <td :colspan="headers.length" class="px-5 py-12">
-            <div class="flex items-center justify-center gap-2 text-sm text-state-danger">
-              <span class="inline-block h-2 w-2 flex-none rounded-full bg-state-danger"></span>
-              {{ error }}
+          <td :colspan="headers.length" class="p-0">
+            <div class="row-h flex items-center gap-4 px-4">
+              <Skeleton v-for="i in headers.length" :key="i" class="h-3 flex-1" />
             </div>
           </td>
         </tr>
+        <tr v-else-if="error">
+          <td :colspan="headers.length" class="px-4 py-10">
+            <EmptyState icon="alert-triangle" :message="error" tone="danger" />
+          </td>
+        </tr>
         <tr v-else-if="isEmpty">
-          <td :colspan="headers.length" class="px-5 py-12 text-center text-sm text-ink-faint">{{ emptyMessage }}</td>
+          <td :colspan="headers.length" class="px-4 py-10">
+            <EmptyState icon="inbox" :message="emptyMessage" />
+          </td>
         </tr>
         <slot v-else />
       </tbody>

@@ -44,21 +44,25 @@ onMounted(refreshAll)
 <template>
   <AppShell :title="employee?.name ?? 'Employee'" back-to="/employees">
     <template #actions>
-      <Button variant="secondary" :disabled="loading" @click="refreshAll">
-        <Icon name="refresh" class="h-4 w-4" :spin="loading" />
+      <Button variant="secondary" size="sm" :disabled="loading" @click="refreshAll">
+        <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         Refresh
       </Button>
-      <Button :to="`/employees/${employeeId}/histories`">Histories</Button>
+      <Button size="sm" :to="`/employees/${employeeId}/histories`">Histories</Button>
     </template>
 
     <InlineAlert v-if="error">{{ error }}</InlineAlert>
-    <p v-if="loading" class="text-sm text-ink-faint">Loading…</p>
+
+    <div v-if="loading" class="space-y-3">
+      <Skeleton class="h-16" rounded="md" />
+      <Skeleton class="h-16" rounded="md" />
+    </div>
 
     <template v-else-if="employee">
-      <div class="mb-6 flex items-end justify-between gap-4">
+      <div class="mb-5 flex items-end justify-between gap-4">
         <div>
-          <p class="text-sm text-ink-soft">{{ employee.username ?? employee.email ?? '—' }}</p>
-          <p class="mt-1 text-xs text-ink-faint">Select one or more shifts. Tracking is allowed only inside selected times.</p>
+          <p class="text-[13px] text-ink-soft">{{ employee.username ?? employee.email ?? '—' }}</p>
+          <p class="mt-1 text-[11.5px] text-ink-faint">Select one or more shifts. Tracking is allowed only inside selected times.</p>
         </div>
         <Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save shifts' }}</Button>
       </div>

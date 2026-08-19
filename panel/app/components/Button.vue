@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'danger'
+    variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
     size?: 'sm' | 'md'
     type?: 'button' | 'submit'
     disabled?: boolean
@@ -11,12 +11,15 @@ const props = withDefaults(
 )
 
 const classes = computed(() => [
-  'inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-all duration-150 ease-soft active:scale-[0.97]',
-  props.size === 'sm' ? 'min-h-[36px] px-3 text-sm' : 'min-h-[44px] px-5 text-sm',
-  props.disabled ? 'cursor-not-allowed opacity-60 active:scale-100' : '',
-  props.variant === 'primary' ? 'bg-primary text-white hover:bg-primary-strong' : '',
-  props.variant === 'secondary' ? 'border border-hairline bg-surface text-primary-strong hover:bg-surface-muted' : '',
-  props.variant === 'danger' ? 'bg-state-danger text-white hover:opacity-90' : '',
+  'btn font-semibold',
+  props.size === 'sm' ? 'h-8 px-2.5 text-xs' : '',
+  props.disabled ? 'cursor-not-allowed opacity-50 pointer-events-none' : '',
+  {
+    'bg-primary text-white shadow-ambient hover:bg-primary-strong': props.variant === 'primary',
+    'bg-surface text-ink border border-hairline shadow-ambient hover:bg-surface-sunken': props.variant === 'secondary',
+    'text-ink-soft hover:bg-surface-sunken hover:text-ink': props.variant === 'ghost',
+    'bg-state-danger text-white hover:opacity-90': props.variant === 'danger',
+  },
 ])
 </script>
 

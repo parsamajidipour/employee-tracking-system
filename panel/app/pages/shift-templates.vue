@@ -115,26 +115,25 @@ onMounted(load)
 <template>
   <AppShell title="Shift templates">
     <template #actions>
-      <Button variant="secondary" :disabled="loading" @click="refresh">
-        <Icon name="refresh" class="h-4 w-4" :spin="loading" />
+      <Button variant="secondary" size="sm" :disabled="loading" @click="refresh">
+        <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         Refresh
       </Button>
     </template>
 
-    <form @submit.prevent="submit" class="card mb-6 space-y-5 p-6">
+    <form @submit.prevent="submit" class="surface-flat mb-5 space-y-4 p-4">
       <h2>{{ editingId === null ? 'New template' : 'Edit template' }}</h2>
 
       <TextInput v-model="form.name" label="Name" required class="max-w-sm" />
 
       <div>
-        <span class="mb-1.5 block text-[13px] font-medium text-ink-soft">Days of week</span>
-        <div class="flex flex-wrap gap-2">
+        <span class="mb-1.5 block text-[12px] font-medium text-ink-soft">Days of week</span>
+        <div class="flex flex-wrap gap-1.5">
           <label
             v-for="(label, day) in DAY_LABELS"
             :key="day"
-            class="flex cursor-pointer items-center gap-2 rounded-control border border-hairline
-                   px-3 py-2 text-sm transition-colors hover:bg-surface-muted"
-            :class="form.days_of_week.includes(Number(day)) ? 'bg-primary-soft text-primary-strong' : ''"
+            class="flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-hairline px-2.5 text-[12.5px] transition-colors hover:bg-surface-sunken"
+            :class="form.days_of_week.includes(Number(day)) ? '!border-primary bg-primary-soft text-primary-strong' : ''"
           >
             <input type="checkbox" :value="day" v-model="form.days_of_week" class="accent-primary" />
             {{ label }}
@@ -142,7 +141,7 @@ onMounted(load)
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
         <TextInput v-model="form.start_time" type="time" label="Start" required />
         <TextInput v-model="form.end_time" type="time" label="End" required />
         <TextInput v-model="form.grace_before_min" type="number" min="0" label="Grace before (min)" />
@@ -163,25 +162,17 @@ onMounted(load)
       :is-empty="templates.length === 0"
       empty-message="No shift templates yet — add one above."
     >
-      <tr v-for="template in templates" :key="template.id" class="text-ink">
-        <td class="px-5 py-3 font-medium">{{ template.name }}</td>
-        <td class="px-5 py-3 text-ink-soft">{{ dayLabel(template.days_of_week) }}</td>
-        <td class="px-5 py-3 tabular">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</td>
-        <td class="px-5 py-3 tabular text-ink-soft">{{ template.grace_before_min }}/{{ template.grace_after_min }}</td>
-        <td class="px-5 py-3">
-          <div class="flex items-center justify-end gap-1">
-            <button
-              type="button"
-              class="rounded-small px-2 py-1.5 text-sm font-medium text-primary-strong transition-colors hover:bg-surface-muted"
-              @click="startEdit(template)"
-            >
+      <tr v-for="template in templates" :key="template.id" class="row-h text-ink">
+        <td class="px-4 text-[13px] font-medium">{{ template.name }}</td>
+        <td class="px-4 text-[13px] text-ink-soft">{{ dayLabel(template.days_of_week) }}</td>
+        <td class="px-4 text-[13px] tabular">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</td>
+        <td class="px-4 text-[13px] tabular text-ink-soft">{{ template.grace_before_min }}/{{ template.grace_after_min }}</td>
+        <td class="px-4">
+          <div class="flex items-center justify-end gap-0.5">
+            <button type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
               Edit
             </button>
-            <button
-              type="button"
-              class="rounded-small px-2 py-1.5 text-sm text-ink-soft transition-colors hover:bg-surface-muted hover:text-state-danger"
-              @click="remove(template)"
-            >
+            <button type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
               Delete
             </button>
           </div>

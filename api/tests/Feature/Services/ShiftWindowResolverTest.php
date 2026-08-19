@@ -290,6 +290,53 @@ class ShiftWindowResolverTest extends TestCase
         $this->assertSame('09', $windowAfter->start->setTimezone('Asia/Muscat')->format('H'));
     }
 
+    public function test_resolve_all_for_date_includes_a_shift_assigned_later_the_same_day(): void
+    {
+        $template = ShiftTemplate::factory()->create([
+            'start_time' => '07:00:00',
+            'end_time' => '16:00:00',
+            'days_of_week' => [0, 1, 2, 3, 4],
+        ]);
+        $employee = User::factory()->create();
+
+        $assignedAt = $this->sunday->setTime(10, 0);
+
+        EmployeeShift::factory()->create([
+            'employee_id' => $employee->id,
+            'template_id' => $template->id,
+            'effective_from' => $assignedAt->utc(),
+            'effective_to' => null,
+        ]);
+
+        $windows = $this->resolver->resolveAllForDate($employee, $this->sunday->toDateString());
+
+        $this->assertCount(1, $windows);
+        $this->assertSame('07', $windows->first()->start->setTimezone('Asia/Muscat')->format('H'));
+    }
+
+    public function test_resolve_for_date_includes_a_shift_assigned_later_the_same_day(): void
+    {
+        $template = ShiftTemplate::factory()->create([
+            'start_time' => '07:00:00',
+            'end_time' => '16:00:00',
+            'days_of_week' => [0, 1, 2, 3, 4],
+        ]);
+        $employee = User::factory()->create();
+
+        $assignedAt = $this->sunday->setTime(10, 0);
+
+        EmployeeShift::factory()->create([
+            'employee_id' => $employee->id,
+            'template_id' => $template->id,
+            'effective_from' => $assignedAt->utc(),
+            'effective_to' => null,
+        ]);
+
+        $window = $this->resolver->resolveForDate($employee, $this->sunday->toDateString());
+
+        $this->assertNotNull($window);
+    }
+
     public function test_employee_shift_silent_on_a_day_resolves_to_null(): void
     {
         $partTime = ShiftTemplate::factory()->create([

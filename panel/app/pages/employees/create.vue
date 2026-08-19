@@ -59,26 +59,30 @@ async function submit() {
 
 <template>
   <AppShell title="Add employee" back-to="/employees">
-    <form @submit.prevent="submit" class="card max-w-3xl space-y-4 p-5 sm:p-6">
+    <form @submit.prevent="submit" class="surface-flat max-w-2xl space-y-4 p-5">
       <InlineAlert v-if="error">{{ error }}</InlineAlert>
 
-      <TextInput v-model="form.name" label="Name" required />
-      <TextInput v-model="form.phone" label="Phone" />
-      <TextInput v-model="form.username" label="Username" required hint="Used to log in on the mobile app — not an email." />
-      <TextInput v-model="form.password" type="password" label="Password" required :minlength="8" />
+      <div class="grid gap-4 sm:grid-cols-2">
+        <TextInput v-model="form.name" label="Name" required />
+        <TextInput v-model="form.phone" label="Phone" />
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <TextInput v-model="form.username" label="Username" required hint="Used to log in on the mobile app — not an email." />
+        <TextInput v-model="form.password" type="password" label="Password" required :minlength="8" />
+      </div>
 
       <fieldset class="space-y-2">
-        <legend class="mb-2 text-sm font-medium text-ink">Shifts</legend>
+        <legend class="mb-2 text-[13px] font-medium text-ink">Shifts</legend>
         <ShiftPicker v-model="form.shift_template_ids" :shifts="templates" :loading="loadingShifts" />
       </fieldset>
 
-      <label class="flex items-center gap-2 text-sm text-ink">
+      <label class="flex items-center gap-2 text-[13px] text-ink">
         <input type="checkbox" v-model="form.is_active" class="accent-primary" />
         Active
       </label>
 
       <div class="flex items-center gap-2 pt-2">
-        <Button type="submit" :disabled="submitting">Create employee</Button>
+        <Button type="submit" :disabled="submitting">{{ submitting ? 'Creating…' : 'Create employee' }}</Button>
         <Button variant="secondary" to="/employees">Cancel</Button>
       </div>
     </form>

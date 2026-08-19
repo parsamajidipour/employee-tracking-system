@@ -191,20 +191,27 @@ queue in local SQLite and flush immediately after each point is recorded, with
 the foreground task's 5s repeat cycle as a retry backstop. The service starts at
 window open and stops at window close.
 
-**Design.** One design system across the mobile app and the panel, defined in
-`docs/DESIGN.md`. Both surfaces read their colours, radii, spacing and elevation
-from tokens in that document — no ad-hoc hex values in a widget or a component.
+**Design.** One design system, defined in `docs/DESIGN.md` — currently the panel
+only (`app/lib/theme/app_theme.dart`, the Flutter side, is behind and flagged as
+such at the top of that doc; don't treat it as current). Colours, radii, spacing
+and elevation come from tokens in that document — no ad-hoc hex values in a
+component.
 
-Soft and calm over loud: low-saturation teal on near-white, wide corner radii,
-diffuse low-opacity shadows, generous whitespace. Never pure black on pure white.
+Hybrid, not uniformly soft or calm: light surfaces for tables/forms/cards, dark
+surfaces reserved for the live map, histories map, and nav rail — see
+`docs/DESIGN.md` §1 for the reasoning. Compact density. Indigo accent. Never pure
+black on pure white even on the dark surfaces (`#0B0B10`, not `#000`).
 
 The app must stay smooth on weak hardware. No blur/backdrop filters, no shadows
-inside list items that scroll, no animation that runs when nothing changed.
-Transitions are 150-300ms on standard easing, and they exist to explain a change of
-state, not to decorate. Anything expensive is opt-in behind a device check.
+inside list items that scroll, no animation that runs when nothing changed —
+the one deliberate exception is the live map's online-marker pulse, which encodes
+a real current state. Transitions are 120-260ms on standard easing, and they exist
+to explain a change of state, not to decorate. Anything expensive is opt-in behind
+a device check.
 
-Accessibility and reach come before visual ambition: tap targets at least 44dp,
-text contrast at least 4.5:1, layouts that survive 320dp width and 200% text scale.
+Accessibility and reach come before visual ambition: tap targets at least 44dp on
+touch (`(pointer: coarse)`, smaller compact sizing is desktop/mouse-only), text
+contrast at least 4.5:1, layouts that survive 320dp width and 200% text scale.
 
 ## Definition of done
 

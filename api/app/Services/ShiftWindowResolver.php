@@ -54,8 +54,9 @@ final class ShiftWindowResolver
         }
 
         $anchorStartLocal = CarbonImmutable::parse($localDate, $timezone)->utc();
+        $anchorEndLocal = CarbonImmutable::parse($localDate, $timezone)->addDay()->utc();
 
-        $shifts = $this->shiftsActiveAt($employee, $anchorStartLocal)->get();
+        $shifts = $this->shiftsOverlappingDay($employee, $anchorStartLocal, $anchorEndLocal)->get();
 
         if ($shifts->isNotEmpty()) {
             return $shifts
@@ -103,7 +104,8 @@ final class ShiftWindowResolver
         }
 
         $anchorStartLocal = CarbonImmutable::parse($anchorDate, $timezone)->utc();
-        $shift = $this->shiftsActiveAt($employee, $anchorStartLocal)->first();
+        $anchorEndLocal = CarbonImmutable::parse($anchorDate, $timezone)->addDay()->utc();
+        $shift = $this->shiftsOverlappingDay($employee, $anchorStartLocal, $anchorEndLocal)->first();
 
         if ($shift !== null) {
             return $this->buildTemplateWindow($shift->template, $anchorDate, $timezone, ShiftWindowSource::EmployeeShift);
@@ -176,6 +178,28 @@ final class ShiftWindowResolver
             ->where('effective_from', '<=', $instant)
             ->where(function ($query) use ($instant) {
                 $query->whereNull('effective_to')->orWhere('effective_to', '>', $instant);
+            })
+            ->orderByDesc('effective_from')
+            ->with('template');
+    }
+
+    /**
+     * Day-level views (`resolveAllForDate`, `resolveGoverningWindowForDate`) need every
+     * assignment that was effective at any point during the day, not just at its
+     * midnight instant — a shift assigned mid-day (`effective_from` cannot be in the
+     * past, so any same-day assignment lands after midnight) is still relevant to that
+     * day's history even though `shiftsActiveAt(midnight)` would miss it. Point-in-time
+     * gating (`resolve()`, via `shiftsActiveAt`) is unaffected and still checks the
+     * exact instant.
+     *
+     * @return Builder<EmployeeShift>
+     */
+    private function shiftsOverlappingDay(User $employee, CarbonImmutable $startOfDay, CarbonImmutable $endOfDay)
+    {
+        return $employee->employeeShifts()
+            ->where('effective_from', '<', $endOfDay)
+            ->where(function ($query) use ($startOfDay) {
+                $query->whereNull('effective_to')->orWhere('effective_to', '>', $startOfDay);
             })
             ->orderByDesc('effective_from')
             ->with('template');

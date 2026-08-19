@@ -1,12 +1,7 @@
-<script setup lang="ts">
-const { init } = useTheme()
-onMounted(init)
-</script>
-
 <template>
   <div>
     <NuxtRouteAnnouncer />
-    <NuxtPage />
+    <NuxtPage :transition="{ name: 'page', mode: 'out-in' }" />
     <ConfirmDialog />
     <ToastContainer />
   </div>

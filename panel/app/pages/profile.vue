@@ -4,15 +4,6 @@ const toast = useToast()
 const saving = ref(false)
 const refreshing = ref(false)
 const error = ref<string | null>(null)
-
-async function refreshProfile() {
-  refreshing.value = true
-  try {
-    await refresh()
-  } finally {
-    refreshing.value = false
-  }
-}
 const form = reactive({
   name: '',
   email: '',
@@ -26,6 +17,15 @@ watchEffect(() => {
   form.name = user.value.name
   form.email = user.value.email
 })
+
+async function refreshProfile() {
+  refreshing.value = true
+  try {
+    await refresh()
+  } finally {
+    refreshing.value = false
+  }
+}
 
 async function submit() {
   saving.value = true
@@ -59,20 +59,20 @@ onMounted(refreshProfile)
 <template>
   <AppShell title="Admin profile">
     <template #actions>
-      <Button variant="secondary" :disabled="refreshing" @click="refreshProfile">
-        <Icon name="refresh" class="h-4 w-4" :spin="refreshing" />
+      <Button variant="secondary" size="sm" :disabled="refreshing" @click="refreshProfile">
+        <Icon name="refresh" class="h-3.5 w-3.5" :spin="refreshing" />
         Refresh
       </Button>
     </template>
 
-    <form class="card max-w-lg space-y-4 p-6" @submit.prevent="submit">
+    <form class="surface-flat max-w-lg space-y-4 p-5" @submit.prevent="submit">
       <InlineAlert v-if="error">{{ error }}</InlineAlert>
       <TextInput v-model="form.name" label="Name" required autocomplete="name" />
       <TextInput v-model="form.email" type="email" label="Email" required autocomplete="email" />
 
       <div class="border-t border-hairline pt-4">
-        <h2 class="mb-1 text-sm font-semibold text-ink">Change password</h2>
-        <p class="mb-4 text-xs text-ink-faint">Leave these fields empty to keep the current password.</p>
+        <h2 class="mb-1 text-[13px] font-semibold text-ink">Change password</h2>
+        <p class="mb-3.5 text-[11.5px] text-ink-faint">Leave these fields empty to keep the current password.</p>
         <div class="space-y-3">
           <TextInput v-model="form.current_password" type="password" label="Current password" autocomplete="current-password" />
           <TextInput v-model="form.password" type="password" label="New password" :minlength="10" autocomplete="new-password" />

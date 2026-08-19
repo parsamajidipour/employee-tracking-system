@@ -17,12 +17,7 @@ export default defineNuxtConfig({
       ],
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'color-scheme', content: 'light dark' },
-      ],
-      script: [
-        {
-          innerHTML: `try{var m=localStorage.getItem('theme-mode');if(m&&m!=='system')document.documentElement.dataset.theme=m}catch(e){}`,
-        },
+        { name: 'color-scheme', content: 'light' },
       ],
     },
   },

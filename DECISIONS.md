@@ -408,3 +408,40 @@ than looking like an unreviewed drift from the original design intent.
 - Contrast was re-checked against the new pairs (documented in
   `docs/DESIGN.md`'s Neutrals table) rather than assumed from the old ratios,
   since a saturation change can silently break a ratio that used to pass.
+
+## Design system: ground-up SaaS rebuild, superseding the flat/vivid palette above
+
+**Decision.** The flat/vivid Tailwind palette above was itself replaced, this
+time by an explicit request for a full ground-up redesign rather than another
+retint: "do not preserve the current visual design... think redesign, not
+polish." `docs/DESIGN.md` was rewritten wholesale (not edited section-by-section)
+to a hybrid light/dark system — light surfaces for tables/forms/cards, dark
+surfaces reserved for the live map, histories map, and nav rail — with an indigo
+(`#4F46E5`) accent, compact density, and every component under
+`panel/app/components/` rebuilt rather than restyled in place. The
+light/dark **toggle** from the previous decision (`useTheme()`) was removed
+entirely, not carried forward: this system isn't user-switchable light/dark, it's
+a fixed hybrid where each surface uses whichever fits what it's displaying.
+
+**Why.** Explicit product decision, made with full knowledge of what it discards
+— recorded here for the same reason as the entry above: so the next person to
+touch this doesn't read the previous decision's palette values as still current,
+and doesn't reintroduce a theme toggle assuming one is expected.
+
+**Consequences.**
+- Same Flutter gap as before, now wider: `app/lib/theme/app_theme.dart` was
+  already out of sync with the flat/vivid palette, and is now out of sync with
+  this hybrid system too. `docs/DESIGN.md` flags this at the top of the file
+  again. Two design-system generations behind, not one — worth doing the
+  Flutter pass before letting a third generation land only on the panel.
+- The live/histories map basemap situation actually improved instead of staying
+  a documented gap: dropping `mapId` from both `google.maps.Map` constructors
+  and passing an inline dark `styles` array (`utils/darkMapStyle.ts`) restored
+  client-side map tinting, which the flat/vivid entry above had marked as no
+  longer possible under a Cloud Console Map ID. The trade-off (no Map ID means
+  no Advanced Markers / cloud-managed styling) is now the live constraint —
+  see `docs/DESIGN.md` rule 8.
+- `ShiftPicker.vue` and `StatCard.vue`, introduced earlier in the same session
+  as scoped extractions, were kept as components and restyled rather than
+  removed — the extraction was structurally correct, only the visual layer
+  changed underneath them.

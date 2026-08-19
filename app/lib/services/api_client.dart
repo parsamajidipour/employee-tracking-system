@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'api_exception.dart';
 import 'auth_storage.dart';
 
+const _requestTimeout = Duration(seconds: 15);
+
 class ApiClient {
   final String baseUrl;
   final AuthStorage storage;
@@ -54,11 +56,11 @@ class ApiClient {
     }
 
     final uri = Uri.parse('$baseUrl$path');
-    final response = switch (method) {
-      'GET' => await http.get(uri, headers: headers),
-      'POST' => await http.post(uri, headers: headers, body: body == null ? null : jsonEncode(body)),
+    final response = await switch (method) {
+      'GET' => http.get(uri, headers: headers),
+      'POST' => http.post(uri, headers: headers, body: body == null ? null : jsonEncode(body)),
       _ => throw UnsupportedError('Unsupported method $method'),
-    };
+    }.timeout(_requestTimeout);
 
     if (response.statusCode == 401 && authenticated) {
       await onUnauthorized();

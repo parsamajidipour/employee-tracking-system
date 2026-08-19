@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shiftColor } from '~/utils/mapMarker'
+import { DARK_MAP_STYLE } from '~/utils/darkMapStyle'
 import { formatDistance, formatSpeed } from '~/utils/formatDistance'
 
 interface TrailPoint {
@@ -29,7 +30,7 @@ interface Trail {
   points: TrailPoint[]
 }
 
-const UNASSIGNED_COLOR = '#94a3b8'
+const UNASSIGNED_COLOR = '#8b8b98'
 
 function todayLocalDate(): string {
   const now = new Date()
@@ -42,7 +43,7 @@ const employeeId = Number(route.params.id)
 const { data: employeesData, load: loadEmployees } = useEmployees()
 const employee = computed(() => employeesData.value?.find((item) => item.id === employeeId) ?? null)
 
-const { load: loadGoogleMaps, mapId, apiKeyConfigured } = useGoogleMaps()
+const { load: loadGoogleMaps, apiKeyConfigured } = useGoogleMaps()
 
 const selectedDate = ref(todayLocalDate())
 const selectedShift = ref<'all' | number>('all')
@@ -139,7 +140,7 @@ function renderTrail() {
       path: groupPoints.map((p) => ({ lat: p.lat, lng: p.lng })),
       strokeColor: color,
       strokeOpacity: 0.9,
-      strokeWeight: 4,
+      strokeWeight: 3.5,
       map,
     })
     attachLineHoverTooltip(line, groupPoints)
@@ -154,12 +155,12 @@ function renderTrail() {
       icon: {
         path: mapsApi.maps.SymbolPath.CIRCLE,
         scale: 9,
-        fillColor: '#059669',
+        fillColor: '#22c55e',
         fillOpacity: 1,
-        strokeColor: '#fff',
+        strokeColor: '#0b0b10',
         strokeWeight: 2.5,
       },
-      label: { text: 'S', color: '#fff', fontSize: '11px', fontWeight: '700' },
+      label: { text: 'S', color: '#0b0b10', fontSize: '11px', fontWeight: '800' },
       zIndex: 7,
     })
     attachHoverTooltip(start, `<div class="text-xs font-medium">Start · ${timeLabel(first.recorded_at)}</div>`)
@@ -171,12 +172,12 @@ function renderTrail() {
       icon: {
         path: mapsApi.maps.SymbolPath.CIRCLE,
         scale: 9,
-        fillColor: '#dc2626',
+        fillColor: '#f43f5e',
         fillOpacity: 1,
-        strokeColor: '#fff',
+        strokeColor: '#0b0b10',
         strokeWeight: 2.5,
       },
-      label: { text: 'E', color: '#fff', fontSize: '11px', fontWeight: '700' },
+      label: { text: 'E', color: '#0b0b10', fontSize: '11px', fontWeight: '800' },
       zIndex: 8,
     })
     attachHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
@@ -235,7 +236,7 @@ onMounted(async () => {
     map = new mapsApi.maps.Map(mapContainer.value!, {
       center: { lat: 23.6144, lng: 58.5922 },
       zoom: 10,
-      mapId,
+      styles: DARK_MAP_STYLE,
       disableDefaultUI: true,
       zoomControl: true,
       clickableIcons: false,
@@ -254,24 +255,18 @@ watch(selectedDate, loadTrail)
 <template>
   <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift" :back-to="`/employees/${employeeId}`">
     <template #actions>
-      <Button variant="secondary" :disabled="trailLoading" @click="loadTrail">
-        <Icon name="refresh" class="h-4 w-4" :spin="trailLoading" />
+      <Button variant="secondary" size="sm" :disabled="trailLoading" @click="loadTrail">
+        <Icon name="refresh" class="h-3.5 w-3.5" :spin="trailLoading" />
         Refresh
       </Button>
-      <Button variant="secondary" :to="`/employees/${employeeId}`">Employee shifts</Button>
+      <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`">Employee shifts</Button>
     </template>
     <InlineAlert v-if="error" class="mb-4">{{ error }}</InlineAlert>
 
-    <form class="card mb-4 flex flex-wrap items-end gap-4 p-4" @submit.prevent>
+    <form class="surface-flat mb-4 flex flex-wrap items-end gap-4 p-3.5" @submit.prevent>
       <div>
-        <label for="history-date" class="mb-1 block text-xs font-medium text-ink-soft">Date</label>
-        <input
-          id="history-date"
-          v-model="selectedDate"
-          type="date"
-          :max="todayLocalDate()"
-          class="field w-44"
-        />
+        <label for="history-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Date</label>
+        <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-44" />
       </div>
       <Select v-model="selectedShift" label="Shift" class="w-56">
         <option value="all">All shifts</option>
@@ -279,10 +274,10 @@ watch(selectedDate, loadTrail)
           {{ shift.label }}
         </option>
       </Select>
-      <span v-if="trailLoading" class="pb-2.5 text-xs text-ink-faint">Loading…</span>
+      <span v-if="trailLoading" class="pb-2.5 text-[12px] text-ink-faint">Loading…</span>
     </form>
 
-    <div v-if="trail && trail.points.length > 0" class="mb-4 grid gap-3 sm:grid-cols-3">
+    <div v-if="trail && trail.points.length > 0" class="mb-4 grid gap-2.5 sm:grid-cols-3">
       <StatCard icon="route" label="Distance (selected)" :value="formatDistance(selectedDistanceM)" />
       <StatCard icon="map-pin" label="Points recorded" :value="String(trail.points_count)" />
       <StatCard icon="speed" label="Average speed" :value="formatSpeed(trail.average_speed_mps)" />
@@ -292,28 +287,28 @@ watch(selectedDate, loadTrail)
       <li v-for="shift in trail.shifts" :key="shift.index">
         <button
           type="button"
-          class="flex items-center gap-2 rounded-control border px-3 py-2 text-sm transition-colors"
-          :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary'"
+          class="flex items-center gap-2 rounded-md border px-3 py-1.5 text-[12.5px] transition-colors duration-fast"
+          :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary/60'"
           @click="selectedShift = selectedShift === shift.index ? 'all' : shift.index"
         >
-          <span class="h-2.5 w-2.5 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
+          <span class="h-2 w-2 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
           <span class="font-medium">{{ shift.label }}</span>
           <span class="tabular text-ink-faint">{{ formatDistance(shift.distance_m) }}</span>
         </button>
       </li>
     </ul>
 
-    <section class="relative h-[60vh] min-h-[420px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card">
-      <div ref="mapContainer" class="!absolute !inset-0 bg-surface-muted" />
+    <section class="surface-dark relative h-[60vh] min-h-[420px] overflow-hidden">
+      <div ref="mapContainer" class="!absolute !inset-0" />
       <div v-if="mapError" class="absolute inset-x-4 top-4 z-10">
         <InlineAlert>{{ mapError }}</InlineAlert>
       </div>
-      <p
+      <div
         v-if="!trailLoading && trail && trail.points.length === 0"
-        class="absolute inset-x-4 top-4 z-10 rounded-control border border-hairline bg-surface px-4 py-2.5 text-sm text-ink-soft shadow-raised"
+        class="surface-dark absolute inset-x-4 top-4 z-10 px-4 py-3"
       >
-        No tracked activity for this day.
-      </p>
+        <EmptyState icon="route" message="No tracked activity for this day." class="[&_p]:text-ink-dark-soft [&_span]:bg-surface-dark-hover [&_span]:text-ink-dark-soft" />
+      </div>
     </section>
   </AppShell>
 </template>

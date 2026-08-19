@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { getEmployeeMarkerOverlayCtor, type EmployeeMarkerOverlayInstance } from '~/utils/mapMarker'
+import { DARK_MAP_STYLE } from '~/utils/darkMapStyle'
 
 const { positions, now, stalenessBucket } = usePositions()
-const { load: loadGoogleMaps, mapId, apiKeyConfigured } = useGoogleMaps()
+const { load: loadGoogleMaps, apiKeyConfigured } = useGoogleMaps()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 const mapError = ref<string | null>(null)
@@ -11,17 +12,20 @@ let MarkerOverlay: ReturnType<typeof getEmployeeMarkerOverlayCtor> | undefined
 const markers = new Map<number, EmployeeMarkerOverlayInstance>()
 
 const selectedEmployeeId = ref<number | null>(null)
+const panelOpenMobile = ref(false)
 
 const selectedPosition = computed(
   () => positions.value.find((position) => position.employee_id === selectedEmployeeId.value) ?? null,
 )
 
+const onlineCount = computed(() => positions.value.filter((p) => stalenessBucket(p.recorded_at) === 'online').length)
+
 function offlineColor(): string {
-  return getComputedStyle(document.documentElement).getPropertyValue('--warning').trim() || '#f59e0b'
+  return getComputedStyle(document.documentElement).getPropertyValue('--warning').trim() || '#d97706'
 }
 
 function employeeColor(employeeId: number): string {
-  return `hsl(${(employeeId * 137.508) % 360} 78% 46%)`
+  return `hsl(${(employeeId * 137.508) % 360} 78% 58%)`
 }
 
 function markerColor(employeeId: number, recordedAt: string): string {
@@ -40,6 +44,7 @@ function updateSelectionVisuals() {
 
 function selectEmployee(employeeId: number) {
   selectedEmployeeId.value = employeeId
+  panelOpenMobile.value = true
   updateSelectionVisuals()
 }
 
@@ -107,7 +112,7 @@ onMounted(async () => {
     map = new g.maps.Map(mapContainer.value!, {
       center: { lat: 23.6144, lng: 58.5922 },
       zoom: 11,
-      mapId,
+      styles: DARK_MAP_STYLE,
       disableDefaultUI: true,
       zoomControl: true,
       clickableIcons: false,
@@ -143,14 +148,27 @@ onUnmounted(() => {
 
 <template>
   <AppShell title="Live map" full-bleed>
-    <div ref="mapContainer" class="!absolute !inset-0 bg-surface-muted"></div>
+    <div ref="mapContainer" class="!absolute !inset-0 bg-surface-dark"></div>
 
     <div v-if="mapError" class="absolute left-4 right-4 top-4 z-10 sm:right-auto sm:w-[min(400px,calc(100%-2rem))]">
       <InlineAlert>{{ mapError }}</InlineAlert>
     </div>
 
-    <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(340px,calc(100%-2rem))] flex-col overflow-hidden">
-      <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline p-4">
+    <div class="surface-dark absolute left-4 top-4 z-10 flex items-center gap-2 px-3 py-2 text-[12.5px]">
+      <span class="relative flex h-2 w-2">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-success opacity-75"></span>
+        <span class="relative inline-flex h-2 w-2 rounded-full bg-state-success"></span>
+      </span>
+      <span class="font-semibold text-ink-dark">{{ onlineCount }}</span>
+      <span class="text-ink-dark-soft">online now</span>
+    </div>
+
+    <aside
+      class="surface-dark absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(340px,calc(100%-2rem))] flex-col overflow-hidden
+             transition-transform duration-base ease-soft"
+      :class="panelOpenMobile ? '' : 'max-sm:translate-x-[calc(100%+1rem)]'"
+    >
+      <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline-dark p-4">
         <div class="flex items-start justify-between gap-2">
           <div class="flex min-w-0 items-center gap-3">
             <span
@@ -159,21 +177,21 @@ onUnmounted(() => {
             >
               {{ initial(selectedPosition?.name ?? '?') }}
             </span>
-            <h2 class="truncate font-semibold">{{ selectedPosition?.name ?? 'Employee' }}</h2>
+            <h2 class="truncate font-semibold text-ink-dark">{{ selectedPosition?.name ?? 'Employee' }}</h2>
           </div>
           <button
             type="button"
-            class="-mr-1 -mt-1 grid h-8 w-8 flex-none place-items-center rounded-small text-ink-faint transition-colors hover:bg-surface-muted hover:text-ink"
+            class="-mr-1 -mt-1 grid h-8 w-8 flex-none place-items-center rounded-sm text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark"
             aria-label="Close"
-            @click="closeDetail"
+            @click="closeDetail(); panelOpenMobile = false"
           >
             <Icon name="close" class="h-4 w-4" />
           </button>
         </div>
 
-        <dl class="mt-3.5 space-y-2 text-sm">
+        <dl class="mt-3.5 space-y-2 text-[13px]">
           <div class="flex items-center justify-between gap-3">
-            <dt class="muted">Status</dt>
+            <dt class="text-ink-dark-soft">Status</dt>
             <dd>
               <Badge :variant="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'success' : 'warning'">
                 {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
@@ -181,8 +199,8 @@ onUnmounted(() => {
             </dd>
           </div>
           <div v-if="selectedPosition" data-testid="detail-last-update" class="flex items-baseline justify-between gap-3">
-            <dt class="muted">Last update</dt>
-            <dd class="tabular">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
+            <dt class="text-ink-dark-soft">Last update</dt>
+            <dd class="tabular text-ink-dark">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
           </div>
         </dl>
 
@@ -190,7 +208,7 @@ onUnmounted(() => {
           v-if="selectedPosition"
           size="sm"
           variant="secondary"
-          class="mt-3.5 w-full justify-center"
+          class="mt-3.5 w-full justify-center !border-hairline-dark !bg-surface-dark-hover !text-ink-dark hover:!bg-surface-dark-hover/70"
           :to="`/employees/${selectedPosition.employee_id}/histories`"
         >
           View histories
@@ -198,23 +216,21 @@ onUnmounted(() => {
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col">
-        <h2 class="flex-none px-4 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-[0.8px] text-ink-soft">
+        <h2 class="overline flex-none px-4 pb-2 pt-4 !text-ink-dark-soft">
           In window ({{ positions.length }})
         </h2>
-        <p v-if="positions.length === 0" class="px-4 pb-4 text-sm text-ink-faint">
-          No employees currently in window.
-        </p>
+        <EmptyState v-if="positions.length === 0" icon="map-pin" message="No employees currently in window." class="px-4 pb-4 [&_p]:text-ink-dark-soft [&_span]:bg-surface-dark-hover [&_span]:text-ink-dark-soft" />
         <ul v-else class="min-h-0 flex-1 overflow-y-auto pb-2">
           <li v-for="position in positions" :key="position.employee_id">
             <button
               type="button"
               :data-employee-id="position.employee_id"
-              class="flex min-h-11 w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface-muted"
-              :class="{ 'bg-surface-muted font-medium': selectedEmployeeId === position.employee_id }"
+              class="flex h-9 w-full items-center gap-2.5 px-4 text-left text-[13px] text-ink-dark-soft transition-colors hover:bg-surface-dark-hover"
+              :class="{ 'bg-surface-dark-hover font-medium !text-ink-dark': selectedEmployeeId === position.employee_id }"
               @click="focusEmployee(position.employee_id)"
             >
               <span
-                class="h-2.5 w-2.5 flex-none rounded-full"
+                class="h-2 w-2 flex-none rounded-full"
                 :style="{ backgroundColor: markerColor(position.employee_id, position.recorded_at) }"
               ></span>
               <span class="flex-1 truncate">{{ position.name }}</span>

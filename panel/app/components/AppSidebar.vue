@@ -2,21 +2,7 @@
 const route = useRoute()
 const { user, refresh } = useAuthUser()
 const { isOpen, close } = useSidebar()
-const { mode, setMode } = useTheme()
-const systemPrefersDark = ref(false)
-const isDark = computed(() => mode.value === 'dark' || (mode.value === 'system' && systemPrefersDark.value))
-
-function toggleTheme() {
-  setMode(isDark.value ? 'light' : 'dark')
-}
-
-onMounted(() => {
-  const query = window.matchMedia('(prefers-color-scheme: dark)')
-  systemPrefersDark.value = query.matches
-  query.addEventListener('change', (event) => {
-    systemPrefersDark.value = event.matches
-  })
-})
+const railExpanded = useState('rail-expanded', () => true)
 
 const links = [
   { to: '/map', label: 'Live map', icon: 'map-pin' },
@@ -24,13 +10,9 @@ const links = [
   { to: '/employees', label: 'Employees', icon: 'users' },
 ]
 
-const adminLinks = [
-  { to: '/app-releases', label: 'App releases', icon: 'download' },
-]
+const adminLinks = [{ to: '/app-releases', label: 'App releases', icon: 'download' }]
 
-const trailingLinks = [
-  { to: '/profile', label: 'Admin profile', icon: 'user-circle' },
-]
+const trailingLinks = [{ to: '/profile', label: 'Admin profile', icon: 'user-circle' }]
 
 const visibleLinks = computed(() => [
   ...links,
@@ -60,69 +42,71 @@ async function signOut() {
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-40 bg-ink/40 transition-opacity duration-150 ease-soft lg:hidden"
+      class="fixed inset-0 z-40 bg-ink/50 transition-opacity duration-base ease-soft lg:hidden"
       @click="close"
     />
   </Teleport>
 
   <aside
-    class="fixed inset-y-0 left-0 z-50 flex w-full flex-none -translate-x-full flex-col border-r
-           border-hairline bg-surface transition-transform duration-[220ms] ease-soft
-           sm:w-80 lg:static lg:z-auto lg:w-64 lg:translate-x-0"
-    :class="isOpen ? 'translate-x-0 shadow-raised' : ''"
+    class="fixed inset-y-0 left-0 z-50 flex w-full flex-none -translate-x-full flex-col bg-surface-dark text-ink-dark
+           transition-transform duration-base ease-soft
+           sm:w-72 lg:static lg:z-auto lg:translate-x-0"
+    :class="[isOpen ? 'translate-x-0 shadow-dark-key' : '', railExpanded ? 'lg:w-56' : 'lg:w-[68px]']"
+    style="transition-property: transform, width"
   >
-    <div class="flex h-16 flex-none items-center justify-between gap-2.5 px-5">
-      <div class="flex items-center gap-2.5">
-        <img src="/logo.png" alt="" class="h-8 w-8" />
-        <span class="text-[15px] font-bold tracking-tight">Smart Inspection</span>
-      </div>
+    <div class="flex h-14 flex-none items-center gap-2.5 px-4">
+      <span class="grid h-7 w-7 flex-none place-items-center rounded-sm bg-primary text-white">
+        <Icon name="map-pin" class="h-4 w-4" />
+      </span>
+      <span v-if="railExpanded" class="truncate text-[13.5px] font-semibold tracking-tight">Smart Inspection</span>
       <button
         type="button"
-        class="grid h-9 w-9 place-items-center rounded-small text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink lg:hidden"
+        class="ml-auto grid h-7 w-7 flex-none place-items-center rounded-sm text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:hidden"
         aria-label="Close menu"
         @click="close"
       >
-        <Icon name="close" class="h-5 w-5" />
+        <Icon name="close" class="h-4 w-4" />
       </button>
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+    <nav class="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-2">
       <NuxtLink
         v-for="link in visibleLinks"
         :key="link.to"
         :to="link.to"
-        class="flex min-h-11 items-center gap-3 rounded-control px-3 py-2.5 text-sm font-semibold transition-colors duration-150 ease-soft"
+        :title="railExpanded ? undefined : link.label"
+        class="flex h-9 items-center gap-3 rounded-sm px-2.5 text-[13px] font-medium transition-colors duration-fast ease-soft"
         :class="
           route.path.startsWith(link.to)
-            ? 'bg-primary-soft text-primary-strong'
-            : 'text-ink-soft hover:bg-surface-muted hover:text-ink'
+            ? 'bg-primary/15 text-white'
+            : 'text-ink-dark-soft hover:bg-surface-dark-hover hover:text-ink-dark'
         "
       >
-        <Icon :name="link.icon" class="h-5 w-5 flex-none" />
-        {{ link.label }}
+        <Icon :name="link.icon" class="h-[18px] w-[18px] flex-none" />
+        <span v-if="railExpanded" class="truncate">{{ link.label }}</span>
       </NuxtLink>
     </nav>
 
-    <div class="flex-none border-t border-hairline px-5 py-4">
-      <div class="flex items-center justify-between gap-2">
-        <div class="min-w-0">
-          <p class="truncate text-sm font-semibold">{{ user?.name ?? 'Signed in' }}</p>
-          <button
-            type="button"
-            class="mt-0.5 text-xs font-medium text-ink-soft transition-colors duration-150 hover:text-state-danger"
-            @click="signOut"
-          >
+    <div class="flex-none space-y-1 border-t border-hairline-dark px-2.5 py-2.5">
+      <button
+        type="button"
+        class="hidden h-9 w-full items-center gap-3 rounded-sm px-2.5 text-[13px] font-medium text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:flex"
+        @click="railExpanded = !railExpanded"
+      >
+        <Icon name="forward" class="h-[18px] w-[18px] flex-none transition-transform duration-base" :class="railExpanded ? 'rotate-180' : ''" />
+        <span v-if="railExpanded" class="truncate">Collapse</span>
+      </button>
+
+      <div class="flex items-center gap-2.5 px-2.5 py-1.5">
+        <span class="grid h-7 w-7 flex-none place-items-center rounded-full bg-surface-dark-hover text-[11px] font-bold text-ink-dark">
+          {{ (user?.name ?? '?').charAt(0).toUpperCase() }}
+        </span>
+        <div v-if="railExpanded" class="min-w-0">
+          <p class="truncate text-[12.5px] font-semibold text-ink-dark">{{ user?.name ?? 'Signed in' }}</p>
+          <button type="button" class="text-[11px] font-medium text-ink-dark-soft transition-colors hover:text-state-danger" @click="signOut">
             Sign out
           </button>
         </div>
-        <button
-          type="button"
-          class="grid h-9 w-9 flex-none place-items-center rounded-small text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
-          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-          @click="toggleTheme"
-        >
-          <Icon :name="isDark ? 'sun' : 'moon'" class="h-5 w-5" />
-        </button>
       </div>
     </div>
   </aside>

@@ -3,98 +3,67 @@
 @tailwind utilities;
 
 :root {
-  --primary: #2563eb;
-  --primary-strong: #1d4ed8;
-  --primary-soft: #dbeafe;
+  --primary: #4f46e5;
+  --primary-strong: #4338ca;
+  --primary-soft: #eef0ff;
 
-  --background: #f8fafc;
+  --background: #f7f7fa;
   --surface: #ffffff;
-  --surface-muted: #f1f5f9;
-  --border: #e2e8f0;
+  --surface-sunken: #f0f0f4;
+  --border: #e4e4ea;
 
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
+  --text-primary: #0b0b12;
+  --text-secondary: #63636f;
+  --text-tertiary: #9a9aa6;
 
-  --success: #059669;
-  --warning: #f59e0b;
-  --danger: #dc2626;
-  --neutral: #94a3b8;
+  --success: #16a34a;
+  --success-soft: #e8f8ee;
+  --warning: #d97706;
+  --warning-soft: #fdf3e3;
+  --danger: #e11d48;
+  --danger-soft: #fde8ed;
+  --neutral: #9a9aa6;
+  --neutral-soft: #f0f0f4;
 
-  --radius-card: 24px;
-  --radius-control: 16px;
-  --radius-small: 12px;
+  --surface-dark: #0b0b10;
+  --surface-dark-raised: #16161d;
+  --surface-dark-hover: #1e1e27;
+  --border-dark: #26262f;
+  --text-dark-primary: #f5f5f7;
+  --text-dark-secondary: #9494a3;
+  --primary-soft-dark: #201c42;
 
-  --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.06);
-  --shadow-raised: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
 
-  --motion-fast: 150ms;
-  --motion-base: 220ms;
-  --motion-slow: 320ms;
-  --ease: cubic-bezier(0.33, 1, 0.68, 1);
+  --shadow-ambient: 0 1px 2px rgba(16, 16, 20, 0.04);
+  --shadow-key: 0 8px 20px -6px rgba(16, 16, 20, 0.12);
+  --shadow-raised: 0 20px 44px -12px rgba(16, 16, 20, 0.22);
+  --shadow-dark-key: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --control-h: 36px;
+  --row-h: 38px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --primary: #60a5fa;
-    --primary-strong: #93c5fd;
-    --primary-soft: #17305c;
-
-    --background: #020617;
-    --surface: #0f172a;
-    --surface-muted: #1e293b;
-    --border: #334155;
-
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-tertiary: #64748b;
-
-    --success: #34d399;
-    --warning: #fbbf24;
-    --danger: #f87171;
-    --neutral: #64748b;
-
-    --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
-    --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.45);
+@media (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --row-h: 48px;
   }
-}
-
-:root[data-theme='dark'] {
-  --primary: #60a5fa;
-  --primary-strong: #93c5fd;
-  --primary-soft: #17305c;
-
-  --background: #020617;
-  --surface: #0f172a;
-  --surface-muted: #1e293b;
-  --border: #334155;
-
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #f87171;
-  --neutral: #64748b;
-
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    color-scheme: light dark;
-  }
-
-  :root[data-theme='light'] {
     color-scheme: light;
-  }
-
-  :root[data-theme='dark'] {
-    color-scheme: dark;
   }
 
   body {
@@ -102,26 +71,29 @@
     color: var(--text-primary);
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
       'Helvetica Neue', Arial, sans-serif;
-    font-size: 15px;
-    line-height: 1.4;
-    transition: background-color var(--motion-base) var(--ease), color var(--motion-base) var(--ease);
+    font-size: 14px;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
   }
 
   h1 {
-    font-size: 22px;
-    line-height: 28px;
-    font-weight: 700;
+    font-size: 20px;
+    line-height: 26px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
   }
 
   h2 {
-    font-size: 17px;
-    line-height: 22px;
+    font-size: 15px;
+    line-height: 20px;
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   :focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
   ::selection {
@@ -131,26 +103,33 @@
 }
 
 @layer components {
-  .card {
+  .surface {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-ambient), var(--shadow-key);
   }
 
-  .floating {
+  .surface-flat {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-control);
-    box-shadow: var(--shadow-raised);
+    border-radius: var(--radius-md);
+  }
+
+  .surface-dark {
+    background: var(--surface-dark-raised);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-dark-key);
+    color: var(--text-dark-primary);
   }
 
   .overline {
-    font-size: 11px;
+    font-size: 10.5px;
     line-height: 14px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
+    font-weight: 650;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--primary-strong);
+    color: var(--text-tertiary);
   }
 
   .muted {
@@ -164,28 +143,31 @@
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 13px;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
     font-weight: 600;
-    line-height: 17px;
+    line-height: 16px;
   }
 
   .field {
     width: 100%;
-    background: var(--surface-muted);
+    height: var(--control-h);
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-control);
-    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    padding: 0 12px;
     color: var(--text-primary);
-    transition: border-color var(--motion-fast) var(--ease);
+    font-size: 13.5px;
+    box-shadow: var(--shadow-ambient);
+    transition: border-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease);
   }
 
   .field:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
   }
 
   .field::placeholder {
@@ -196,55 +178,69 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 0 20px;
-    border-radius: var(--radius-control);
+    gap: 6px;
+    height: var(--control-h);
+    padding: 0 14px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
     font-weight: 600;
-    transition: background-color var(--motion-fast) var(--ease),
-      color var(--motion-fast) var(--ease),
-      border-color var(--motion-fast) var(--ease);
+    letter-spacing: -0.005em;
+    transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
   }
 
-  .btn-primary {
-    background: var(--primary);
-    color: #ffffff;
+  .btn:active {
+    transform: scale(0.97);
   }
 
-  .btn-primary:hover {
-    background: var(--primary-strong);
-  }
-
-  .btn-primary:disabled {
-    background: var(--border);
-    color: var(--text-tertiary);
-    cursor: not-allowed;
-  }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--primary-strong);
-    border: 1px solid var(--border);
-  }
-
-  .btn-ghost:hover {
-    background: var(--surface-muted);
+  .row-h {
+    height: var(--row-h);
   }
 
   .enter {
     animation: enter var(--motion-base) var(--ease) both;
+  }
+
+  .scale-in {
+    animation: scale-in var(--motion-base) var(--ease) both;
   }
 }
 
 @keyframes enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
     transform: none;
   }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter-active,
+.page-leave-active {
+  transition: opacity var(--motion-base) var(--ease), transform var(--motion-base) var(--ease);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 @media (prefers-reduced-motion: reduce) {

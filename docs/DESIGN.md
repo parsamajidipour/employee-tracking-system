@@ -1,221 +1,193 @@
 # Design system
 
-One system, two surfaces: the Flutter app (`app/`) and the Nuxt panel (`panel/`).
-Both read the tokens below. A colour, radius, or shadow that is not in this file
-does not belong in a widget or a component.
+**Panel-only as of this rewrite.** The Flutter app (`app/`) still runs the flat/vivid
+tokens from the previous panel system and has not been touched — see
+`app/lib/theme/app_theme.dart`. The gap this creates (two visibly different
+products) is the same gap the previous version of this file flagged about itself;
+bringing the app in line with the system below is unstarted follow-up work, not
+an oversight. Everything in this file describes `panel/` only until that happens.
 
-Flat and vivid, not soft-and-calm: solid fills, no gradients, no blur, real
-saturation on the primary accent and on every status colour — energetic rather
-than muted, while still passing contrast. Wide radii and generous whitespace are
-kept from the previous system; the low-saturation teal-on-near-white palette is
-not — see `DECISIONS.md`'s "Design system: flat, vivid Tailwind palette" entry
-for why and when this changed.
+A colour, radius, or shadow that is not in this file does not belong in a
+component. Implementation: `panel/app/assets/css/tokens.css` (CSS custom
+properties) and `panel/tailwind.config.ts` (the Tailwind names that map to them).
 
-Implementations:
+This is a from-zero system, not a retint of the previous one — see
+`DECISIONS.md`'s "Design system: ground-up SaaS rebuild" entry for why and when
+this changed, and what it replaced.
 
-- `app/lib/theme/app_theme.dart` — `AppColors`, `AppSpacing`, `AppRadii`,
-  `AppShadows`, `AppTheme.light` / `AppTheme.dark`. **Not yet updated to this
-  palette** — the values below currently apply to `panel/` only. The app still
-  runs the previous teal tokens until someone does the Flutter pass; until then
-  the two surfaces are visibly different products, which rule 6 below says not
-  to do. Flagged here instead of silently left unmentioned.
-- `panel/app/assets/css/tokens.css` — the tokens as CSS custom properties,
-  values sourced directly from Tailwind's default palette (`slate` for
-  neutrals, `blue` for the accent, `emerald`/`amber`/`red` for status) so any
-  Tailwind utility class used ad hoc still lines up with the token colours.
+## 1. Direction
 
-## 1. Colour
+Hybrid, not uniformly light or dark: **light surfaces for data** — tables, forms,
+cards, lists — because that is what a compact, information-dense screen needs to
+stay legible for long stretches. **Dark surfaces for operational context** — the
+live map, the histories route map, and the left navigation rail — because those
+are monitoring surfaces, not reading surfaces, and a dark map reads location data
+(dots, routes, glow) far better than a light basemap competing for the same
+attention. This is a deliberate split, not two half-finished themes: nothing
+toggles between them, each surface just uses whichever fits what it's showing.
 
-`primary` (blue) is the only brand accent — still true, still: never introduce
-a second brand hue in UI chrome to make something stand out, use weight, size,
-or whitespace instead. The one deliberate exception is data visualisation (the
-per-shift route colours on the histories map), where distinct hues encode
-distinct data series, not brand.
+Density is compact: more information per screen (tables, stat rows, lists) aimed
+at someone monitoring 50-150 employees, not a handful. Compact does not mean
+cramped — see the touch-target rule in §7.
+
+## 2. Colour
 
 ### Brand
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `primary` | `#2563EB` (blue-600) | `#60A5FA` (blue-400) | Primary actions, active nav, selected state |
-| `primaryStrong` | `#1D4ED8` (blue-700) | `#93C5FD` (blue-300) | Pressed state, text on soft primary |
-| `primarySoft` | `#DBEAFE` (blue-100) | `#17305C` | Chip and badge backgrounds, icon tiles |
+| Token | Value | Use |
+|---|---|---|
+| `primary` | `#4F46E5` | Primary actions, active nav, selected state, links |
+| `primaryStrong` | `#4338CA` | Pressed/hover state on primary, text on soft primary |
+| `primarySoft` | `#EEF0FF` | Chip and badge backgrounds, icon tiles, selected-row tint |
+| `primarySoftDark` | `#201C42` | The above, on a dark surface (map panels) |
 
-No gradient tokens. Fills are flat solid colour everywhere, including the logo
-mark, chart bars, and buttons — this is the "flat" half of "flat and vivid."
+`primary` (indigo) is the only brand accent. Never introduce a second brand hue in
+UI chrome to make something stand out — use weight, size, or whitespace instead.
+The one deliberate exception is data visualisation: the per-shift route colours on
+the histories map and the per-employee marker colours on the live map, where
+distinct hues encode distinct data series, not brand. Those come from
+`utils/mapMarker.ts`'s `employeeColor()`/`shiftColor()` hashing, not from a design
+token, by design — they need more distinct values than a token file should hold.
 
-### Neutrals
+### Light surface (data, forms, tables)
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `background` | `#F8FAFC` (slate-50) | `#020617` (slate-950) | Screen behind the cards |
-| `surface` | `#FFFFFF` | `#0F172A` (slate-900) | Cards, sheets, nav bar |
-| `surfaceMuted` | `#F1F5F9` (slate-100) | `#1E293B` (slate-800) | Inset rows, disabled fields |
-| `border` | `#E2E8F0` (slate-200) | `#334155` (slate-700) | Hairlines, input outlines |
-| `textPrimary` | `#0F172A` (slate-900) | `#F8FAFC` (slate-50) | Headings, values |
-| `textSecondary` | `#64748B` (slate-500) | `#94A3B8` (slate-400) | Labels, captions, axis text |
-| `textTertiary` | `#94A3B8` (slate-400) | `#64748B` (slate-500) | Placeholder, disabled |
+| Token | Value | Use |
+|---|---|---|
+| `background` | `#F7F7FA` | Screen behind everything |
+| `surface` | `#FFFFFF` | Cards, tables, modals — separated by shadow, not border |
+| `surfaceSunken` | `#F0F0F4` | Table header, inset rows, disabled fields, skeletons |
+| `border` | `#E4E4EA` | Hairlines — used sparingly; shadow does most separation |
+| `textPrimary` | `#0B0B12` | Headings, values |
+| `textSecondary` | `#63636F` | Labels, captions |
+| `textTertiary` | `#9A9AA6` | Placeholder, disabled, non-essential |
 
-Never pure `#000` on pure `#FFF`. `textPrimary` on `surface` is 18.7:1 in light
-mode and 17.9:1 in dark, and `textSecondary` on `surface` is 4.6:1 in light /
-7.7:1 in dark — all pass WCAG AA (body text needs 4.5:1). `textTertiary` is for
-non-essential text only; it does not reliably pass AA and must never carry
-meaning alone.
+### Dark surface (live map, histories map, nav rail)
+
+| Token | Value | Use |
+|---|---|---|
+| `surfaceDark` | `#0B0B10` | Map canvas background |
+| `surfaceDarkRaised` | `#16161D` | Floating panels, nav rail, marker labels |
+| `surfaceDarkHover` | `#1E1E27` | Hover/active row on a dark surface |
+| `borderDark` | `#26262F` | Hairlines on dark surfaces |
+| `textDarkPrimary` | `#F5F5F7` | Headings/values on dark |
+| `textDarkSecondary` | `#9494A3` | Labels/captions on dark |
 
 ### Status
 
-| Token | Light | Dark | Meaning |
+| Token | Value | Soft (badge bg) | Meaning |
 |---|---|---|---|
-| `success` | `#059669` (emerald-600) | `#34D399` (emerald-400) | Tracking active, in window, synced |
-| `warning` | `#F59E0B` (amber-500) | `#FBBF24` (amber-400) | Queue backing up, permission partial |
-| `danger` | `#DC2626` (red-600) | `#F87171` (red-400) | Denied permission, upload failing, revoked |
-| `neutral` | `#94A3B8` (slate-400) | `#64748B` (slate-500) | Off shift, idle, nothing to report |
+| `success` | `#16A34A` | `#E8F8EE` | Tracking active, in window, synced |
+| `warning` | `#D97706` | `#FDF3E3` | Queue backing up, permission partial, stale |
+| `danger` | `#E11D48` | `#FDE8ED` | Denied permission, upload failing, revoked |
+| `neutral` | `#9A9AA6` | `#F0F0F4` | Off shift, idle, nothing to report |
 
-Status colour never appears alone. It is always paired with an icon and a word,
-so the meaning survives colour blindness and greyscale.
+Status colour never appears alone — always paired with an icon and a word, so the
+meaning survives colour blindness and greyscale (`Badge.vue`, `InlineAlert.vue`).
 
-### Light / dark mode
+## 3. Type
 
-The panel has a real toggle (`useTheme()` in `panel/app/composables/useTheme.ts`),
-not just OS-driven colours: `system` (default, follows `prefers-color-scheme`),
-`light`, or `dark`, persisted to `localStorage` and applied via
-`data-theme="light"` / `data-theme="dark"` on `<html>`. A tiny inline script in
-`nuxt.config.ts`'s `app.head.script` applies the stored choice before Vue mounts,
-so there is no flash of the wrong theme on load.
-
-## 2. Type
-
-System font on both platforms — SF on iOS, Roboto on Android, the system stack in
-the browser. No downloaded font: a webfont costs a round trip and a layout shift,
-and buys nothing here.
+System font stack (no webfont — a round trip and a layout shift for no gain).
+Tighter and smaller than a marketing site on purpose: this is a working tool read
+at a desk, not a landing page.
 
 | Token | Size / line | Weight | Use |
 |---|---|---|---|
-| `display` | 32 / 38 | 700 | The one big number on a card |
-| `title` | 22 / 28 | 700 | Screen title |
-| `heading` | 17 / 22 | 600 | Card title, section header |
-| `body` | 15 / 21 | 400 | Default |
-| `label` | 13 / 17 | 500 | Field labels, nav labels |
-| `caption` | 12 / 16 | 500 | Timestamps, units, helper text |
-| `overline` | 11 / 14 | 600, +0.8 tracking, uppercase | Eyebrow above a title |
+| `display` | 28 / 34, -0.02em | 700 | Login headline, the one big number |
+| `title` | 20 / 26, -0.02em | 650 | Page `h1` |
+| `heading` | 15 / 20, -0.01em | 600 | Card/section title, `h2` |
+| `body` | 14 / 20, -0.01em | 400 | Default |
+| `label` | 12 / 16 | 500 | Field labels, table headers (as `overline`) |
+| `caption` | 11.5 / 15 | 500 | Timestamps, hints, faint text |
+| `overline` | 10.5 / 14, +0.06em | 650, uppercase | Table header cells |
 
-Numbers that update live (queue depth, counts, times) use tabular figures so the
-row does not reflow on every tick.
+All data — table cells, stat values, timestamps — uses `tabular-nums` so a
+changing value doesn't reflow its row.
 
-## 3. Spacing and shape
+## 4. Spacing and shape
 
-A 4pt base. Only use these steps: 4, 8, 12, 16, 20, 24, 32, 40, 48.
+4px base. Compact control height (`--control-h`, 36px) and row height (`--row-h`,
+38px) on desktop; both bump to 44/48px automatically under `(pointer: coarse)` —
+touch never gets the compact desktop sizing, regardless of density preference.
 
-- Screen horizontal padding: 20
-- Card padding: 20
-- Gap between cards: 16
-- Gap between a label and its value: 4
-- Gap between grouped controls: 12
-
-Radii:
+Radii — smaller and more deliberate than a "friendly" system, reading as precise
+rather than soft:
 
 | Token | Value | Use |
 |---|---|---|
-| `radiusCard` | 24 | Cards, sheets, dialogs |
-| `radiusControl` | 16 | Buttons, inputs, list tiles |
-| `radiusSmall` | 12 | Icon tiles, small badges |
-| `radiusPill` | 999 | Chips, status pills, the nav bar |
+| `radiusLg` | 14px | Cards, modals, drawers, the dark map panels |
+| `radiusMd` | 10px | Buttons, inputs, table wrapper |
+| `radiusSm` | 8px | Icon tiles, small buttons, badges' inner elements |
+| `radiusPill` | 999px | Status pills, tab switcher |
 
-## 4. Elevation
+## 5. Elevation
 
-Shadows are diffuse, low-opacity, and tinted with the text colour — never a grey
-or black box shadow.
+Two-layer shadows (a tight ambient shadow plus a softer key shadow) separate
+surfaces instead of borders — `.surface` in `tokens.css`. This is the opposite of
+the previous system's "flat, bordered, no shadow in the panel" rule; the new
+direction leans on shadow deliberately, because it's what makes a light,
+low-contrast UI still read as layered instead of flat.
 
-| Token | Value | Use |
+| Token | Use |
+|---|---|
+| `shadowAmbient` | Baseline on every card/field — barely visible, just enough separation |
+| `shadowKey` | Combined with ambient on `.surface` cards |
+| `shadowRaised` | Modals, drawers, anything that floats above content |
+| `shadowDarkKey` | Equivalent for `.surface-dark` panels (map overlays, nav rail) |
+
+## 6. Motion
+
+Short and functional — motion explains a state change, nothing animates when
+nothing changed.
+
+| Token | Duration | Use |
 |---|---|---|
-| `shadowCard` | `0 8 24 rgba(19,51,63,0.06)` | Resting card, app only |
-| `shadowRaised` | `0 12 32 rgba(19,51,63,0.10)` | Anything floating above content |
-| `shadowPressed` | `0 2 8 rgba(19,51,63,0.08)` | Pressed button |
+| `fast` | 120ms | Hover, press (`active:scale-[0.97]` on buttons), icon spin tick |
+| `base` | 180ms | Modal/drawer enter-exit, tab switch, page transition |
+| `slow` | 260ms | Marker glide on the live map |
 
-The two surfaces separate cards differently, on purpose. In the app a card floats
-on the canvas with a soft shadow, because it is one card in a short scrolling
-column. In the panel a card is flat — surface, hairline border, no shadow —
-because the window is already framed by a sidebar and a header, and stacking
-shadows inside that frame reads as clutter rather than depth. Shadow in the panel
-is reserved for things that genuinely float: the map overlay, modals, menus.
+Concrete uses already wired: page transitions (`app.vue`'s `NuxtPage transition`,
+`.page-enter/leave` classes), modal/drawer enter as a scale+fade
+(`.scale-in`), toast enter/exit/reorder (`TransitionGroup` in
+`ToastContainer.vue`), refresh icons spin while their action is loading, a
+selected live-map marker gets a ring + scale-up, an online marker gets a
+continuous subtle pulse (the one deliberately "idle-looping" animation in the
+system, because it encodes a real, current state — "this employee is online right
+now" — not decoration).
 
-In dark mode shadows are nearly invisible; separation comes from `surface` sitting
-above `background`, plus a `border` hairline. Do not raise shadow opacity to
-compensate.
-
-## 5. Motion
-
-Motion explains a state change. If nothing changed, nothing moves.
-
-| Token | Duration | Curve | Use |
-|---|---|---|---|
-| `fast` | 150ms | `easeOut` | Press, hover, ripple |
-| `base` | 220ms | `easeOutCubic` | Card enter, value change, expand |
-| `slow` | 320ms | `easeOutCubic` | Route transition, sheet |
-
-Entrances stagger by 40ms per item, capped at 6 items — beyond that everything
-after the sixth shares the last delay, so a long list never feels slow to arrive.
-
-Banned: infinite looping animation on an idle screen, animated gradients,
-parallax, anything driven by a scroll position, and animation on a list item that
-scrolls.
-
-Respect the platform: when `MediaQuery.disableAnimations` (or
-`prefers-reduced-motion`) is set, durations collapse to zero and transitions become
-instant swaps.
-
-## 6. Performance budget
-
-The app has to stay smooth on weak Android hardware, so the design is deliberately
-cheap to render.
-
-- No `BackdropFilter`, no blur, no glassmorphism anywhere. It is the single most
-  expensive effect available and it buys nothing this UI needs.
-- No shadow on a widget inside a scrolling list. Separate list rows with a
-  `border` hairline or a `surfaceMuted` fill instead. Shadows belong to cards that
-  sit still.
-- `const` constructors everywhere they are possible, so rebuilds stay shallow.
-- Gradients are limited to the logo, the primary button, and chart bars — each of
-  which is drawn once and does not move.
-- No opacity animation on a subtree that contains text; animate a parent's
-  transform instead, which the compositor can handle without repainting.
-- Images ship at the density they render at. Nothing is downscaled at runtime.
+Respects `prefers-reduced-motion` (durations collapse to ~0, existing media query
+in `tokens.css`).
 
 ## 7. Layout and reach
 
-The app is one-handed, on a phone, often outdoors, sometimes in gloves. Fast
-access beats density.
-
-- Minimum tap target 44x44, with at least 8 between adjacent targets.
-- The primary action on a screen sits in the bottom third, within thumb reach.
-- Layouts survive 320dp width and 200% text scale. Anything that would overflow
-  wraps or scrolls; nothing is clipped and no text is ellipsised into meaninglessness.
-- Breakpoints: `<600` phone (single column), `600-1024` tablet (two columns),
-  `>1024` panel (sidebar plus content).
-- Every screen states its state in words. A spinner alone is never the whole
-  answer, and an empty screen always explains why it is empty.
+- Minimum tap target 44×44 on touch (`(pointer: coarse)` in `tokens.css` — see §4),
+  36×36 acceptable on desktop/mouse for compact density.
+- Breakpoints: `<640` phone (nav becomes a full-screen sheet), `640-1024` tablet
+  (nav becomes a fixed 320px sheet), `>1024` desktop (nav rail, collapsible
+  between 68px icon-only and 224px icon+label).
+- Every loading state is a `Skeleton`, never a bare "Loading…" string. Every empty
+  state is an `EmptyState` (icon + message), never a bare paragraph.
 
 ## 8. Harmony rules
 
-These are what keep the two surfaces looking like one product.
-
-1. Every screen is: a title, then cards on `background`. No screen invents its own
-   chrome.
-2. A card is `surface`, `radiusCard`, `shadowCard`, `20` padding. Always.
-3. One primary action per screen, teal and filled. Everything else is a text
-   button or an outlined control.
-4. Status is always the same triple: colour dot, icon, word — in that order, at
-   the same size, on both surfaces.
-5. Icons are outline style at 1.75 stroke, 20 in rows and 24 standalone.
-6. The panel uses the same tokens at the same values. It is the same product on a
-   bigger screen, not a different one.
-7. Never nest a card inside a card. If content needs grouping inside a card, use a
-   `surfaceMuted` block or a hairline rule, not another card.
-8. Destructive actions in a table are quiet text buttons that turn `danger` on
-   hover, never filled red. A row of filled buttons turns every row into an alert.
-9. The live map and histories map render with Google's default Maps styling —
-   Google Maps JS API doesn't support ad-hoc client-side re-tinting the way the
-   previous self-hosted vector basemap did. A custom Cloud Console map style
-   (via `NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID`) is how this would be brought back in
-   line with these tokens; not set up here, left as a follow-up. Markers,
-   overlays, and the info panel chrome around the map are still fully on
-   these tokens.
+1. Light for data (tables, forms, cards), dark for operational context (maps, nav
+   rail). Nothing else is dark — don't dark-mode a form or a table.
+2. `primary` (indigo) is the only brand hue in chrome. The employee/shift colour
+   hashing on the maps is the one named exception (§2).
+3. Status is always the same triple: colour dot, icon, word — same order, same
+   size, everywhere (`Badge`, `InlineAlert`).
+4. Icons are outline style, 1.75 stroke, from the shared `Icon.vue` set — never a
+   one-off inline `<svg>` in a page or component.
+5. Table row actions reveal on hover on desktop (`opacity-0 lg:group-hover:opacity-100`)
+   but stay always-visible below the `lg` breakpoint — hover-reveal is a mouse
+   affordance, not something to hide behind on touch.
+6. Destructive actions in a table are quiet text buttons that turn `danger` on
+   hover, never a filled red button — a row of filled buttons turns every row into
+   an alert.
+7. Never nest a `.surface`/`.surface-flat` card inside another one. Group content
+   with `surfaceSunken` or a hairline rule instead.
+8. The live map and histories map use an inline dark Google Maps style
+   (`utils/darkMapStyle.ts`) rather than a Cloud Console Map ID — this means
+   `mapId` is intentionally *not* passed to either `google.maps.Map` constructor,
+   since Google ignores local `styles` once a Map ID is set. If Advanced Markers
+   or cloud-managed styling become necessary later, that trade-off needs revisiting
+   together, not silently dropping one or the other.

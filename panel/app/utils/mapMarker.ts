@@ -77,7 +77,7 @@ export function getEmployeeMarkerOverlayCtor(mapsApi: typeof google): EmployeeMa
       this.label = document.createElement('span')
       this.label.textContent = this.name
       this.label.className =
-        'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-raised ring-1 ring-hairline'
+        'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-surface-dark-raised px-2.5 py-1 text-xs font-semibold text-ink-dark shadow-dark-key ring-1 ring-hairline-dark'
 
       this.div.append(this.pulse, this.dot, this.label)
       this.div.addEventListener('click', () => this.onSelect())

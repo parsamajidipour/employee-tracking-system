@@ -25,35 +25,35 @@ function toggle(id: number) {
 
 <template>
   <div>
-    <p v-if="loading" class="text-sm text-ink-faint">Loading…</p>
-    <div v-else-if="shifts.length" class="grid gap-3 sm:grid-cols-2">
+    <div v-if="loading" class="grid gap-2 sm:grid-cols-2">
+      <Skeleton v-for="i in 4" :key="i" rounded="md" class="h-16" />
+    </div>
+    <div v-else-if="shifts.length" class="grid gap-2 sm:grid-cols-2">
       <button
         v-for="shift in shifts"
         :key="shift.id"
         type="button"
-        class="flex min-h-20 items-center gap-3.5 rounded-control border bg-surface p-3.5 text-left transition-colors"
-        :class="selected.includes(shift.id) ? 'border-primary bg-primary-soft' : 'border-hairline hover:border-primary'"
+        class="flex items-center gap-3 rounded-md border p-3 text-left transition-colors duration-fast ease-soft"
+        :class="selected.includes(shift.id) ? 'border-primary bg-primary-soft' : 'border-hairline bg-surface hover:border-primary/60'"
         @click="toggle(shift.id)"
       >
         <span
-          class="grid h-6 w-6 flex-none place-items-center rounded-small border text-sm font-bold"
-          :class="selected.includes(shift.id) ? 'border-primary bg-primary text-white' : 'border-hairline'"
+          class="grid h-5 w-5 flex-none place-items-center rounded-sm border transition-colors duration-fast"
+          :class="selected.includes(shift.id) ? 'border-primary bg-primary text-white' : 'border-hairline text-transparent'"
         >
-          {{ selected.includes(shift.id) ? '✓' : '' }}
+          <Icon name="check-circle" class="h-3 w-3" />
         </span>
         <span class="min-w-0 flex-1">
-          <strong class="block text-sm text-ink">{{ shift.name }}</strong>
-          <span class="mt-0.5 block text-sm tabular-nums text-ink-soft">
+          <strong class="block text-[13px] font-semibold text-ink">{{ shift.name }}</strong>
+          <span class="mt-0.5 block text-[12.5px] tabular-nums text-ink-soft">
             {{ formatTime(shift.start_time) }} – {{ formatTime(shift.end_time) }}
           </span>
-          <span class="mt-0.5 block text-xs text-ink-faint">
+          <span class="mt-0.5 block text-[11px] text-ink-faint">
             {{ shift.days_of_week.map((day) => DAY_LABELS[day]).join(' · ') }}
           </span>
         </span>
       </button>
     </div>
-    <p v-else class="rounded-control border border-hairline bg-surface p-5 text-sm text-ink-soft">
-      No shifts exist. Create one first.
-    </p>
+    <EmptyState v-else icon="calendar" message="No shifts exist. Create one first." />
   </div>
 </template>

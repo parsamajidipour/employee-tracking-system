@@ -4,19 +4,24 @@ const toasts = useToastState()
 
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-      <div
-        v-for="toast in toasts"
-        :key="toast.id"
-        class="flex items-center gap-2 rounded border bg-surface px-3 py-2 text-sm shadow-md"
-        :class="toast.variant === 'success' ? 'border-state-success/30 text-state-success' : 'border-state-danger/30 text-state-danger'"
+    <div class="fixed bottom-5 right-5 z-50 flex flex-col gap-2">
+      <TransitionGroup
+        enter-active-class="transition duration-base ease-soft"
+        enter-from-class="opacity-0 translate-x-4"
+        leave-active-class="transition duration-fast ease-soft absolute"
+        leave-to-class="opacity-0"
+        move-class="transition duration-base ease-soft"
       >
-        <span
-          class="inline-block h-1.5 w-1.5 flex-none rounded-full"
-          :class="toast.variant === 'success' ? 'bg-state-success' : 'bg-state-danger'"
-        ></span>
-        {{ toast.message }}
-      </div>
+        <div
+          v-for="toast in toasts"
+          :key="toast.id"
+          class="surface flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium"
+          :class="toast.variant === 'success' ? 'text-state-success' : 'text-state-danger'"
+        >
+          <Icon :name="toast.variant === 'success' ? 'check-circle' : 'alert-triangle'" class="h-4 w-4 flex-none" />
+          {{ toast.message }}
+        </div>
+      </TransitionGroup>
     </div>
   </Teleport>
 </template>

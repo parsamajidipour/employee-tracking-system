@@ -8,14 +8,14 @@ withDefaults(defineProps<{ variant?: 'neutral' | 'success' | 'warning' | 'danger
   <span
     class="pill"
     :class="{
-      'bg-state-neutral/12 text-state-neutral': variant === 'neutral',
-      'bg-state-success/12 text-state-success': variant === 'success',
-      'bg-state-warning/12 text-state-warning': variant === 'warning',
-      'bg-state-danger/12 text-state-danger': variant === 'danger',
+      'bg-state-neutral-soft text-ink-soft': variant === 'neutral',
+      'bg-state-success-soft text-state-success': variant === 'success',
+      'bg-state-warning-soft text-state-warning': variant === 'warning',
+      'bg-state-danger-soft text-state-danger': variant === 'danger',
     }"
   >
     <span
-      class="h-2 w-2 flex-none rounded-full"
+      class="h-1.5 w-1.5 flex-none rounded-full"
       :class="{
         'bg-state-neutral': variant === 'neutral',
         'bg-state-success': variant === 'success',
