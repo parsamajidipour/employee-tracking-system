@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { shiftColor } from '~/utils/mapMarker'
-import { DARK_MAP_STYLE } from '~/utils/darkMapStyle'
+import { LIGHT_MAP_STYLE } from '~/utils/lightMapStyle'
 import { formatDistance, formatSpeed } from '~/utils/formatDistance'
 
 interface TrailPoint {
@@ -71,6 +71,37 @@ function attachHoverTooltip(marker: google.maps.Marker, html: string) {
     hoverInfoWindow.open({ map, anchor: marker })
   })
   marker.addListener('mouseout', () => hoverInfoWindow?.close())
+}
+
+function distanceMeters(a: TrailPoint, b: TrailPoint): number {
+  const R = 6371000
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180
+  const lat1 = (a.lat * Math.PI) / 180
+  const lat2 = (b.lat * Math.PI) / 180
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+
+/**
+ * Nearby points collapse into one marker so a dense, mostly-stationary stretch of
+ * a day (thousands of points at a 10s heartbeat) doesn't create thousands of DOM
+ * markers and hang the browser. The polyline path and the hover-nearest lookup
+ * still use the full point list — only the rendered dots are thinned.
+ */
+function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): TrailPoint[] {
+  if (points.length === 0) return points
+  const kept: TrailPoint[] = [points[0]!]
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i]!
+    if (distanceMeters(kept[kept.length - 1]!, point) >= minMeters) kept.push(point)
+  }
+  const last = points[points.length - 1]!
+  if (kept[kept.length - 1] !== last) kept.push(last)
+
+  if (kept.length <= hardCap) return kept
+  const stride = Math.ceil(kept.length / hardCap)
+  return kept.filter((_, i) => i % stride === 0 || i === kept.length - 1)
 }
 
 function nearestPoint(points: TrailPoint[], lat: number, lng: number): TrailPoint {
@@ -157,7 +188,7 @@ function renderTrail() {
         scale: 9,
         fillColor: '#22c55e',
         fillOpacity: 1,
-        strokeColor: '#0b0b10',
+        strokeColor: '#ffffff',
         strokeWeight: 2.5,
       },
       label: { text: 'S', color: '#0b0b10', fontSize: '11px', fontWeight: '800' },
@@ -174,7 +205,7 @@ function renderTrail() {
         scale: 9,
         fillColor: '#f43f5e',
         fillOpacity: 1,
-        strokeColor: '#0b0b10',
+        strokeColor: '#ffffff',
         strokeWeight: 2.5,
       },
       label: { text: 'E', color: '#0b0b10', fontSize: '11px', fontWeight: '800' },
@@ -183,7 +214,9 @@ function renderTrail() {
     attachHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
     terminalMarkers.push(end)
 
-    for (const point of groupPoints) {
+    for (const point of groupPoints) bounds.extend({ lat: point.lat, lng: point.lng })
+
+    for (const point of decimatePoints(groupPoints)) {
       const dot = new mapsApi.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         map,
@@ -192,11 +225,13 @@ function renderTrail() {
       })
       attachHoverTooltip(dot, `<div class="text-xs font-medium">${timeLabel(point.recorded_at)}</div>`)
       pointMarkers.push(dot)
-      bounds.extend({ lat: point.lat, lng: point.lng })
     }
   }
 
   map.fitBounds(bounds, 72)
+  mapsApi.maps.event.addListenerOnce(map, 'idle', () => {
+    if (map && (map.getZoom() ?? 0) > 16) map.setZoom(16)
+  })
 }
 
 async function loadTrail() {
@@ -235,8 +270,8 @@ onMounted(async () => {
     mapsApi = await loadGoogleMaps()
     map = new mapsApi.maps.Map(mapContainer.value!, {
       center: { lat: 23.6144, lng: 58.5922 },
-      zoom: 10,
-      styles: DARK_MAP_STYLE,
+      zoom: 9,
+      styles: LIGHT_MAP_STYLE,
       disableDefaultUI: true,
       zoomControl: true,
       clickableIcons: false,
@@ -298,16 +333,16 @@ watch(selectedDate, loadTrail)
       </li>
     </ul>
 
-    <section class="surface-dark relative h-[60vh] min-h-[420px] overflow-hidden">
-      <div ref="mapContainer" class="!absolute !inset-0" />
+    <section class="surface-flat relative h-[60vh] min-h-[420px] overflow-hidden">
+      <div ref="mapContainer" class="!absolute !inset-0 bg-surface-sunken" />
       <div v-if="mapError" class="absolute inset-x-4 top-4 z-10">
         <InlineAlert>{{ mapError }}</InlineAlert>
       </div>
       <div
         v-if="!trailLoading && trail && trail.points.length === 0"
-        class="surface-dark absolute inset-x-4 top-4 z-10 px-4 py-3"
+        class="surface absolute inset-x-4 top-4 z-10 px-4 py-3"
       >
-        <EmptyState icon="route" message="No tracked activity for this day." class="[&_p]:text-ink-dark-soft [&_span]:bg-surface-dark-hover [&_span]:text-ink-dark-soft" />
+        <EmptyState icon="route" message="No tracked activity for this day." />
       </div>
     </section>
   </AppShell>

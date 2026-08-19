@@ -48,14 +48,14 @@
   --motion-slow: 260ms;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --control-h: 36px;
-  --row-h: 38px;
+  --control-h: 40px;
+  --row-h: 42px;
 }
 
 @media (pointer: coarse) {
   :root {
-    --control-h: 44px;
-    --row-h: 48px;
+    --control-h: 46px;
+    --row-h: 50px;
   }
 }
 
@@ -71,21 +71,21 @@
     color: var(--text-primary);
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
       'Helvetica Neue', Arial, sans-serif;
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: 15px;
+    line-height: 1.5;
     letter-spacing: -0.01em;
   }
 
   h1 {
-    font-size: 20px;
-    line-height: 26px;
+    font-size: 22px;
+    line-height: 28px;
     font-weight: 650;
     letter-spacing: -0.02em;
   }
 
   h2 {
-    font-size: 15px;
-    line-height: 20px;
+    font-size: 16px;
+    line-height: 22px;
     font-weight: 600;
     letter-spacing: -0.01em;
   }
@@ -144,9 +144,9 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 9px;
+    padding: 4px 10px;
     border-radius: var(--radius-pill);
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 600;
     line-height: 16px;
   }
@@ -154,20 +154,19 @@
   .field {
     width: 100%;
     height: var(--control-h);
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--surface-sunken);
+    border: 1px solid transparent;
     border-radius: var(--radius-md);
-    padding: 0 12px;
+    padding: 0 13px;
     color: var(--text-primary);
-    font-size: 13.5px;
-    box-shadow: var(--shadow-ambient);
-    transition: border-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease);
+    font-size: 14px;
+    transition: background-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease);
   }
 
   .field:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
   .field::placeholder {
@@ -180,9 +179,9 @@
     justify-content: center;
     gap: 6px;
     height: var(--control-h);
-    padding: 0 14px;
+    padding: 0 16px;
     border-radius: var(--radius-md);
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
     letter-spacing: -0.005em;
     transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease),
