@@ -203,6 +203,11 @@
   .scale-in {
     animation: scale-in var(--motion-base) var(--ease) both;
   }
+
+  .bg-grid-dark {
+    background-image: radial-gradient(var(--border-dark) 1.5px, transparent 1.5px);
+    background-size: 26px 26px;
+  }
 }
 
 @keyframes enter {
