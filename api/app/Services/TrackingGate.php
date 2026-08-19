@@ -80,13 +80,10 @@ final class TrackingGate
     private function store(User $employee, array $point, CarbonImmutable $recordedAt, CarbonImmutable $receivedAt, TrackingSession $session, ShiftWindow $window): void
     {
         $previous = DB::selectOne(
-            'SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM location_points WHERE employee_id = ? AND recorded_at >= ? AND recorded_at < ? ORDER BY recorded_at DESC LIMIT 1',
+            'SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng, accuracy_m FROM location_points WHERE employee_id = ? AND recorded_at >= ? AND recorded_at < ? ORDER BY recorded_at DESC LIMIT 1',
             [$employee->id, $window->effectiveStart(), $recordedAt],
         );
-        $distance = $previous === null ? 0.0 : (float) DB::selectOne(
-            'SELECT ST_Distance(ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) AS meters',
-            [$previous->lng, $previous->lat, $point['lng'], $point['lat']],
-        )->meters;
+        $distance = $previous === null ? 0.0 : $this->segmentDistance($previous, $point);
 
         LocationPoint::create([
             'session_id' => $session->id,
@@ -105,6 +102,22 @@ final class TrackingGate
             'recorded_at' => $recordedAt,
             'received_at' => $receivedAt,
         ]);
+    }
+
+    private function segmentDistance(object $previous, array $point): float
+    {
+        $raw = (float) DB::selectOne(
+            'SELECT ST_Distance(ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) AS meters',
+            [$previous->lng, $previous->lat, $point['lng'], $point['lat']],
+        )->meters;
+
+        $noiseFloor = max(
+            (float) config('tracking.stationary_noise_floor_m'),
+            (float) ($previous->accuracy_m ?? 0),
+            (float) ($point['accuracy_m'] ?? 0),
+        );
+
+        return $raw <= $noiseFloor ? 0.0 : $raw;
     }
 
     private function floatLiteral(mixed $value): string

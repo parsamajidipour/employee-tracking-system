@@ -12,7 +12,7 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => ['Content-Range', 'Content-Length', 'Accept-Ranges'],
+    'exposed_headers' => [],
 
     'max_age' => 0,
 

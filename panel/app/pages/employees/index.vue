@@ -1,25 +1,9 @@
 <script setup lang="ts">
-interface Device {
-  device_identifier: string
-  device_name: string | null
-  last_seen_at: string | null
-}
+import type { Employee } from '~/composables/useEmployees'
 
-interface Employee {
-  id: number
-  name: string
-  phone: string | null
-  email: string | null
-  username: string | null
-  role: 'admin' | 'hr' | 'supervisor' | 'employee'
-  is_active: boolean
-  device: Device | null
-  shifts: Array<{ id: number; name: string; start_time: string; end_time: string }>
-}
-
-const employees = ref<Employee[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+const { data: employeesData, loading, error: cacheError, load, refresh } = useEmployees()
+const employees = computed(() => employeesData.value ?? [])
+const error = computed(() => (cacheError.value ? 'Could not load employees. Sign in and try again.' : null))
 
 const { confirm } = useConfirm()
 const toast = useToast()
@@ -28,18 +12,6 @@ const resetPasswordOpen = ref(false)
 const resetPasswordTarget = ref<Employee | null>(null)
 const generatedPassword = ref('')
 const resetPasswordSaving = ref(false)
-
-async function load() {
-  loading.value = true
-  try {
-    employees.value = await apiFetch<Employee[]>('/api/v1/employees')
-    error.value = null
-  } catch {
-    error.value = 'Could not load employees. Sign in and try again.'
-  } finally {
-    loading.value = false
-  }
-}
 
 function generatePassword(length = 14): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -83,7 +55,7 @@ async function toggleActive(employee: Employee) {
   try {
     await apiFetch(`/api/v1/employees/${employee.id}/active`, { method: 'PUT', body: { is_active: next } })
     toast.success(next ? 'Employee activated.' : 'Employee deactivated.')
-    await load()
+    await refresh()
   } catch {
     toast.error('Update failed.')
   }
@@ -98,7 +70,7 @@ async function revokeDevice(employee: Employee) {
   try {
     await apiFetch(`/api/v1/employees/${employee.id}/device`, { method: 'DELETE' })
     toast.success('Device revoked.')
-    await load()
+    await refresh()
   } catch {
     toast.error('Revoke failed.')
   }
@@ -113,7 +85,7 @@ async function removeEmployee(employee: Employee) {
   try {
     await apiFetch(`/api/v1/employees/${employee.id}`, { method: 'DELETE' })
     toast.success('Employee deleted.')
-    await load()
+    await refresh()
   } catch {
     toast.error('Delete failed.')
   }
@@ -125,6 +97,7 @@ onMounted(load)
 <template>
   <AppShell title="Employees">
     <template #actions>
+      <Button variant="secondary" :disabled="loading" @click="refresh">Refresh</Button>
       <Button to="/employees/create">Add employee</Button>
     </template>
 

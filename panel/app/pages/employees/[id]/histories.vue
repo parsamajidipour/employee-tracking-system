@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, addProtocol, setWorkerUrl } from 'maplibre-gl'
-import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { Protocol as PMTilesProtocol } from 'pmtiles'
-import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
+import { bearingBetween, shiftColor } from '~/utils/mapMarker'
 
-interface Employee { id: number; name: string }
-interface HistoryRow { date: string; distance_m: string | number; started_at: string; ended_at: string; points_count: number }
-interface TrailPoint { lng: number; lat: number; distance_m: number; accuracy_m: number | null; speed_mps: number | null; heading_deg: number | null; battery_pct: number | null; recorded_at: string }
+interface TrailPoint {
+  lng: number
+  lat: number
+  distance_m: number
+  accuracy_m: number | null
+  speed_mps: number | null
+  heading_deg: number | null
+  battery_pct: number | null
+  recorded_at: string
+  shift_index: number | null
+}
+interface TrailShift { index: number; source: string; start: string; end: string; label: string; distance_m: number }
 interface Trail {
   date: string
   start?: string
@@ -18,57 +24,154 @@ interface Trail {
   first_point_at: string | null
   last_point_at: string | null
   points_count: number
+  shifts: TrailShift[]
   points: TrailPoint[]
+}
+
+const UNASSIGNED_COLOR = '#94a3b8'
+
+function todayLocalDate(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
 const route = useRoute()
 const employeeId = Number(route.params.id)
-const employee = ref<Employee | null>(null)
-const histories = ref<HistoryRow[]>([])
-const selectedDate = ref<string | null>(null)
+
+const { data: employeesData, load: loadEmployees } = useEmployees()
+const employee = computed(() => employeesData.value?.find((item) => item.id === employeeId) ?? null)
+
+const { load: loadGoogleMaps, mapId, apiKeyConfigured } = useGoogleMaps()
+
+const selectedDate = ref(todayLocalDate())
+const selectedShift = ref<'all' | number>('all')
 const trail = ref<Trail | null>(null)
-const loading = ref(true)
 const trailLoading = ref(false)
+const mapError = ref<string | null>(null)
 const error = ref<string | null>(null)
+
 const mapContainer = ref<HTMLDivElement | null>(null)
-const basemapError = ref<string | null>(null)
-let map: MapLibreMap | undefined
+let map: google.maps.Map | undefined
+let mapsApi: typeof google | undefined
+let hoverInfoWindow: google.maps.InfoWindow | undefined
+let polylines: google.maps.Polyline[] = []
+let terminalMarkers: google.maps.Marker[] = []
+let pointMarkers: google.maps.Marker[] = []
 
-const totalDistance = computed(() => histories.value.reduce((sum, row) => sum + Number(row.distance_m), 0))
-const activeDuration = computed(() => {
-  if (!trail.value?.first_point_at || !trail.value.last_point_at) return '—'
-  const minutes = Math.max(0, Math.round((new Date(trail.value.last_point_at).getTime() - new Date(trail.value.first_point_at).getTime()) / 60000))
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-})
-
-function distance(value: string | number) { return `${(Number(value) / 1000).toFixed(2)} km` }
-function speed(value: number | null | undefined) { return value == null ? '—' : `${(value * 3.6).toFixed(1)} km/h` }
-function time(value: string | null | undefined) { return value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—' }
-
-function renderTrail() {
-  if (!map?.isStyleLoaded()) return
-  const points = trail.value?.points ?? []
-  ;(map.getSource('history-trail') as GeoJSONSource)?.setData({
-    type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map(point => [point.lng, point.lat]) },
-  })
-  ;(map.getSource('history-terminals') as GeoJSONSource)?.setData({
-    type: 'FeatureCollection',
-    features: points.length < 1 ? [] : [
-      { type: 'Feature', properties: { kind: 'Start' }, geometry: { type: 'Point', coordinates: [points[0]!.lng, points[0]!.lat] } },
-      { type: 'Feature', properties: { kind: 'End' }, geometry: { type: 'Point', coordinates: [points.at(-1)!.lng, points.at(-1)!.lat] } },
-    ],
-  })
-  if (points.length) {
-    const bounds = points.slice(1).reduce((box, point) => box.extend([point.lng, point.lat]), new LngLatBounds([points[0]!.lng, points[0]!.lat], [points[0]!.lng, points[0]!.lat]))
-    map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: 500 })
-  }
+function timeLabel(value: string): string {
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-async function selectDay(date: string) {
-  selectedDate.value = date
+function attachHoverTooltip(marker: google.maps.Marker, html: string) {
+  marker.addListener('mouseover', () => {
+    if (!map || !hoverInfoWindow) return
+    hoverInfoWindow.setContent(html)
+    hoverInfoWindow.open({ map, anchor: marker })
+  })
+  marker.addListener('mouseout', () => hoverInfoWindow?.close())
+}
+
+function clearOverlays() {
+  for (const line of polylines) line.setMap(null)
+  for (const marker of terminalMarkers) marker.setMap(null)
+  for (const marker of pointMarkers) marker.setMap(null)
+  polylines = []
+  terminalMarkers = []
+  pointMarkers = []
+}
+
+function visiblePoints(): TrailPoint[] {
+  const points = trail.value?.points ?? []
+  if (selectedShift.value === 'all') return points
+  return points.filter((point) => point.shift_index === selectedShift.value)
+}
+
+function groupByShift(points: TrailPoint[]): Map<number | null, TrailPoint[]> {
+  const groups = new Map<number | null, TrailPoint[]>()
+  for (const point of points) {
+    const key = point.shift_index
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(point)
+  }
+  return groups
+}
+
+function renderTrail() {
+  if (!map || !mapsApi) return
+  clearOverlays()
+
+  const points = visiblePoints()
+  if (points.length === 0) return
+
+  const bounds = new mapsApi.maps.LatLngBounds()
+  const groups = groupByShift(points)
+
+  for (const [shiftIndex, groupPoints] of groups) {
+    if (groupPoints.length === 0) continue
+    const color = shiftIndex === null ? UNASSIGNED_COLOR : shiftColor(shiftIndex)
+
+    const line = new mapsApi.maps.Polyline({
+      path: groupPoints.map((p) => ({ lat: p.lat, lng: p.lng })),
+      strokeColor: color,
+      strokeOpacity: 0.9,
+      strokeWeight: 4,
+      map,
+    })
+    polylines.push(line)
+
+    const first = groupPoints[0]!
+    const last = groupPoints.at(-1)!
+
+    const start = new mapsApi.maps.Marker({
+      position: { lat: first.lat, lng: first.lng },
+      map,
+      icon: { path: mapsApi.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+      zIndex: 5,
+    })
+    attachHoverTooltip(start, `<div class="text-xs font-medium">Start · ${timeLabel(first.recorded_at)}</div>`)
+    terminalMarkers.push(start)
+
+    const bearing = groupPoints.length > 1 ? bearingBetween(groupPoints.at(-2)!, last) : 0
+    const end = new mapsApi.maps.Marker({
+      position: { lat: last.lat, lng: last.lng },
+      map,
+      icon: {
+        path: mapsApi.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 4.5,
+        rotation: bearing,
+        fillColor: color,
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 1.5,
+      },
+      zIndex: 6,
+    })
+    attachHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
+    terminalMarkers.push(end)
+
+    for (const point of groupPoints) {
+      const dot = new mapsApi.maps.Marker({
+        position: { lat: point.lat, lng: point.lng },
+        map,
+        icon: { path: mapsApi.maps.SymbolPath.CIRCLE, scale: 3, fillColor: color, fillOpacity: 0.85, strokeWeight: 0 },
+        zIndex: 3,
+      })
+      attachHoverTooltip(dot, `<div class="text-xs font-medium">${timeLabel(point.recorded_at)}</div>`)
+      pointMarkers.push(dot)
+      bounds.extend({ lat: point.lat, lng: point.lng })
+    }
+  }
+
+  map.fitBounds(bounds, 72)
+}
+
+async function loadTrail() {
   trailLoading.value = true
   try {
-    trail.value = await apiFetch<Trail>(`/api/v1/employees/${employeeId}/trail?date=${encodeURIComponent(date)}`)
+    trail.value = await apiFetch<Trail>(`/api/v1/employees/${employeeId}/trail?date=${encodeURIComponent(selectedDate.value)}`)
+    if (selectedShift.value !== 'all' && !trail.value.shifts.some((shift) => shift.index === selectedShift.value)) {
+      selectedShift.value = 'all'
+    }
     error.value = null
     renderTrail()
   } catch {
@@ -78,121 +181,73 @@ async function selectDay(date: string) {
   }
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const [employees, rows] = await Promise.all([
-      apiFetch<Employee[]>('/api/v1/employees'),
-      apiFetch<HistoryRow[]>(`/api/v1/employees/${employeeId}/histories`),
-    ])
-    employee.value = employees.find(item => item.id === employeeId) ?? null
-    histories.value = rows
-    if (rows[0]) await selectDay(rows[0].date)
-  } catch {
-    error.value = 'Could not load location histories.'
-  } finally {
-    loading.value = false
+watch(selectedShift, renderTrail)
+
+onMounted(async () => {
+  loadEmployees()
+
+  if (!apiKeyConfigured) {
+    mapError.value = 'Google Maps API key is not configured. Contact an administrator.'
+    return
   }
-}
 
-onMounted(() => {
-  setWorkerUrl(maplibreWorkerUrl)
-  addProtocol('pmtiles', new PMTilesProtocol().tile)
-
-  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
-
-  fetch(basemapUrl, { method: 'HEAD' })
-    .then((response) => {
-      if (!response.ok) basemapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
+  try {
+    mapsApi = await loadGoogleMaps()
+    map = new mapsApi.maps.Map(mapContainer.value!, {
+      center: { lat: 23.6144, lng: 58.5922 },
+      zoom: 10,
+      mapId,
+      disableDefaultUI: true,
+      zoomControl: true,
+      clickableIcons: false,
+      restriction: { latLngBounds: { north: 26.6, south: 16.6, east: 59.95, west: 52.1 }, strictBounds: false },
     })
-    .catch(() => {
-      basemapError.value = 'Could not reach the map tile server.'
-    })
-
-  map = new MapLibreMap({
-    container: mapContainer.value!,
-    style: {
-      version: 8,
-      sources: { protomaps: { type: 'vector', url: `pmtiles://${basemapUrl}`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
-      layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
-    },
-    center: [58.5922, 23.6144], zoom: 10,
-    maxBounds: [[52.1, 16.6], [59.95, 26.6]],
-  })
-  map.on('error', (e) => {
-    if (!basemapError.value) basemapError.value = 'The map could not be loaded.'
-    console.error('MapLibre error', e.error)
-  })
-  map.on('load', () => {
-    map?.addSource('history-trail', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } } })
-    map?.addLayer({ id: 'history-trail-line', type: 'line', source: 'history-trail', paint: { 'line-color': '#2f9ec0', 'line-width': 5, 'line-opacity': 0.9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
-    map?.addSource('history-terminals', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-    map?.addLayer({ id: 'history-terminal-points', type: 'circle', source: 'history-terminals', paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'kind'], 'Start', '#3fa98a', '#d2635e'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
-    renderTrail()
-  })
-  load()
+    hoverInfoWindow = new mapsApi.maps.InfoWindow({ disableAutoPan: true })
+    await loadTrail()
+  } catch {
+    mapError.value = 'The map could not be loaded. Check the Google Maps API key and network access.'
+  }
 })
 
-onUnmounted(() => map?.remove())
+watch(selectedDate, loadTrail)
 </script>
 
 <template>
-  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes and complete tracked activity">
+  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift">
     <template #actions><Button variant="secondary" :to="`/employees/${employeeId}`">Employee shifts</Button></template>
     <InlineAlert v-if="error" class="mb-4">{{ error }}</InlineAlert>
 
-    <div class="mb-5 grid gap-3 sm:grid-cols-3">
-      <div class="card p-4"><p class="text-xs text-ink-faint">Total retained distance</p><strong class="mt-1 block text-xl tabular-nums">{{ distance(totalDistance) }}</strong></div>
-      <div class="card p-4"><p class="text-xs text-ink-faint">Tracked days</p><strong class="mt-1 block text-xl tabular-nums">{{ histories.length }}</strong></div>
-      <div class="card p-4"><p class="text-xs text-ink-faint">Selected activity</p><strong class="mt-1 block text-xl tabular-nums">{{ selectedDate ?? '—' }}</strong></div>
-    </div>
-
-    <section class="relative mb-4 h-[320px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card sm:h-[560px]">
-      <div ref="mapContainer" class="!absolute !inset-0" />
-      <div v-if="basemapError" class="absolute inset-x-4 top-4 z-10">
-        <InlineAlert>{{ basemapError }}</InlineAlert>
+    <form class="card mb-4 flex flex-wrap items-end gap-4 p-4" @submit.prevent>
+      <div>
+        <label for="history-date" class="mb-1 block text-xs font-medium text-ink-soft">Date</label>
+        <input
+          id="history-date"
+          v-model="selectedDate"
+          type="date"
+          :max="todayLocalDate()"
+          class="field w-44"
+        />
       </div>
-      <aside class="floating absolute right-4 top-4 hidden w-[min(340px,calc(100%-2rem))] p-4 sm:block">
-        <div class="mb-4 flex items-center justify-between gap-3">
-          <div><p class="overline">Activity card</p><h2>{{ selectedDate ?? 'Select a day' }}</h2></div>
-          <span v-if="trailLoading" class="text-xs text-ink-faint">Loading…</span>
-        </div>
-        <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-          <div><p class="text-xs text-ink-faint">Distance</p><strong class="tabular-nums">{{ distance(trail?.distance_m ?? 0) }}</strong></div>
-          <div><p class="text-xs text-ink-faint">Active duration</p><strong class="tabular-nums">{{ activeDuration }}</strong></div>
-          <div><p class="text-xs text-ink-faint">First point</p><strong class="tabular-nums">{{ time(trail?.first_point_at) }}</strong></div>
-          <div><p class="text-xs text-ink-faint">Last point</p><strong class="tabular-nums">{{ time(trail?.last_point_at) }}</strong></div>
-          <div><p class="text-xs text-ink-faint">Average speed</p><strong class="tabular-nums">{{ speed(trail?.average_speed_mps) }}</strong></div>
-          <div><p class="text-xs text-ink-faint">Maximum speed</p><strong class="tabular-nums">{{ speed(trail?.max_speed_mps) }}</strong></div>
-          <div><p class="text-xs text-ink-faint">GPS accuracy</p><strong class="tabular-nums">{{ trail?.average_accuracy_m == null ? '—' : `${trail.average_accuracy_m.toFixed(1)} m` }}</strong></div>
-          <div><p class="text-xs text-ink-faint">Recorded points</p><strong class="tabular-nums">{{ trail?.points_count ?? 0 }}</strong></div>
-        </div>
-        <div class="mt-4 flex gap-4 border-t border-hairline pt-3 text-xs text-ink-soft"><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-success" />Start</span><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-danger" />End</span></div>
-      </aside>
+      <Select v-model="selectedShift" label="Shift" class="w-56">
+        <option value="all">All shifts</option>
+        <option v-for="shift in trail?.shifts ?? []" :key="shift.index" :value="shift.index">
+          {{ shift.label }}
+        </option>
+      </Select>
+      <span v-if="trailLoading" class="pb-2.5 text-xs text-ink-faint">Loading…</span>
+    </form>
+
+    <section class="relative h-[60vh] min-h-[420px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card">
+      <div ref="mapContainer" class="!absolute !inset-0 bg-surface-muted" />
+      <div v-if="mapError" class="absolute inset-x-4 top-4 z-10">
+        <InlineAlert>{{ mapError }}</InlineAlert>
+      </div>
+      <p
+        v-if="!trailLoading && trail && trail.points.length === 0"
+        class="absolute inset-x-4 top-4 z-10 rounded-control border border-hairline bg-surface px-4 py-2.5 text-sm text-ink-soft shadow-raised"
+      >
+        No tracked activity for this day.
+      </p>
     </section>
-
-    <div class="card mb-5 p-4 sm:hidden">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <div><p class="overline">Activity card</p><h2>{{ selectedDate ?? 'Select a day' }}</h2></div>
-        <span v-if="trailLoading" class="text-xs text-ink-faint">Loading…</span>
-      </div>
-      <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-        <div><p class="text-xs text-ink-faint">Distance</p><strong class="tabular-nums">{{ distance(trail?.distance_m ?? 0) }}</strong></div>
-        <div><p class="text-xs text-ink-faint">Active duration</p><strong class="tabular-nums">{{ activeDuration }}</strong></div>
-        <div><p class="text-xs text-ink-faint">First point</p><strong class="tabular-nums">{{ time(trail?.first_point_at) }}</strong></div>
-        <div><p class="text-xs text-ink-faint">Last point</p><strong class="tabular-nums">{{ time(trail?.last_point_at) }}</strong></div>
-        <div><p class="text-xs text-ink-faint">Average speed</p><strong class="tabular-nums">{{ speed(trail?.average_speed_mps) }}</strong></div>
-        <div><p class="text-xs text-ink-faint">Maximum speed</p><strong class="tabular-nums">{{ speed(trail?.max_speed_mps) }}</strong></div>
-        <div><p class="text-xs text-ink-faint">GPS accuracy</p><strong class="tabular-nums">{{ trail?.average_accuracy_m == null ? '—' : `${trail.average_accuracy_m.toFixed(1)} m` }}</strong></div>
-        <div><p class="text-xs text-ink-faint">Recorded points</p><strong class="tabular-nums">{{ trail?.points_count ?? 0 }}</strong></div>
-      </div>
-      <div class="mt-4 flex gap-4 border-t border-hairline pt-3 text-xs text-ink-soft"><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-success" />Start</span><span><i class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-danger" />End</span></div>
-    </div>
-
-    <Table :headers="['Date', 'Started', 'Ended', 'Points', 'Distance', '']" :loading="loading" :is-empty="histories.length === 0" empty-message="No retained tracking history for this employee.">
-      <tr v-for="row in histories" :key="row.date" class="cursor-pointer text-ink transition-colors hover:bg-surface-muted" :class="selectedDate === row.date ? 'bg-primary-soft' : ''" @click="selectDay(row.date)">
-        <td class="px-5 py-3 font-medium">{{ row.date }}</td><td class="px-5 py-3 tabular-nums">{{ time(row.started_at) }}</td><td class="px-5 py-3 tabular-nums">{{ time(row.ended_at) }}</td><td class="px-5 py-3 tabular-nums">{{ row.points_count }}</td><td class="px-5 py-3 font-semibold tabular-nums">{{ distance(row.distance_m) }}</td><td class="px-5 py-3 text-right text-primary-strong">View route</td>
-      </tr>
-    </Table>
   </AppShell>
 </template>

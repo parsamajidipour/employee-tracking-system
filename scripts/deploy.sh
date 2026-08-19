@@ -58,8 +58,6 @@ for key in "${required_values[@]}"; do
   }
 done
 
-bash scripts/install-basemap.sh
-
 if docker_compose ps --status running postgres --quiet 2>/dev/null | grep -q .; then
   mkdir -p backups
   chmod 700 backups

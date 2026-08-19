@@ -159,33 +159,80 @@ Any new panel/admin route must be added to exactly one of the two
 `Route::middleware('capability:...')` groups in `routes/api.php`, never
 gated by role name or rank directly.
 
-## Live map tiles: self-hosted PMTiles extract, served from `api/`
+## Live map tiles: Google Maps JS API, not self-hosted PMTiles
 
-**Decision.** The live map (`panel/app/pages/map.vue`) renders with
-MapLibre GL JS against a single PMTiles archive (`api/storage/app/basemap/
-oman.pmtiles`, a Protomaps basemap extract clipped to Oman's bounding box,
-zoom 0–14), served by `api/`'s own `GET /api/basemap/oman.pmtiles` route
+**Decision.** Both map pages (`panel/app/pages/map.vue` and
+`panel/app/pages/employees/[id]/histories.vue`) render with the Google Maps
+JavaScript API (loaded via `@googlemaps/js-api-loader`), authenticated with
+a key in `panel/.env`'s `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`. `maplibre-gl`,
+`pmtiles`, and `@protomaps/basemaps` are removed from `panel/package.json`;
+`api/app/Http/Controllers/BasemapController.php`, its route, the
+`scripts/install-basemap.sh` extract step, and the basemap volume mount in
+`docker-compose.prod.yml` are deleted.
+
+This supersedes the entry below (self-hosted PMTiles), not just amends it —
+including the exact consequence that entry existed to remove: the map
+viewport is once again visible to a third party (Google), on every request
+for tiles.
+
+**Why.** Directed change, requested explicitly and knowingly against the
+self-hosting rationale below — the requester supplied a Google Cloud API
+key and asked for the reversal in the same breath as being told what it
+gives up. Recorded here so the next person touching this file has the
+"why" rather than rediscovering the tradeoff from scratch.
+
+**Consequences.**
+- **Privacy regression, accepted knowingly.** The previous entry's whole
+  point was that the viewport a supervisor is looking at (which, on the
+  live map, correlates with which employees are currently visible) never
+  left this deployment. That is no longer true: Google's tile/geocoding
+  endpoints see every map pan/zoom from the panel. No employee location
+  coordinates are sent to Google — markers are drawn client-side from data
+  already fetched over `api/`'s own WebSocket/REST endpoints — but the
+  *viewport* itself is Google-visible again. If this deployment's privacy
+  posture hardens later, revisit by reverting to the PMTiles setup this
+  entry replaces (still in git history) rather than layering a proxy in
+  front of Google's tiles, which likely violates Google's terms of service.
+- **A real, billed dependency now exists.** `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+  must be present and the Google Cloud project it belongs to must have
+  billing enabled and the Maps JavaScript API turned on, or both map pages
+  fail closed with a visible error instead of silently degrading. This is a
+  genuinely new operational dependency at a project that otherwise runs
+  entirely on its own VPS — track usage/billing on the Google Cloud console,
+  since nothing in this repo does.
+- `api/config/cors.php`'s `exposed_headers` is back to `[]` — that entry
+  existed only for the pmtiles client's range-read `fetch()` calls.
+- No Google Maps "Map ID" (required for `AdvancedMarkerElement`'s custom
+  cloud styling) is provisioned here; `NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID` is
+  optional and falls back to Google's `DEMO_MAP_ID`, which is
+  rate-limited and meant for local development only — create a real Map ID
+  in the Cloud Console before relying on this in production.
+
+---
+
+<details>
+<summary>Superseded: self-hosted PMTiles extract (kept for history — do not follow this section)</summary>
+
+**Decision.** The live map rendered with MapLibre GL JS against a single
+PMTiles archive (`api/storage/app/basemap/oman.pmtiles`, a Protomaps
+basemap extract clipped to Oman's bounding box, zoom 0–14), served by
+`api/`'s own `GET /api/basemap/oman.pmtiles` route
 (`App\Http\Controllers\BasemapController`) and read client-side with the
 `pmtiles` package's `Protocol` handler plus `@protomaps/basemaps`' vector
 style layers. No new container: `response()->file()` on a `BinaryFileResponse`
 already gets `Range`-request handling for free from Symfony, which is all
 the PMTiles HTTP-range-read model needs.
 
-This replaces the previous entry below (OSM's standard raster tile
-servers), which is superseded, not just amended — the "viewport leaks to a
-third party" consequence that entry accepted is what this decision removes.
+This replaced an earlier entry (OSM's standard raster tile servers) — the
+"viewport leaks to a third party" consequence that entry accepted is what
+this decision removed, and what the Google Maps decision above reintroduces.
 
 **Why.** `tile.openstreetmap.org`'s usage policy doesn't permit embedding
 it in an application like this one, and OSM's own infrastructure will
-rate-limit or block it under any real load — that was flagged as a known
-gap in the previous entry, and it's not something to leave sitting once
-there's a next task touching this file. PMTiles makes self-hosting cheap
-enough to do immediately instead of deferring it: it's one file, range-read
-over plain HTTP, no tile-serving process, no cache layer, no per-tile
-routing — the file itself *is* the server-side state. That fits `CLAUDE.md`
-better than the `tileserver-gl`-container alternative the old entry
-sketched: one static file beats a new long-running service at this
-project's scale.
+rate-limit or block it under any real load. PMTiles made self-hosting cheap
+enough to do immediately: one file, range-read over plain HTTP, no
+tile-serving process, no cache layer, no per-tile routing — the file itself
+*is* the server-side state.
 
 **How the extract was built.** Protomaps publishes a daily-updated
 planet-wide basemap PMTiles archive at `https://build.protomaps.com/
@@ -193,39 +240,9 @@ planet-wide basemap PMTiles archive at `https://build.protomaps.com/
 bounding box from a *remote* archive via HTTP range requests alone —
 nothing close to 120GB is downloaded. The `go-pmtiles` CLI's `extract`
 subcommand did this for Oman's bbox in about 80MB / a few dozen HTTP
-requests total. See `README.md`'s dev-setup step for the exact command —
-it is not committed (see below) and needs to be re-run once per clone/reset.
+requests total.
 
-**Consequences.**
-- `api/storage/app/basemap/oman.pmtiles` is a generated artifact, not
-  source — gitignored (already covered by the existing blanket
-  `api/storage/app/*` / `api/storage/app/.gitignore` rules, nothing new
-  needed there), and regenerated locally by the README's download step, not
-  fetched from any application-controlled URL at runtime.
-- `GET /api/basemap/oman.pmtiles` is intentionally unauthenticated — it's
-  OSM-derived basemap geometry, the same data anyone could get from OSM
-  directly, not employee location data. Nothing in `CLAUDE.md`'s access
-  rules applies to it.
-- `api/config/cors.php`'s `exposed_headers` now includes `Content-Range`,
-  `Content-Length`, and `Accept-Ranges` — the pmtiles client reads these off
-  the `fetch()` response to do its range reads, and cross-origin `fetch()`
-  hides all response headers from JS unless a CORS response explicitly
-  exposes them.
-- No `glyphs`/`sprite` URL is set in the MapLibre style. Text labels still
-  render — MapLibre falls back to local system fonts when no glyphs
-  endpoint is configured — but POI icons don't (no local fallback exists
-  for sprite images; console shows "could not be loaded" warnings for
-  them). Leaving both unset is deliberate either way: this is still the
-  no-design-pass phase, and standing up a font/sprite service (third-party
-  or self-hosted) to draw icons would reintroduce exactly the kind of
-  external request this change exists to remove, for a cosmetic gain no one
-  asked for yet.
-- The extract is zoom 0–14 and was built from whatever day's build was
-  current when generated — Protomaps' daily builds aren't meant to be
-  hotlinked or diffed against by date, so there's no "refresh" story here
-  beyond "re-run the extract command against a current daily build" if the
-  underlying OSM data ever needs updating. Not automated; revisit if stale
-  data becomes an actual complaint.
+</details>
 
 ## Multi-team is deferred, not removed
 
@@ -362,3 +379,32 @@ real benefit, since the admin already knows the number from the build
 that just ran. The admin panel and `app/pubspec.yaml`'s `+build` number
 must be bumped together by hand; nothing enforces that they match beyond
 the admin typing the right value into the upload form.
+
+## Design system: flat, vivid Tailwind palette, not the calm teal system
+
+**Decision.** `docs/DESIGN.md`'s colour tokens (and `panel/app/assets/css/
+tokens.css`) moved from the original low-saturation teal-on-near-white "calm"
+palette to a flat, higher-saturation palette sourced directly from Tailwind's
+default scale (`slate` neutrals, `blue` primary, `emerald`/`amber`/`red`
+status). No gradients anywhere, including the logo/button gradient the old
+system reserved. The panel also gained a real light/dark toggle
+(`useTheme()`), not just `prefers-color-scheme`.
+
+**Why.** Directed change, explicitly requested against the documented "calm
+before clever" rationale — recorded here, as with the Google Maps entry
+above, so the tradeoff is visible to whoever next touches this file rather
+than looking like an unreviewed drift from the original design intent.
+
+**Consequences.**
+- `app/lib/theme/app_theme.dart` (the Flutter app) was **not** updated to
+  match. `docs/DESIGN.md` flags this explicitly. Until someone does the
+  Flutter pass, the app and the panel are visibly different palettes, which
+  contradicts this file's own "one system, two surfaces" framing and rule 6
+  ("the panel uses the same tokens at the same values"). Do the Flutter side
+  before calling this migration finished.
+- The map basemap-tinting rule (old rule 9) no longer applies as written —
+  Google Maps JS API doesn't expose the same client-side vector re-tinting
+  PMTiles/MapLibre did. See `docs/DESIGN.md` rule 9's replacement text.
+- Contrast was re-checked against the new pairs (documented in
+  `docs/DESIGN.md`'s Neutrals table) rather than assumed from the old ratios,
+  since a saturation change can silently break a ratio that used to pass.

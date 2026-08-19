@@ -1,29 +1,17 @@
 <script setup lang="ts">
-interface ShiftTemplate {
-  id: number
-  name: string
-  start_time: string
-  end_time: string
-  days_of_week: number[]
-}
-
-interface Employee {
-  id: number
-  name: string
-  email: string | null
-  username: string | null
-  shifts: ShiftTemplate[]
-}
-
 const route = useRoute()
 const employeeId = Number(route.params.id)
 const toast = useToast()
-const employee = ref<Employee | null>(null)
-const templates = ref<ShiftTemplate[]>([])
 const selectedIds = ref<number[]>([])
-const loading = ref(true)
 const saving = ref(false)
-const error = ref<string | null>(null)
+
+const { data: employeesData, loading: employeesLoading, error: employeesError, load: loadEmployees, refresh: refreshEmployees } = useEmployees()
+const { data: templatesData, loading: templatesLoading, error: templatesError, load: loadTemplates } = useShiftTemplates()
+
+const employee = computed(() => employeesData.value?.find((item) => item.id === employeeId) ?? null)
+const templates = computed(() => templatesData.value ?? [])
+const loading = computed(() => employeesLoading.value || templatesLoading.value)
+const error = computed(() => (employeesError.value || templatesError.value) ? 'Could not load employee shifts.' : null)
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -37,23 +25,9 @@ function toggle(id: number) {
     : [...selectedIds.value, id]
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const [employees, shiftTemplates] = await Promise.all([
-      apiFetch<Employee[]>('/api/v1/employees'),
-      apiFetch<ShiftTemplate[]>('/api/v1/shift-templates'),
-    ])
-    employee.value = employees.find((item) => item.id === employeeId) ?? null
-    templates.value = shiftTemplates
-    selectedIds.value = employee.value?.shifts.map((shift) => shift.id) ?? []
-    error.value = null
-  } catch {
-    error.value = 'Could not load employee shifts.'
-  } finally {
-    loading.value = false
-  }
-}
+watch(employee, (value) => {
+  selectedIds.value = value?.shifts.map((shift) => shift.id) ?? []
+}, { immediate: true })
 
 async function save() {
   saving.value = true
@@ -63,7 +37,7 @@ async function save() {
       body: { shift_template_ids: selectedIds.value },
     })
     toast.success('Working shifts saved.')
-    await load()
+    await refreshEmployees()
   } catch {
     toast.error('Saving shifts failed.')
   } finally {
@@ -71,7 +45,10 @@ async function save() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  loadEmployees()
+  loadTemplates()
+})
 </script>
 
 <template>

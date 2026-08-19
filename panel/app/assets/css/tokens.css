@@ -3,32 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --primary: #2f9ec0;
-  --primary-strong: #1e7f9b;
-  --primary-soft: #dcf0f6;
-  --gradient-top: #4fbdd8;
-  --gradient-bottom: #228dad;
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --primary-soft: #dbeafe;
 
-  --background: #eff5f8;
+  --background: #f8fafc;
   --surface: #ffffff;
-  --surface-muted: #f6fafc;
-  --border: #e2ecf1;
+  --surface-muted: #f1f5f9;
+  --border: #e2e8f0;
 
-  --text-primary: #13333f;
-  --text-secondary: #6e8c99;
-  --text-tertiary: #9db6c1;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
 
-  --success: #3fa98a;
-  --warning: #d9973b;
-  --danger: #d2635e;
-  --neutral: #8aa5b1;
+  --success: #059669;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --neutral: #94a3b8;
 
   --radius-card: 24px;
   --radius-control: 16px;
   --radius-small: 12px;
 
-  --shadow-card: 0 8px 24px rgba(19, 51, 63, 0.06);
-  --shadow-raised: 0 12px 32px rgba(19, 51, 63, 0.1);
+  --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-raised: 0 12px 32px rgba(15, 23, 42, 0.12);
 
   --motion-fast: 150ms;
   --motion-base: 220ms;
@@ -38,30 +36,65 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --primary: #4fbdd8;
-    --primary-strong: #2f9ec0;
-    --primary-soft: #12323d;
+    --primary: #60a5fa;
+    --primary-strong: #93c5fd;
+    --primary-soft: #17305c;
 
-    --background: #0e1e26;
-    --surface: #162c36;
-    --surface-muted: #1b333e;
-    --border: #22404c;
+    --background: #020617;
+    --surface: #0f172a;
+    --surface-muted: #1e293b;
+    --border: #334155;
 
-    --text-primary: #eaf4f8;
-    --text-secondary: #9db6c1;
-    --text-tertiary: #6e8c99;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
 
-    --success: #57c3a3;
-    --warning: #e8af5c;
-    --danger: #e2807b;
-    --neutral: #7e9aa6;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --neutral: #64748b;
+
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.45);
   }
+}
+
+:root[data-theme='dark'] {
+  --primary: #60a5fa;
+  --primary-strong: #93c5fd;
+  --primary-soft: #17305c;
+
+  --background: #020617;
+  --surface: #0f172a;
+  --surface-muted: #1e293b;
+  --border: #334155;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --neutral: #64748b;
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: light dark;
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
   }
 
   body {
@@ -71,6 +104,7 @@
       'Helvetica Neue', Arial, sans-serif;
     font-size: 15px;
     line-height: 1.4;
+    transition: background-color var(--motion-base) var(--ease), color var(--motion-base) var(--ease);
   }
 
   h1 {

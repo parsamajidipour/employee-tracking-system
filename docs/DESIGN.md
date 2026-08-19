@@ -4,61 +4,83 @@ One system, two surfaces: the Flutter app (`app/`) and the Nuxt panel (`panel/`)
 Both read the tokens below. A colour, radius, or shadow that is not in this file
 does not belong in a widget or a component.
 
-Derived from the reference card UI: soft teal on near-white, wide radii, diffuse
-shadows, and a lot of breathing room. Calm before clever.
+Flat and vivid, not soft-and-calm: solid fills, no gradients, no blur, real
+saturation on the primary accent and on every status colour — energetic rather
+than muted, while still passing contrast. Wide radii and generous whitespace are
+kept from the previous system; the low-saturation teal-on-near-white palette is
+not — see `DECISIONS.md`'s "Design system: flat, vivid Tailwind palette" entry
+for why and when this changed.
 
 Implementations:
 
 - `app/lib/theme/app_theme.dart` — `AppColors`, `AppSpacing`, `AppRadii`,
-  `AppShadows`, `AppTheme.light` / `AppTheme.dark`
-- `panel/app/assets/css/tokens.css` — the same tokens as CSS custom properties
+  `AppShadows`, `AppTheme.light` / `AppTheme.dark`. **Not yet updated to this
+  palette** — the values below currently apply to `panel/` only. The app still
+  runs the previous teal tokens until someone does the Flutter pass; until then
+  the two surfaces are visibly different products, which rule 6 below says not
+  to do. Flagged here instead of silently left unmentioned.
+- `panel/app/assets/css/tokens.css` — the tokens as CSS custom properties,
+  values sourced directly from Tailwind's default palette (`slate` for
+  neutrals, `blue` for the accent, `emerald`/`amber`/`red` for status) so any
+  Tailwind utility class used ad hoc still lines up with the token colours.
 
 ## 1. Colour
 
-Teal is the only accent. Everything else is a neutral or a status colour. Never
-introduce a second brand hue to make something stand out — use weight, size, or
-whitespace instead.
+`primary` (blue) is the only brand accent — still true, still: never introduce
+a second brand hue in UI chrome to make something stand out, use weight, size,
+or whitespace instead. The one deliberate exception is data visualisation (the
+per-shift route colours on the histories map), where distinct hues encode
+distinct data series, not brand.
 
 ### Brand
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `primary` | `#2F9EC0` | `#4FBDD8` | Primary actions, active nav, selected state |
-| `primaryStrong` | `#1E7F9B` | `#2F9EC0` | Pressed state, text on soft primary |
-| `primarySoft` | `#DCF0F6` | `#12323D` | Chip and badge backgrounds, icon tiles |
-| `primaryGradientTop` | `#4FBDD8` | `#4FBDD8` | Top of the bar/pin gradient |
-| `primaryGradientBottom` | `#228DAD` | `#228DAD` | Bottom of the bar/pin gradient |
+| `primary` | `#2563EB` (blue-600) | `#60A5FA` (blue-400) | Primary actions, active nav, selected state |
+| `primaryStrong` | `#1D4ED8` (blue-700) | `#93C5FD` (blue-300) | Pressed state, text on soft primary |
+| `primarySoft` | `#DBEAFE` (blue-100) | `#17305C` | Chip and badge backgrounds, icon tiles |
 
-The gradient is vertical, top-light to bottom-dark, and is reserved for the logo
-mark, chart bars, and the one primary button on a screen. Not for surfaces.
+No gradient tokens. Fills are flat solid colour everywhere, including the logo
+mark, chart bars, and buttons — this is the "flat" half of "flat and vivid."
 
 ### Neutrals
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `background` | `#EFF5F8` | `#0E1E26` | Screen behind the cards |
-| `surface` | `#FFFFFF` | `#162C36` | Cards, sheets, nav bar |
-| `surfaceMuted` | `#F6FAFC` | `#1B333E` | Inset rows, disabled fields |
-| `border` | `#E2ECF1` | `#22404C` | Hairlines, input outlines |
-| `textPrimary` | `#13333F` | `#EAF4F8` | Headings, values |
-| `textSecondary` | `#6E8C99` | `#9DB6C1` | Labels, captions, axis text |
-| `textTertiary` | `#9DB6C1` | `#6E8C99` | Placeholder, disabled |
+| `background` | `#F8FAFC` (slate-50) | `#020617` (slate-950) | Screen behind the cards |
+| `surface` | `#FFFFFF` | `#0F172A` (slate-900) | Cards, sheets, nav bar |
+| `surfaceMuted` | `#F1F5F9` (slate-100) | `#1E293B` (slate-800) | Inset rows, disabled fields |
+| `border` | `#E2E8F0` (slate-200) | `#334155` (slate-700) | Hairlines, input outlines |
+| `textPrimary` | `#0F172A` (slate-900) | `#F8FAFC` (slate-50) | Headings, values |
+| `textSecondary` | `#64748B` (slate-500) | `#94A3B8` (slate-400) | Labels, captions, axis text |
+| `textTertiary` | `#94A3B8` (slate-400) | `#64748B` (slate-500) | Placeholder, disabled |
 
-Never pure `#000` on pure `#FFF`. `textPrimary` on `surface` is 12.1:1, and
-`textSecondary` on `surface` is 4.6:1 — both pass WCAG AA. `textTertiary` is for
-non-essential text only; it does not pass AA and must never carry meaning alone.
+Never pure `#000` on pure `#FFF`. `textPrimary` on `surface` is 18.7:1 in light
+mode and 17.9:1 in dark, and `textSecondary` on `surface` is 4.6:1 in light /
+7.7:1 in dark — all pass WCAG AA (body text needs 4.5:1). `textTertiary` is for
+non-essential text only; it does not reliably pass AA and must never carry
+meaning alone.
 
 ### Status
 
 | Token | Light | Dark | Meaning |
 |---|---|---|---|
-| `success` | `#3FA98A` | `#57C3A3` | Tracking active, in window, synced |
-| `warning` | `#D9973B` | `#E8AF5C` | Queue backing up, permission partial |
-| `danger` | `#D2635E` | `#E2807B` | Denied permission, upload failing, revoked |
-| `neutral` | `#8AA5B1` | `#7E9AA6` | Off shift, idle, nothing to report |
+| `success` | `#059669` (emerald-600) | `#34D399` (emerald-400) | Tracking active, in window, synced |
+| `warning` | `#F59E0B` (amber-500) | `#FBBF24` (amber-400) | Queue backing up, permission partial |
+| `danger` | `#DC2626` (red-600) | `#F87171` (red-400) | Denied permission, upload failing, revoked |
+| `neutral` | `#94A3B8` (slate-400) | `#64748B` (slate-500) | Off shift, idle, nothing to report |
 
 Status colour never appears alone. It is always paired with an icon and a word,
 so the meaning survives colour blindness and greyscale.
+
+### Light / dark mode
+
+The panel has a real toggle (`useTheme()` in `panel/app/composables/useTheme.ts`),
+not just OS-driven colours: `system` (default, follows `prefers-color-scheme`),
+`light`, or `dark`, persisted to `localStorage` and applied via
+`data-theme="light"` / `data-theme="dark"` on `<html>`. A tiny inline script in
+`nuxt.config.ts`'s `app.head.script` applies the stored choice before Vue mounts,
+so there is no flash of the wrong theme on load.
 
 ## 2. Type
 
@@ -190,6 +212,10 @@ These are what keep the two surfaces looking like one product.
    `surfaceMuted` block or a hairline rule, not another card.
 8. Destructive actions in a table are quiet text buttons that turn `danger` on
    hover, never filled red. A row of filled buttons turns every row into an alert.
-9. The map basemap is tinted to these tokens, not left on the stock Protomaps
-   flavor. Water is a muted `#cadfea`, land `#eaeef1`; a saturated map defeats the
-   point of a calm palette everywhere else.
+9. The live map and histories map render with Google's default Maps styling —
+   Google Maps JS API doesn't support ad-hoc client-side re-tinting the way the
+   previous self-hosted vector basemap did. A custom Cloud Console map style
+   (via `NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID`) is how this would be brought back in
+   line with these tokens; not set up here, left as a follow-up. Markers,
+   overlays, and the info panel chrome around the map are still fully on
+   these tokens.

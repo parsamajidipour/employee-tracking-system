@@ -11,18 +11,17 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^1.16.8",
     "@nuxtjs/tailwindcss": "^6.14.0",
-    "@protomaps/basemaps": "^5.7.2",
     "laravel-echo": "^2.4.0",
-    "maplibre-gl": "^6.2.0",
     "nuxt": "^4.5.2",
-    "pmtiles": "^4.4.1",
     "pusher-js": "^8.6.0",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@types/google.maps": "^3.58.1",
     "@types/node": "^26.1.2",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.3.9"

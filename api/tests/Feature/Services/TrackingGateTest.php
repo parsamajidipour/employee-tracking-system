@@ -182,6 +182,40 @@ class TrackingGateTest extends TestCase
         $this->assertTrue(CarbonImmutable::parse($lastKnown['recorded_at'])->equalTo($newer));
     }
 
+    public function test_gps_jitter_below_the_accuracy_noise_floor_while_stationary_adds_zero_distance(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        CarbonImmutable::setTestNow($thursday->setTime(10, 0));
+
+        $this->gate->process($this->employee, [$this->point($thursday->setTime(9, 0), [
+            'lat' => 23.50000, 'lng' => 58.40000, 'accuracy_m' => 6.0,
+        ])]);
+        // ~4m away — inside the 8m config floor and inside the previous point's own accuracy.
+        $this->gate->process($this->employee, [$this->point($thursday->setTime(9, 1), [
+            'lat' => 23.50004, 'lng' => 58.40000, 'accuracy_m' => 6.0,
+        ])]);
+
+        $total = LocationPoint::where('employee_id', $this->employee->id)->sum('distance_m');
+        $this->assertEquals(0.0, (float) $total);
+    }
+
+    public function test_real_movement_above_the_noise_floor_is_still_counted(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        CarbonImmutable::setTestNow($thursday->setTime(10, 0));
+
+        $this->gate->process($this->employee, [$this->point($thursday->setTime(9, 0), [
+            'lat' => 23.50000, 'lng' => 58.40000, 'accuracy_m' => 5.0,
+        ])]);
+        // ~55m away — well past any accuracy/noise floor.
+        $this->gate->process($this->employee, [$this->point($thursday->setTime(9, 1), [
+            'lat' => 23.50050, 'lng' => 58.40000, 'accuracy_m' => 5.0,
+        ])]);
+
+        $total = (float) LocationPoint::where('employee_id', $this->employee->id)->sum('distance_m');
+        $this->assertGreaterThan(40.0, $total);
+    }
+
     public function test_a_batch_of_n_accepted_points_produces_exactly_one_broadcast(): void
     {
         Event::fake([EmployeePositionUpdated::class]);

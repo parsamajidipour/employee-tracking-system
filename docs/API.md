@@ -23,7 +23,7 @@ Android APK update-check flow: `version_code`, `version_name`, `release_notes`,
 ### GET /api/app-releases/{id}/download
 
 Public, unauthenticated. Streams the `.apk` for that release. 503 if the file
-is missing on disk, mirroring `GET /api/basemap/oman.pmtiles`.
+is missing on disk.
 
 ## Panel endpoints
 

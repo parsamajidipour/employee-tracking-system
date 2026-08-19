@@ -1,120 +1,50 @@
 <script setup lang="ts">
-import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, addProtocol, setWorkerUrl } from 'maplibre-gl'
-import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { Protocol as PMTilesProtocol } from 'pmtiles'
-import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
-import type { StalenessBucket } from '~/composables/usePositions'
+import { getEmployeeMarkerOverlayCtor, type EmployeeMarkerOverlayInstance } from '~/utils/mapMarker'
 
 const { positions, now, stalenessBucket } = usePositions()
+const { load: loadGoogleMaps, mapId, apiKeyConfigured } = useGoogleMaps()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
-const basemapError = ref<string | null>(null)
-let map: MapLibreMap | undefined
-const markers = new Map<number, MapLibreMarker>()
+const mapError = ref<string | null>(null)
+let map: google.maps.Map | undefined
+let MarkerOverlay: ReturnType<typeof getEmployeeMarkerOverlayCtor> | undefined
+const markers = new Map<number, EmployeeMarkerOverlayInstance>()
 
 const selectedEmployeeId = ref<number | null>(null)
-const selectedDistanceM = ref<number | null>(null)
-const showTrail = ref(false)
-const trailPoints = ref<Array<{ lng: number; lat: number; recorded_at: string }>>([])
-const detailLoading = ref(false)
-const detailError = ref(false)
 
 const selectedPosition = computed(
   () => positions.value.find((position) => position.employee_id === selectedEmployeeId.value) ?? null,
 )
 
-const OFFLINE_COLOR = '#d97706'
+const OFFLINE_COLOR = '#f59e0b'
 
 function employeeColor(employeeId: number): string {
-  return `hsl(${(employeeId * 137.508) % 360} 68% 45%)`
+  return `hsl(${(employeeId * 137.508) % 360} 78% 46%)`
 }
 
 function markerColor(employeeId: number, recordedAt: string): string {
   return stalenessBucket(recordedAt) === 'offline' ? OFFLINE_COLOR : employeeColor(employeeId)
 }
 
-function markerElement(name: string): HTMLDivElement {
-  const el = document.createElement('div')
-  el.className = 'group relative h-4 w-4 cursor-pointer rounded-full border-2 border-white shadow-md'
-  const label = document.createElement('span')
-  label.textContent = name
-  label.className = 'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-ink opacity-0 shadow-raised transition-opacity group-hover:opacity-100'
-  el.appendChild(label)
-  return el
-}
-
-function renderTrail() {
-  if (!map?.getSource('employee-trail')) return
-  const coordinates = showTrail.value ? trailPoints.value.map((point) => [point.lng, point.lat]) : []
-  ;(map.getSource('employee-trail') as GeoJSONSource).setData({
-    type: 'Feature',
-    properties: {},
-    geometry: { type: 'LineString', coordinates },
-  })
-  if (selectedEmployeeId.value !== null) {
-    map.setPaintProperty('employee-trail-line', 'line-color', employeeColor(selectedEmployeeId.value))
-  }
-}
-
-async function loadTrail() {
-  if (!showTrail.value || selectedEmployeeId.value === null) {
-    trailPoints.value = []
-    renderTrail()
-    return
-  }
-
-  const result = await apiFetch<{ distance_m: number; points: Array<{ lng: number; lat: number; recorded_at: string }> }>(
-    `/api/v1/employees/${selectedEmployeeId.value}/trail`,
-  )
-  selectedDistanceM.value = result.distance_m
-  trailPoints.value = result.points
-  renderTrail()
-}
-
-async function toggleTrail() {
-  showTrail.value = !showTrail.value
-  try {
-    await loadTrail()
-  } catch {
-    showTrail.value = false
-    detailError.value = true
-  }
-}
-
-async function selectEmployee(employeeId: number) {
+function selectEmployee(employeeId: number) {
   selectedEmployeeId.value = employeeId
-  detailLoading.value = true
-  detailError.value = false
-  selectedDistanceM.value = null
-  showTrail.value = false
-  trailPoints.value = []
-  renderTrail()
-
-  try {
-    const result = await apiFetch<{ distance_m: number }>(`/api/v1/employees/${employeeId}/distance?days=1`)
-    selectedDistanceM.value = result.distance_m
-  } catch {
-    detailError.value = true
-  } finally {
-    detailLoading.value = false
-  }
 }
 
 function closeDetail() {
   selectedEmployeeId.value = null
-  showTrail.value = false
-  trailPoints.value = []
-  renderTrail()
 }
 
 function focusEmployee(employeeId: number) {
   const position = positions.value.find((p) => p.employee_id === employeeId)
-  if (position) map?.flyTo({ center: [position.lng, position.lat], zoom: 14 })
+  if (position && map) {
+    map.panTo({ lat: position.lat, lng: position.lng })
+    map.setZoom(Math.max(map.getZoom() ?? 11, 14))
+  }
   selectEmployee(employeeId)
 }
 
 function syncMarkers() {
-  if (!map) return
+  if (!map || !MarkerOverlay) return
 
   const seen = new Set<number>()
 
@@ -124,21 +54,21 @@ function syncMarkers() {
     let marker = markers.get(position.employee_id)
 
     if (!marker) {
-      const el = markerElement(position.name)
-      el.dataset.employeeId = String(position.employee_id)
-      el.addEventListener('click', () => selectEmployee(position.employee_id))
-      marker = new MapLibreMarker({ element: el }).setLngLat([position.lng, position.lat]).addTo(map)
+      marker = new MarkerOverlay(map, { lat: position.lat, lng: position.lng }, position.name, () =>
+        selectEmployee(position.employee_id),
+      )
       markers.set(position.employee_id, marker)
     } else {
-      marker.setLngLat([position.lng, position.lat])
+      marker.setName(position.name)
+      marker.moveTo({ lat: position.lat, lng: position.lng })
     }
 
-    markers.get(position.employee_id)!.getElement().style.backgroundColor = color
+    marker.setColor(color)
   }
 
   for (const [employeeId, marker] of markers) {
     if (!seen.has(employeeId)) {
-      marker.remove()
+      marker.destroy()
       markers.delete(employeeId)
       if (selectedEmployeeId.value === employeeId) closeDetail()
     }
@@ -146,127 +76,61 @@ function syncMarkers() {
 }
 
 watch(positions, syncMarkers, { deep: true })
-
-watch(positions, (snapshot) => {
-  if (!showTrail.value || selectedEmployeeId.value === null) return
-  const position = snapshot.find((item) => item.employee_id === selectedEmployeeId.value)
-  if (!position) return
-  const last = trailPoints.value.at(-1)
-  if (last && new Date(last.recorded_at).getTime() >= new Date(position.recorded_at).getTime()) return
-  trailPoints.value.push({ lng: position.lng, lat: position.lat, recorded_at: position.recorded_at })
-  renderTrail()
-}, { deep: true })
-
 watch(now, syncMarkers)
 
-function calmFlavor() {
-  return {
-    ...namedFlavor('light'),
-    background: '#eff5f8',
-    earth: '#eaeef1',
-    water: '#cadfea',
-    park_a: '#dcebe0',
-    park_b: '#d4e6da',
-    wood_a: '#dcebe0',
-    wood_b: '#d4e6da',
-    scrub_a: '#e2ebe3',
-    scrub_b: '#dbe6dd',
-    sand: '#efeade',
-    beach: '#efeade',
-    buildings: '#dde4e9',
-    city_label: '#13333f',
-    state_label: '#6e8c99',
-    country_label: '#6e8c99',
-    ocean_label: '#7fa5b5',
-    subplace_label: '#6e8c99',
+onMounted(async () => {
+  if (!apiKeyConfigured) {
+    mapError.value = 'Google Maps API key is not configured. Contact an administrator.'
+    return
   }
-}
 
-onMounted(() => {
-  setWorkerUrl(maplibreWorkerUrl)
-  addProtocol('pmtiles', new PMTilesProtocol().tile)
+  try {
+    const g = await loadGoogleMaps()
+    MarkerOverlay = getEmployeeMarkerOverlayCtor(g)
 
-  const { public: config } = useRuntimeConfig()
-  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
-
-  fetch(basemapUrl, { method: 'HEAD' })
-    .then((response) => {
-      if (!response.ok) basemapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
-    })
-    .catch(() => {
-      basemapError.value = 'Could not reach the map tile server.'
-    })
-
-  map = new MapLibreMap({
-    container: mapContainer.value!,
-    style: {
-      version: 8,
-      sources: {
-        protomaps: {
-          type: 'vector',
-          url: `pmtiles://${basemapUrl}`,
-          attribution: '© OpenStreetMap contributors',
-          maxzoom: 14,
-        },
+    map = new g.maps.Map(mapContainer.value!, {
+      center: { lat: 23.6144, lng: 58.5922 },
+      zoom: 11,
+      mapId,
+      disableDefaultUI: true,
+      zoomControl: true,
+      clickableIcons: false,
+      restriction: {
+        latLngBounds: { north: 26.6, south: 16.6, east: 59.95, west: 52.1 },
+        strictBounds: false,
       },
-
-      layers: protomapsLayers('protomaps', calmFlavor(), { lang: 'en' }),
-    },
-    center: [58.5922, 23.6144],
-    zoom: 11,
-
-    maxBounds: [
-      [52.1, 16.6],
-      [59.95, 26.6],
-    ],
-  })
-
-  map.on('error', (e) => {
-    if (!basemapError.value) basemapError.value = 'The map could not be loaded.'
-    console.error('MapLibre error', e.error)
-  })
-  map.on('load', () => {
-    map?.addSource('employee-trail', {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } },
     })
-    map?.addLayer({
-      id: 'employee-trail-line',
-      type: 'line',
-      source: 'employee-trail',
-      paint: { 'line-color': '#2f9ec0', 'line-width': 4, 'line-opacity': 0.9 },
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-    })
+
     syncMarkers()
-  })
 
-  watch(
-    positions,
-    (snapshot) => {
-      const [first, ...rest] = snapshot
-      if (!first) return
-      const bounds = rest.reduce(
-        (b, position) => b.extend([position.lng, position.lat]),
-        new LngLatBounds([first.lng, first.lat], [first.lng, first.lat]),
-      )
-      map?.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 0 })
-    },
-    { once: true },
-  )
+    const stop = watch(
+      positions,
+      (snapshot) => {
+        if (snapshot.length === 0 || !map) return
+        const bounds = new g.maps.LatLngBounds()
+        for (const position of snapshot) bounds.extend({ lat: position.lat, lng: position.lng })
+        map.fitBounds(bounds, 60)
+        stop()
+      },
+      { deep: true },
+    )
+  } catch {
+    mapError.value = 'The map could not be loaded. Check the Google Maps API key and network access.'
+  }
 })
 
 onUnmounted(() => {
-  map?.remove()
+  for (const marker of markers.values()) marker.destroy()
+  markers.clear()
 })
 </script>
 
 <template>
   <AppShell title="Live map" full-bleed>
+    <div ref="mapContainer" class="!absolute !inset-0 bg-surface-muted"></div>
 
-    <div ref="mapContainer" class="!absolute !inset-0"></div>
-
-    <div v-if="basemapError" class="absolute left-4 right-4 top-4 z-10 sm:right-auto sm:w-[min(400px,calc(100%-2rem))]">
-      <InlineAlert>{{ basemapError }}</InlineAlert>
+    <div v-if="mapError" class="absolute left-4 right-4 top-4 z-10 sm:right-auto sm:w-[min(400px,calc(100%-2rem))]">
+      <InlineAlert>{{ mapError }}</InlineAlert>
     </div>
 
     <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(320px,calc(100%-2rem))] flex-col overflow-hidden">
@@ -283,39 +147,18 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <p v-if="detailLoading" class="muted mt-3 text-sm">Loading details…</p>
-
-        <div v-else class="mt-3">
-          <InlineAlert v-if="detailError">Could not load distance details.</InlineAlert>
-
-          <dl class="space-y-2 text-sm">
-            <div class="flex items-baseline justify-between gap-3">
-              <dt class="muted">Status</dt>
-              <dd :class="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'text-success' : 'text-state-warning'">
-                {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
-              </dd>
-            </div>
-            <div class="flex items-baseline justify-between gap-3">
-              <dt class="muted">Distance today</dt>
-              <dd class="tabular font-semibold">{{ selectedDistanceM === null ? '—' : `${(selectedDistanceM / 1000).toFixed(2)} km` }}</dd>
-            </div>
-            <div v-if="selectedPosition" data-testid="detail-last-update" class="flex items-baseline justify-between gap-3">
-              <dt class="muted">Last update</dt>
-              <dd class="tabular">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
-            </div>
-          </dl>
-          <button
-            type="button"
-            class="mt-4 flex w-full items-center gap-3 rounded-control border border-hairline bg-surface-muted p-3 text-left text-sm font-medium transition-colors hover:border-primary"
-            @click="toggleTrail"
-          >
-            <span
-              class="grid h-6 w-6 place-items-center rounded-small border transition-colors"
-              :style="showTrail ? { backgroundColor: employeeColor(selectedEmployeeId!), borderColor: employeeColor(selectedEmployeeId!), color: '#fff' } : {}"
-            >{{ showTrail ? '✓' : '' }}</span>
-            <span>Show current shift trail</span>
-          </button>
-        </div>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div class="flex items-baseline justify-between gap-3">
+            <dt class="muted">Status</dt>
+            <dd :class="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'text-state-success' : 'text-state-warning'">
+              {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
+            </dd>
+          </div>
+          <div v-if="selectedPosition" data-testid="detail-last-update" class="flex items-baseline justify-between gap-3">
+            <dt class="muted">Last update</dt>
+            <dd class="tabular">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
+          </div>
+        </dl>
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col">

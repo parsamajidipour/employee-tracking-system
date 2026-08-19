@@ -41,31 +41,12 @@ if you want to run `api/` outside Docker too.
    This brings up Postgres (with PostGIS enabled), Redis, and `api/`, then
    runs migrations and serves the API at http://localhost:8000 (port
    configurable via `API_PORT` in the root `.env`).
-3. Download the live map's basemap tiles. The live map (`panel/app/pages/map.vue`)
-   renders from a self-hosted [Protomaps](https://protomaps.com) PMTiles
-   extract instead of any third-party tile server — see `DECISIONS.md`'s
-   "Live map tiles" entry for why. The file is a generated artifact, not
-   source, and is gitignored — download/build it once per clone:
-
-   ```
-   curl -sL -o /tmp/pm.tgz https://github.com/protomaps/go-pmtiles/releases/latest/download/go-pmtiles_1.31.2_Linux_x86_64.tar.gz
-   tar -xzf /tmp/pm.tgz -C /tmp
-   mkdir -p api/storage/app/basemap
-   /tmp/pmtiles extract \
-     "https://build.protomaps.com/$(date -u +%Y%m%d).pmtiles" \
-     api/storage/app/basemap/oman.pmtiles \
-     --bbox=52.0000004,16.4649608,60.0545770,26.7026780 \
-     --maxzoom=14
-   ```
-
-   This reads only the ~80MB of tiles inside Oman's bounding box out of
-   Protomaps' ~120GB daily planet build via HTTP range requests — it does
-   not download the whole archive. `go-pmtiles` ships as a prebuilt static
-   binary, so no Go toolchain is needed. If `build.protomaps.com`
-   doesn't have today's date yet (builds land a few hours into the UTC
-   day), try `date -u -d yesterday +%Y%m%d` instead. `api/` is bind-mounted
-   into the container (see below), so the file is picked up with no rebuild
-   or restart — just refresh the panel.
+3. Set a Google Maps JavaScript API key. Both map pages (`panel/app/pages/map.vue`
+   and `panel/app/pages/employees/[id]/histories.vue`) render with the Google
+   Maps JS API — see `DECISIONS.md`'s "Live map tiles" entry for why this
+   replaced the earlier self-hosted PMTiles setup. Put a key with the Maps
+   JavaScript API enabled and billing active on the Google Cloud project into
+   `panel/.env`'s `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`. Never commit this key.
 4. Start the panel on the host:
    ```
    cd panel

@@ -20,26 +20,37 @@ class EmployeeHistoryController extends Controller
     {
         $validated = $request->validate(['date' => ['nullable', 'date_format:Y-m-d']]);
         $date = $validated['date'] ?? CarbonImmutable::now(config('tracking.timezone'))->toDateString();
-        $windows = $resolver->resolveAllForDate($employee, $date);
+        $windows = $resolver->resolveAllForDate($employee, $date)->values();
 
         $this->audit->record($request->user(), $employee->id, AccessAuditAction::ViewTrail, $request->ip());
 
         if ($windows->isEmpty()) {
-            return response()->json(['date' => $date, 'distance_m' => 0, 'points' => []]);
+            return response()->json(['date' => $date, 'distance_m' => 0, 'shifts' => [], 'points' => []]);
         }
 
         $start = $windows->min(fn ($window) => $window->effectiveStart()->getTimestamp());
         $end = $windows->max(fn ($window) => $window->effectiveEnd()->getTimestamp());
         $startAt = CarbonImmutable::createFromTimestampUTC($start);
         $endAt = CarbonImmutable::createFromTimestampUTC($end);
+        $timezone = config('tracking.timezone');
 
-        $points = DB::table('location_points')
+        $rows = DB::table('location_points')
             ->where('employee_id', $employee->id)
             ->whereBetween('recorded_at', [$startAt, $endAt])
             ->orderBy('recorded_at')
             ->selectRaw('ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat, distance_m, accuracy_m, speed_mps, heading_deg, battery_pct, recorded_at')
-            ->get()
-            ->map(fn ($point) => [
+            ->get();
+
+        $shiftDistances = array_fill(0, $windows->count(), 0.0);
+
+        $points = $rows->map(function ($point) use ($windows, &$shiftDistances) {
+            $recordedAt = CarbonImmutable::parse($point->recorded_at, 'UTC');
+            $shiftIndex = $this->resolveOwningShift($windows, $recordedAt);
+            if ($shiftIndex !== null) {
+                $shiftDistances[$shiftIndex] += (float) $point->distance_m;
+            }
+
+            return [
                 'lng' => (float) $point->lng,
                 'lat' => (float) $point->lat,
                 'distance_m' => (float) $point->distance_m,
@@ -47,14 +58,25 @@ class EmployeeHistoryController extends Controller
                 'speed_mps' => $point->speed_mps === null ? null : (float) $point->speed_mps,
                 'heading_deg' => $point->heading_deg === null ? null : (float) $point->heading_deg,
                 'battery_pct' => $point->battery_pct === null ? null : (int) $point->battery_pct,
-                'recorded_at' => CarbonImmutable::parse($point->recorded_at, 'UTC')->toISOString(),
-            ]);
+                'recorded_at' => $recordedAt->toISOString(),
+                'shift_index' => $shiftIndex,
+            ];
+        });
 
         $summary = DB::table('location_points')
             ->where('employee_id', $employee->id)
             ->whereBetween('recorded_at', [$startAt, $endAt])
             ->selectRaw('SUM(distance_m) AS distance_m, AVG(speed_mps) AS average_speed_mps, MAX(speed_mps) AS max_speed_mps, AVG(accuracy_m) AS average_accuracy_m, MIN(recorded_at) AS first_point_at, MAX(recorded_at) AS last_point_at, COUNT(*) AS points_count')
             ->first();
+
+        $shifts = $windows->values()->map(fn ($window, $index) => [
+            'index' => $index,
+            'source' => $window->source->value,
+            'start' => $window->effectiveStart()->toISOString(),
+            'end' => $window->effectiveEnd()->toISOString(),
+            'label' => $window->effectiveStart()->setTimezone($timezone)->format('H:i').'–'.$window->effectiveEnd()->setTimezone($timezone)->format('H:i'),
+            'distance_m' => $shiftDistances[$index],
+        ]);
 
         return response()->json([
             'date' => $date,
@@ -67,8 +89,37 @@ class EmployeeHistoryController extends Controller
             'first_point_at' => $summary->first_point_at,
             'last_point_at' => $summary->last_point_at,
             'points_count' => (int) ($summary->points_count ?? 0),
+            'shifts' => $shifts,
             'points' => $points,
         ]);
+    }
+
+    /**
+     * When multiple shift windows apply on the same date (e.g. a mid-day schedule
+     * change), a point in the overlap belongs to whichever window ends first —
+     * that's the shift actually in effect at the boundary, not the one that
+     * happens to sort first.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\ValueObjects\ShiftWindow>  $windows
+     */
+    private function resolveOwningShift($windows, CarbonImmutable $recordedAt): ?int
+    {
+        $bestIndex = null;
+        $bestEnd = null;
+
+        foreach ($windows as $index => $window) {
+            if (! $window->contains($recordedAt)) {
+                continue;
+            }
+
+            $windowEnd = $window->effectiveEnd()->getTimestamp();
+            if ($bestEnd === null || $windowEnd < $bestEnd) {
+                $bestEnd = $windowEnd;
+                $bestIndex = $index;
+            }
+        }
+
+        return $bestIndex;
     }
 
     public function index(Request $request, User $employee): JsonResponse

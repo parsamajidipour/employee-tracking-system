@@ -1,14 +1,5 @@
 <script setup lang="ts">
-interface ShiftTemplate {
-  id: number
-  name: string
-  days_of_week: number[]
-  start_time: string
-  end_time: string
-  grace_before_min: number
-  grace_after_min: number
-  max_daily_minutes: number | null
-}
+import type { ShiftTemplate } from '~/composables/useShiftTemplates'
 
 interface EmployeeShiftPreview {
   id: number
@@ -17,9 +8,9 @@ interface EmployeeShiftPreview {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const templates = ref<ShiftTemplate[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+const { data: templatesData, loading, error: cacheError, load, refresh } = useShiftTemplates()
+const templates = computed(() => templatesData.value ?? [])
+const error = computed(() => (cacheError.value ? 'Could not load shift templates. Sign in and try again.' : null))
 
 const { confirm } = useConfirm()
 const toast = useToast()
@@ -42,18 +33,6 @@ function dayLabel(days: number[]): string {
     .sort((a, b) => a - b)
     .map((d) => DAY_LABELS[d])
     .join(', ')
-}
-
-async function load() {
-  loading.value = true
-  try {
-    templates.value = await apiFetch<ShiftTemplate[]>('/api/v1/shift-templates')
-    error.value = null
-  } catch {
-    error.value = 'Could not load shift templates. Sign in and try again.'
-  } finally {
-    loading.value = false
-  }
 }
 
 function startCreate() {
@@ -100,7 +79,7 @@ async function submit() {
       toast.success('Shift template saved.')
     }
     startCreate()
-    await load()
+    await refresh()
   } catch {
     toast.error('Save failed — check the fields.')
   }
@@ -124,7 +103,7 @@ async function remove(template: ShiftTemplate) {
   try {
     await apiFetch(`/api/v1/shift-templates/${template.id}`, { method: 'DELETE' })
     toast.success('Shift template deleted.')
-    await load()
+    await refresh()
   } catch {
     toast.error('Delete failed.')
   }
@@ -135,6 +114,10 @@ onMounted(load)
 
 <template>
   <AppShell title="Shift templates">
+    <template #actions>
+      <Button variant="secondary" :disabled="loading" @click="refresh">Refresh</Button>
+    </template>
+
     <form @submit.prevent="submit" class="card mb-6 space-y-5 p-6">
       <h2>{{ editingId === null ? 'New template' : 'Edit template' }}</h2>
 

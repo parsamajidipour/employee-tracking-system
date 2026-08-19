@@ -2,6 +2,21 @@
 const route = useRoute()
 const { user, refresh } = useAuthUser()
 const { isOpen, close } = useSidebar()
+const { mode, setMode } = useTheme()
+const systemPrefersDark = ref(false)
+const isDark = computed(() => mode.value === 'dark' || (mode.value === 'system' && systemPrefersDark.value))
+
+function toggleTheme() {
+  setMode(isDark.value ? 'light' : 'dark')
+}
+
+onMounted(() => {
+  const query = window.matchMedia('(prefers-color-scheme: dark)')
+  systemPrefersDark.value = query.matches
+  query.addEventListener('change', (event) => {
+    systemPrefersDark.value = event.matches
+  })
+})
 
 const links = [
   { to: '/map', label: 'Live map', icon: 'M12 21s-7-5.686-7-11a7 7 0 1 1 14 0c0 5.314-7 11-7 11Z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z' },
@@ -94,14 +109,32 @@ async function signOut() {
     </nav>
 
     <div class="flex-none border-t border-hairline px-5 py-4">
-      <p class="truncate text-sm font-semibold">{{ user?.name ?? 'Signed in' }}</p>
-      <button
-        type="button"
-        class="mt-0.5 text-xs font-medium text-ink-soft transition-colors duration-150 hover:text-state-danger"
-        @click="signOut"
-      >
-        Sign out
-      </button>
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-semibold">{{ user?.name ?? 'Signed in' }}</p>
+          <button
+            type="button"
+            class="mt-0.5 text-xs font-medium text-ink-soft transition-colors duration-150 hover:text-state-danger"
+            @click="signOut"
+          >
+            Sign out
+          </button>
+        </div>
+        <button
+          type="button"
+          class="grid h-9 w-9 flex-none place-items-center rounded-small text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          <svg v-if="isDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+          </svg>
+        </button>
+      </div>
     </div>
   </aside>
 </template>

@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
   modules: ['@nuxtjs/tailwindcss'],
-  css: ['~/assets/css/tokens.css', 'maplibre-gl/dist/maplibre-gl.css'],
+  css: ['~/assets/css/tokens.css'],
   tailwindcss: {
     cssPath: false,
   },
@@ -19,11 +19,11 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'color-scheme', content: 'light dark' },
       ],
-    },
-  },
-  vite: {
-    worker: {
-      format: 'es',
+      script: [
+        {
+          innerHTML: `try{var m=localStorage.getItem('theme-mode');if(m&&m!=='system')document.documentElement.dataset.theme=m}catch(e){}`,
+        },
+      ],
     },
   },
   runtimeConfig: {
@@ -34,6 +34,8 @@ export default defineNuxtConfig({
       reverbHost: process.env.NUXT_PUBLIC_REVERB_HOST || '',
       reverbPort: process.env.NUXT_PUBLIC_REVERB_PORT || '18080',
       reverbScheme: process.env.NUXT_PUBLIC_REVERB_SCHEME || 'http',
+      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+      googleMapsMapId: process.env.NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
     },
   },
 })
