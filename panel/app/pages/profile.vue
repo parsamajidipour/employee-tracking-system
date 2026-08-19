@@ -2,7 +2,17 @@
 const { user, refresh } = useAuthUser()
 const toast = useToast()
 const saving = ref(false)
+const refreshing = ref(false)
 const error = ref<string | null>(null)
+
+async function refreshProfile() {
+  refreshing.value = true
+  try {
+    await refresh()
+  } finally {
+    refreshing.value = false
+  }
+}
 const form = reactive({
   name: '',
   email: '',
@@ -43,12 +53,19 @@ async function submit() {
   }
 }
 
-onMounted(refresh)
+onMounted(refreshProfile)
 </script>
 
 <template>
   <AppShell title="Admin profile">
-    <form class="max-w-lg space-y-4 rounded-card border border-hairline bg-surface p-6" @submit.prevent="submit">
+    <template #actions>
+      <Button variant="secondary" :disabled="refreshing" @click="refreshProfile">
+        <Icon name="refresh" class="h-4 w-4" :spin="refreshing" />
+        Refresh
+      </Button>
+    </template>
+
+    <form class="card max-w-lg space-y-4 p-6" @submit.prevent="submit">
       <InlineAlert v-if="error">{{ error }}</InlineAlert>
       <TextInput v-model="form.name" label="Name" required autocomplete="name" />
       <TextInput v-model="form.email" type="email" label="Email" required autocomplete="email" />

@@ -24,7 +24,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <div class="w-full max-w-md rounded-lg bg-surface p-5 shadow-lg" role="dialog" aria-modal="true">
         <div class="mb-3 flex items-center justify-between">
           <h2 class="text-sm font-semibold text-ink">{{ title }}</h2>
-          <button type="button" @click="close" class="text-ink-faint hover:text-ink-soft" aria-label="Close">✕</button>
+          <button type="button" @click="close" class="text-ink-faint hover:text-ink-soft" aria-label="Close">
+            <Icon name="close" class="h-4 w-4" />
+          </button>
         </div>
         <div class="text-sm text-ink">
           <slot />

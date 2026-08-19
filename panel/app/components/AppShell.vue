@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ title: string; subtitle?: string; fullBleed?: boolean }>(), {
+withDefaults(defineProps<{ title: string; subtitle?: string; fullBleed?: boolean; backTo?: string }>(), {
   fullBleed: false,
 })
 
@@ -22,10 +22,16 @@ const { open } = useSidebar()
             aria-label="Open menu"
             @click="open"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Icon name="menu" class="h-5 w-5" />
           </button>
+          <NuxtLink
+            v-if="backTo"
+            :to="backTo"
+            aria-label="Back"
+            class="grid h-11 w-11 flex-none place-items-center rounded-small text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+          >
+            <Icon name="back" class="h-5 w-5" />
+          </NuxtLink>
           <div class="min-w-0">
             <h1 class="truncate text-[19px] font-bold leading-tight sm:text-[22px]">{{ title }}</h1>
             <p v-if="subtitle" class="muted truncate text-xs">{{ subtitle }}</p>

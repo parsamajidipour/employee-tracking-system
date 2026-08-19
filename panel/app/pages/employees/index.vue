@@ -97,7 +97,10 @@ onMounted(load)
 <template>
   <AppShell title="Employees">
     <template #actions>
-      <Button variant="secondary" :disabled="loading" @click="refresh">Refresh</Button>
+      <Button variant="secondary" :disabled="loading" @click="refresh">
+        <Icon name="refresh" class="h-4 w-4" :spin="loading" />
+        Refresh
+      </Button>
       <Button to="/employees/create">Add employee</Button>
     </template>
 
@@ -179,10 +182,7 @@ onMounted(load)
               aria-label="Delete employee"
               @click="removeEmployee(employee)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
-                stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" />
-              </svg>
+              <Icon name="trash" class="h-4 w-4" />
             </button>
           </div>
         </td>

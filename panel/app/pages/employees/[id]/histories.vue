@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { bearingBetween, shiftColor } from '~/utils/mapMarker'
+import { shiftColor } from '~/utils/mapMarker'
+import { formatDistance, formatSpeed } from '~/utils/formatDistance'
 
 interface TrailPoint {
   lng: number
@@ -71,6 +72,30 @@ function attachHoverTooltip(marker: google.maps.Marker, html: string) {
   marker.addListener('mouseout', () => hoverInfoWindow?.close())
 }
 
+function nearestPoint(points: TrailPoint[], lat: number, lng: number): TrailPoint {
+  let closest = points[0]!
+  let bestDistance = Infinity
+  for (const point of points) {
+    const distance = (point.lat - lat) ** 2 + (point.lng - lng) ** 2
+    if (distance < bestDistance) {
+      bestDistance = distance
+      closest = point
+    }
+  }
+  return closest
+}
+
+function attachLineHoverTooltip(line: google.maps.Polyline, points: TrailPoint[]) {
+  line.addListener('mousemove', (event: google.maps.PolyMouseEvent) => {
+    if (!map || !hoverInfoWindow || !event.latLng) return
+    const point = nearestPoint(points, event.latLng.lat(), event.latLng.lng())
+    hoverInfoWindow.setContent(`<div class="text-xs font-medium">${timeLabel(point.recorded_at)}</div>`)
+    hoverInfoWindow.setPosition(event.latLng)
+    hoverInfoWindow.open({ map })
+  })
+  line.addListener('mouseout', () => hoverInfoWindow?.close())
+}
+
 function clearOverlays() {
   for (const line of polylines) line.setMap(null)
   for (const marker of terminalMarkers) marker.setMap(null)
@@ -117,6 +142,7 @@ function renderTrail() {
       strokeWeight: 4,
       map,
     })
+    attachLineHoverTooltip(line, groupPoints)
     polylines.push(line)
 
     const first = groupPoints[0]!
@@ -125,26 +151,33 @@ function renderTrail() {
     const start = new mapsApi.maps.Marker({
       position: { lat: first.lat, lng: first.lng },
       map,
-      icon: { path: mapsApi.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
-      zIndex: 5,
+      icon: {
+        path: mapsApi.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: '#059669',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2.5,
+      },
+      label: { text: 'S', color: '#fff', fontSize: '11px', fontWeight: '700' },
+      zIndex: 7,
     })
     attachHoverTooltip(start, `<div class="text-xs font-medium">Start · ${timeLabel(first.recorded_at)}</div>`)
     terminalMarkers.push(start)
 
-    const bearing = groupPoints.length > 1 ? bearingBetween(groupPoints.at(-2)!, last) : 0
     const end = new mapsApi.maps.Marker({
       position: { lat: last.lat, lng: last.lng },
       map,
       icon: {
-        path: mapsApi.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 4.5,
-        rotation: bearing,
-        fillColor: color,
+        path: mapsApi.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: '#dc2626',
         fillOpacity: 1,
         strokeColor: '#fff',
-        strokeWeight: 1.5,
+        strokeWeight: 2.5,
       },
-      zIndex: 6,
+      label: { text: 'E', color: '#fff', fontSize: '11px', fontWeight: '700' },
+      zIndex: 8,
     })
     attachHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
     terminalMarkers.push(end)
@@ -181,6 +214,12 @@ async function loadTrail() {
   }
 }
 
+const selectedDistanceM = computed(() => {
+  if (!trail.value) return 0
+  if (selectedShift.value === 'all') return trail.value.distance_m
+  return trail.value.shifts.find((shift) => shift.index === selectedShift.value)?.distance_m ?? 0
+})
+
 watch(selectedShift, renderTrail)
 
 onMounted(async () => {
@@ -213,8 +252,14 @@ watch(selectedDate, loadTrail)
 </script>
 
 <template>
-  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift">
-    <template #actions><Button variant="secondary" :to="`/employees/${employeeId}`">Employee shifts</Button></template>
+  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift" :back-to="`/employees/${employeeId}`">
+    <template #actions>
+      <Button variant="secondary" :disabled="trailLoading" @click="loadTrail">
+        <Icon name="refresh" class="h-4 w-4" :spin="trailLoading" />
+        Refresh
+      </Button>
+      <Button variant="secondary" :to="`/employees/${employeeId}`">Employee shifts</Button>
+    </template>
     <InlineAlert v-if="error" class="mb-4">{{ error }}</InlineAlert>
 
     <form class="card mb-4 flex flex-wrap items-end gap-4 p-4" @submit.prevent>
@@ -236,6 +281,27 @@ watch(selectedDate, loadTrail)
       </Select>
       <span v-if="trailLoading" class="pb-2.5 text-xs text-ink-faint">Loading…</span>
     </form>
+
+    <div v-if="trail && trail.points.length > 0" class="mb-4 grid gap-3 sm:grid-cols-3">
+      <StatCard icon="route" label="Distance (selected)" :value="formatDistance(selectedDistanceM)" />
+      <StatCard icon="map-pin" label="Points recorded" :value="String(trail.points_count)" />
+      <StatCard icon="speed" label="Average speed" :value="formatSpeed(trail.average_speed_mps)" />
+    </div>
+
+    <ul v-if="trail && trail.shifts.length > 0" class="mb-4 flex flex-wrap gap-2">
+      <li v-for="shift in trail.shifts" :key="shift.index">
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-control border px-3 py-2 text-sm transition-colors"
+          :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary'"
+          @click="selectedShift = selectedShift === shift.index ? 'all' : shift.index"
+        >
+          <span class="h-2.5 w-2.5 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
+          <span class="font-medium">{{ shift.label }}</span>
+          <span class="tabular text-ink-faint">{{ formatDistance(shift.distance_m) }}</span>
+        </button>
+      </li>
+    </ul>
 
     <section class="relative h-[60vh] min-h-[420px] overflow-hidden rounded-card border border-hairline bg-surface shadow-card">
       <div ref="mapContainer" class="!absolute !inset-0 bg-surface-muted" />

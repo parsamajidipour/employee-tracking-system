@@ -7,8 +7,8 @@ import '../models/queued_location_point.dart';
 import 'location_queue_repository.dart';
 
 class LocationAcquisitionService {
-  static const _baseHeartbeat = Duration(seconds: 5);
-  static const _maxHeartbeat = Duration(seconds: 15);
+  static const _baseHeartbeat = Duration(seconds: 10);
+  static const _maxHeartbeat = Duration(seconds: 10);
   static const _stationaryThresholdMeters = 5.0;
 
   final LocationQueueRepository _repository;

@@ -104,6 +104,13 @@ onMounted(load)
 
 <template>
   <AppShell title="App releases" subtitle="Upload a new build for the Android update-check flow">
+    <template #actions>
+      <Button variant="secondary" :disabled="loading" @click="load">
+        <Icon name="refresh" class="h-4 w-4" :spin="loading" />
+        Refresh
+      </Button>
+    </template>
+
     <form class="card mb-6 space-y-5 p-5 sm:p-6" @submit.prevent="upload">
       <h2>New release</h2>
       <InlineAlert v-if="uploadError">{{ uploadError }}</InlineAlert>

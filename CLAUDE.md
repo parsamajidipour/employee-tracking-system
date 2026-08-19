@@ -183,10 +183,13 @@ the same request, so an issued token cannot outlive the change that should have
 ended it.
 
 **Android.** Foreground service with a persistent notification whenever tracking is
-active. Acquisition is `distanceFilter` 30m plus a 60s heartbeat, with reduced
-frequency when stationary — never a fixed high-frequency interval. Points queue in
-local SQLite and flush every ~30s. The service starts at window open and stops at
-window close.
+active. Acquisition is `distanceFilter` 5m plus a 10s heartbeat
+(`LocationAcquisitionService`), chosen deliberately over a slower/backed-off
+interval so the panel and the app itself reflect a moving employee within
+seconds, not up to a minute later — battery cost is accepted for this. Points
+queue in local SQLite and flush immediately after each point is recorded, with
+the foreground task's 5s repeat cycle as a retry backstop. The service starts at
+window open and stops at window close.
 
 **Design.** One design system across the mobile app and the panel, defined in
 `docs/DESIGN.md`. Both surfaces read their colours, radii, spacing and elevation

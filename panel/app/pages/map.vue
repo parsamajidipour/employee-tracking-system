@@ -16,22 +16,36 @@ const selectedPosition = computed(
   () => positions.value.find((position) => position.employee_id === selectedEmployeeId.value) ?? null,
 )
 
-const OFFLINE_COLOR = '#f59e0b'
+function offlineColor(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue('--warning').trim() || '#f59e0b'
+}
 
 function employeeColor(employeeId: number): string {
   return `hsl(${(employeeId * 137.508) % 360} 78% 46%)`
 }
 
 function markerColor(employeeId: number, recordedAt: string): string {
-  return stalenessBucket(recordedAt) === 'offline' ? OFFLINE_COLOR : employeeColor(employeeId)
+  return stalenessBucket(recordedAt) === 'offline' ? offlineColor() : employeeColor(employeeId)
+}
+
+function initial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || '?'
+}
+
+function updateSelectionVisuals() {
+  for (const [employeeId, marker] of markers) {
+    marker.setSelected(selectedEmployeeId.value === employeeId)
+  }
 }
 
 function selectEmployee(employeeId: number) {
   selectedEmployeeId.value = employeeId
+  updateSelectionVisuals()
 }
 
 function closeDetail() {
   selectedEmployeeId.value = null
+  updateSelectionVisuals()
 }
 
 function focusEmployee(employeeId: number) {
@@ -64,6 +78,8 @@ function syncMarkers() {
     }
 
     marker.setColor(color)
+    marker.setSelected(selectedEmployeeId.value === position.employee_id)
+    marker.setPulsing(stalenessBucket(position.recorded_at) === 'online')
   }
 
   for (const [employeeId, marker] of markers) {
@@ -133,25 +149,35 @@ onUnmounted(() => {
       <InlineAlert>{{ mapError }}</InlineAlert>
     </div>
 
-    <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(320px,calc(100%-2rem))] flex-col overflow-hidden">
+    <aside class="floating absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(340px,calc(100%-2rem))] flex-col overflow-hidden">
       <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline p-4">
         <div class="flex items-start justify-between gap-2">
-          <h2 class="truncate font-semibold">{{ selectedPosition?.name ?? 'Employee' }}</h2>
+          <div class="flex min-w-0 items-center gap-3">
+            <span
+              class="grid h-10 w-10 flex-none place-items-center rounded-full text-sm font-bold text-white"
+              :style="{ backgroundColor: selectedPosition ? markerColor(selectedPosition.employee_id, selectedPosition.recorded_at) : 'var(--neutral)' }"
+            >
+              {{ initial(selectedPosition?.name ?? '?') }}
+            </span>
+            <h2 class="truncate font-semibold">{{ selectedPosition?.name ?? 'Employee' }}</h2>
+          </div>
           <button
             type="button"
-            class="-mr-1 -mt-1 rounded-small p-1 text-ink-faint transition-colors hover:text-ink"
+            class="-mr-1 -mt-1 grid h-8 w-8 flex-none place-items-center rounded-small text-ink-faint transition-colors hover:bg-surface-muted hover:text-ink"
             aria-label="Close"
             @click="closeDetail"
           >
-            &#10005;
+            <Icon name="close" class="h-4 w-4" />
           </button>
         </div>
 
-        <dl class="mt-3 space-y-2 text-sm">
-          <div class="flex items-baseline justify-between gap-3">
+        <dl class="mt-3.5 space-y-2 text-sm">
+          <div class="flex items-center justify-between gap-3">
             <dt class="muted">Status</dt>
-            <dd :class="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'text-state-success' : 'text-state-warning'">
-              {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
+            <dd>
+              <Badge :variant="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'success' : 'warning'">
+                {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
+              </Badge>
             </dd>
           </div>
           <div v-if="selectedPosition" data-testid="detail-last-update" class="flex items-baseline justify-between gap-3">
@@ -159,6 +185,16 @@ onUnmounted(() => {
             <dd class="tabular">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
           </div>
         </dl>
+
+        <Button
+          v-if="selectedPosition"
+          size="sm"
+          variant="secondary"
+          class="mt-3.5 w-full justify-center"
+          :to="`/employees/${selectedPosition.employee_id}/histories`"
+        >
+          View histories
+        </Button>
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col">
@@ -173,7 +209,7 @@ onUnmounted(() => {
             <button
               type="button"
               :data-employee-id="position.employee_id"
-              class="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface-muted"
+              class="flex min-h-11 w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface-muted"
               :class="{ 'bg-surface-muted font-medium': selectedEmployeeId === position.employee_id }"
               @click="focusEmployee(position.employee_id)"
             >

@@ -12,6 +12,8 @@ function easeOutCubic(t: number): number {
 export interface EmployeeMarkerOverlayInstance {
   setName(name: string): void
   setColor(color: string): void
+  setSelected(selected: boolean): void
+  setPulsing(pulsing: boolean): void
   moveTo(position: EmployeeMarkerPosition): void
   destroy(): void
 }
@@ -43,10 +45,12 @@ export function getEmployeeMarkerOverlayCtor(mapsApi: typeof google): EmployeeMa
 
   class EmployeeMarkerOverlay extends mapsApi.maps.OverlayView implements EmployeeMarkerOverlayInstance {
     private div: HTMLDivElement | null = null
+    private pulse: HTMLDivElement | null = null
     private dot: HTMLDivElement | null = null
     private label: HTMLSpanElement | null = null
     private current: google.maps.LatLng
     private animationFrame: number | null = null
+    private color = '#2563eb'
 
     constructor(
       map: google.maps.Map,
@@ -61,18 +65,21 @@ export function getEmployeeMarkerOverlayCtor(mapsApi: typeof google): EmployeeMa
 
     override onAdd(): void {
       this.div = document.createElement('div')
-      this.div.className = 'group absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer select-none'
+      this.div.className = 'group absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer select-none transition-transform duration-150 ease-out'
       this.div.style.zIndex = '10'
 
+      this.pulse = document.createElement('div')
+      this.pulse.className = 'absolute inset-0 -z-10 rounded-full opacity-0'
+
       this.dot = document.createElement('div')
-      this.dot.className = 'h-4 w-4 rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
+      this.dot.className = 'relative h-6 w-6 rounded-full border-[3px] border-white shadow-[0_2px_10px_rgba(0,0,0,0.4)] transition-shadow duration-150'
 
       this.label = document.createElement('span')
       this.label.textContent = this.name
       this.label.className =
         'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-raised ring-1 ring-hairline'
 
-      this.div.append(this.dot, this.label)
+      this.div.append(this.pulse, this.dot, this.label)
       this.div.addEventListener('click', () => this.onSelect())
 
       this.getPanes()?.overlayMouseTarget.appendChild(this.div)
@@ -94,6 +101,7 @@ export function getEmployeeMarkerOverlayCtor(mapsApi: typeof google): EmployeeMa
       this.div?.remove()
       this.div = null
       this.dot = null
+      this.pulse = null
       this.label = null
     }
 
@@ -103,7 +111,25 @@ export function getEmployeeMarkerOverlayCtor(mapsApi: typeof google): EmployeeMa
     }
 
     setColor(color: string): void {
+      this.color = color
       if (this.dot) this.dot.style.backgroundColor = color
+      if (this.pulse) this.pulse.style.backgroundColor = color
+    }
+
+    setSelected(selected: boolean): void {
+      if (!this.div || !this.dot) return
+      this.div.style.zIndex = selected ? '20' : '10'
+      this.dot.style.boxShadow = selected
+        ? `0 0 0 3px var(--primary), 0 2px 10px rgba(0,0,0,0.4)`
+        : '0 2px 10px rgba(0,0,0,0.4)'
+      this.dot.style.scale = selected ? '1.15' : '1'
+    }
+
+    setPulsing(pulsing: boolean): void {
+      if (!this.pulse) return
+      this.pulse.className = pulsing
+        ? 'absolute inset-0 -z-10 rounded-full opacity-40 animate-ping'
+        : 'absolute inset-0 -z-10 rounded-full opacity-0'
     }
 
     moveTo(position: EmployeeMarkerPosition): void {

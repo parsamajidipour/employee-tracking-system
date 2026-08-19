@@ -19,17 +19,17 @@ onMounted(() => {
 })
 
 const links = [
-  { to: '/map', label: 'Live map', icon: 'M12 21s-7-5.686-7-11a7 7 0 1 1 14 0c0 5.314-7 11-7 11Z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z' },
-  { to: '/shift-templates', label: 'Shift templates', icon: 'M8 2v3M16 2v3M3.5 9h17M4.5 5.5h15a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1Z' },
-  { to: '/employees', label: 'Employees', icon: 'M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20M9.5 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM21 20v-1.5a4 4 0 0 0-3-3.87M16.5 3.87a4 4 0 0 1 0 7.75' },
+  { to: '/map', label: 'Live map', icon: 'map-pin' },
+  { to: '/shift-templates', label: 'Shift templates', icon: 'calendar' },
+  { to: '/employees', label: 'Employees', icon: 'users' },
 ]
 
 const adminLinks = [
-  { to: '/app-releases', label: 'App releases', icon: 'M12 3v12m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2' },
+  { to: '/app-releases', label: 'App releases', icon: 'download' },
 ]
 
 const trailingLinks = [
-  { to: '/profile', label: 'Admin profile', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0' },
+  { to: '/profile', label: 'Admin profile', icon: 'user-circle' },
 ]
 
 const visibleLinks = computed(() => [
@@ -66,9 +66,9 @@ async function signOut() {
   </Teleport>
 
   <aside
-    class="fixed inset-y-0 left-0 z-50 flex w-72 flex-none -translate-x-full flex-col border-r
+    class="fixed inset-y-0 left-0 z-50 flex w-full flex-none -translate-x-full flex-col border-r
            border-hairline bg-surface transition-transform duration-[220ms] ease-soft
-           lg:static lg:z-auto lg:w-64 lg:translate-x-0"
+           sm:w-80 lg:static lg:z-auto lg:w-64 lg:translate-x-0"
     :class="isOpen ? 'translate-x-0 shadow-raised' : ''"
   >
     <div class="flex h-16 flex-none items-center justify-between gap-2.5 px-5">
@@ -82,9 +82,7 @@ async function signOut() {
         aria-label="Close menu"
         @click="close"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" class="h-5 w-5">
-          <path d="M6 6l12 12M18 6 6 18" />
-        </svg>
+        <Icon name="close" class="h-5 w-5" />
       </button>
     </div>
 
@@ -100,10 +98,7 @@ async function signOut() {
             : 'text-ink-soft hover:bg-surface-muted hover:text-ink'
         "
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
-          stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 flex-none">
-          <path :d="link.icon" />
-        </svg>
+        <Icon :name="link.icon" class="h-5 w-5 flex-none" />
         {{ link.label }}
       </NuxtLink>
     </nav>
@@ -126,13 +121,7 @@ async function signOut() {
           :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
           @click="toggleTheme"
         >
-          <svg v-if="isDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-          </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-          </svg>
+          <Icon :name="isDark ? 'sun' : 'moon'" class="h-5 w-5" />
         </button>
       </div>
     </div>

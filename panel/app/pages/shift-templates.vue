@@ -115,7 +115,10 @@ onMounted(load)
 <template>
   <AppShell title="Shift templates">
     <template #actions>
-      <Button variant="secondary" :disabled="loading" @click="refresh">Refresh</Button>
+      <Button variant="secondary" :disabled="loading" @click="refresh">
+        <Icon name="refresh" class="h-4 w-4" :spin="loading" />
+        Refresh
+      </Button>
     </template>
 
     <form @submit.prevent="submit" class="card mb-6 space-y-5 p-6">

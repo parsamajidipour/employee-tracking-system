@@ -13,18 +13,6 @@ const templates = computed(() => templatesData.value ?? [])
 const loading = computed(() => employeesLoading.value || templatesLoading.value)
 const error = computed(() => (employeesError.value || templatesError.value) ? 'Could not load employee shifts.' : null)
 
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function formatTime(value: string) {
-  return value.slice(0, 5)
-}
-
-function toggle(id: number) {
-  selectedIds.value = selectedIds.value.includes(id)
-    ? selectedIds.value.filter((selectedId) => selectedId !== id)
-    : [...selectedIds.value, id]
-}
-
 watch(employee, (value) => {
   selectedIds.value = value?.shifts.map((shift) => shift.id) ?? []
 }, { immediate: true })
@@ -45,14 +33,24 @@ async function save() {
   }
 }
 
-onMounted(() => {
+function refreshAll() {
   loadEmployees()
   loadTemplates()
-})
+}
+
+onMounted(refreshAll)
 </script>
 
 <template>
-  <AppShell :title="employee?.name ?? 'Employee'">
+  <AppShell :title="employee?.name ?? 'Employee'" back-to="/employees">
+    <template #actions>
+      <Button variant="secondary" :disabled="loading" @click="refreshAll">
+        <Icon name="refresh" class="h-4 w-4" :spin="loading" />
+        Refresh
+      </Button>
+      <Button :to="`/employees/${employeeId}/histories`">Histories</Button>
+    </template>
+
     <InlineAlert v-if="error">{{ error }}</InlineAlert>
     <p v-if="loading" class="text-sm text-ink-faint">Loading…</p>
 
@@ -65,30 +63,9 @@ onMounted(() => {
         <Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save shifts' }}</Button>
       </div>
 
-      <div class="grid max-w-4xl gap-3 sm:grid-cols-2">
-        <button
-          v-for="shift in templates"
-          :key="shift.id"
-          type="button"
-          class="flex min-h-24 items-center gap-4 rounded-control border bg-surface p-4 text-left transition-colors"
-          :class="selectedIds.includes(shift.id) ? 'border-primary bg-primary-soft' : 'border-hairline hover:border-primary'"
-          @click="toggle(shift.id)"
-        >
-          <span
-            class="grid h-6 w-6 flex-none place-items-center rounded-small border text-sm font-bold"
-            :class="selectedIds.includes(shift.id) ? 'border-primary bg-primary text-white' : 'border-hairline'"
-          >{{ selectedIds.includes(shift.id) ? '✓' : '' }}</span>
-          <span class="min-w-0 flex-1">
-            <strong class="block text-sm text-ink">{{ shift.name }}</strong>
-            <span class="mt-1 block text-sm tabular-nums text-ink-soft">{{ formatTime(shift.start_time) }} – {{ formatTime(shift.end_time) }}</span>
-            <span class="mt-1 block text-xs text-ink-faint">{{ shift.days_of_week.map((day) => dayNames[day]).join(' · ') }}</span>
-          </span>
-        </button>
+      <div class="max-w-4xl">
+        <ShiftPicker v-model="selectedIds" :shifts="templates" />
       </div>
-
-      <p v-if="templates.length === 0" class="rounded-control border border-hairline bg-surface p-5 text-sm text-ink-soft">
-        No time shifts exist. Create a shift first.
-      </p>
     </template>
   </AppShell>
 </template>
