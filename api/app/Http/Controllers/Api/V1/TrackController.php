@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePingRequest;
 use App\Http\Requests\StoreTrackRequest;
 use App\Models\Device;
 use App\Models\User;
@@ -26,6 +27,15 @@ class TrackController extends Controller
             'rejected' => $result->rejected,
             'server_time' => CarbonImmutable::now()->toISOString(),
         ], 202);
+    }
+
+    public function ping(StorePingRequest $request): JsonResponse
+    {
+        $accepted = $this->gate->ping($request->user(), $request->validated());
+
+        $this->touchDevice($request->user());
+
+        return response()->json(['accepted' => $accepted]);
     }
 
     private function touchDevice(User $employee): void

@@ -117,4 +117,54 @@ class TrackControllerTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    public function test_ping_in_window_returns_accepted_true_and_writes_no_location_point(): void
+    {
+        Sanctum::actingAs($this->employee);
+
+        $thursday = $this->sunday->addDays(4);
+        $recordedAt = $thursday->setTime(10, 0);
+        CarbonImmutable::setTestNow($recordedAt);
+
+        $response = $this->postJson('/api/v1/track/ping', [
+            'lat' => 23.5,
+            'lng' => 58.4,
+            'accuracy_m' => 5.0,
+            'battery_pct' => 80,
+            'recorded_at' => $recordedAt->toISOString(),
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['accepted' => true]);
+        $this->assertSame(0, LocationPoint::count());
+    }
+
+    public function test_ping_outside_a_shift_window_returns_accepted_false(): void
+    {
+        Sanctum::actingAs($this->employee);
+
+        $thursday = $this->sunday->addDays(4);
+        $outOfWindow = $thursday->setTime(18, 0);
+        CarbonImmutable::setTestNow($outOfWindow);
+
+        $response = $this->postJson('/api/v1/track/ping', [
+            'lat' => 23.5,
+            'lng' => 58.4,
+            'recorded_at' => $outOfWindow->toISOString(),
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['accepted' => false]);
+    }
+
+    public function test_ping_unauthenticated_request_is_rejected(): void
+    {
+        $response = $this->postJson('/api/v1/track/ping', [
+            'lat' => 23.5,
+            'lng' => 58.4,
+            'recorded_at' => CarbonImmutable::now()->toISOString(),
+        ]);
+
+        $response->assertStatus(401);
+    }
 }

@@ -77,6 +77,37 @@ final class TrackingGate
         return new TrackingGateResult($accepted, $rejected);
     }
 
+    /**
+     * Publishes a live position for the map without writing a location_points
+     * row — used for the high-frequency liveness ping, kept separate from the
+     * lower-frequency recorded/trail points handled by process().
+     *
+     * @param  array{lat: float, lng: float, accuracy_m: ?float, battery_pct: ?int, recorded_at: string}  $point
+     */
+    public function ping(User $employee, array $point): bool
+    {
+        $recordedAt = CarbonImmutable::parse($point['recorded_at'])->utc();
+
+        $window = $this->resolver->resolve($employee, $recordedAt);
+        if ($window === null) {
+            return false;
+        }
+
+        $this->positions->publish(
+            $employee,
+            [
+                'lat' => (float) $point['lat'],
+                'lng' => (float) $point['lng'],
+                'accuracy_m' => $point['accuracy_m'] ?? null,
+                'battery_pct' => $point['battery_pct'] ?? null,
+            ],
+            $recordedAt,
+            $window,
+        );
+
+        return true;
+    }
+
     private function store(User $employee, array $point, CarbonImmutable $recordedAt, CarbonImmutable $receivedAt, TrackingSession $session, ShiftWindow $window): void
     {
         $previous = DB::selectOne(

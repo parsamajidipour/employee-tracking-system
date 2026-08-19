@@ -111,9 +111,14 @@ Version prefix `/api/v1`. Mobile authenticates with a device-bound token.
   Chosen over `flutter_background_geolocation`, which requires a commercial
   licence for Android release builds.
 - Foreground service with a persistent, non-dismissable notification while tracking.
-- Acquisition: a flat 5-minute heartbeat, no distance filter. Chosen for battery
-  life over trail fidelity — the live map and route playback both lag by up to
-  5 minutes, and short movements between heartbeats are not captured.
+- Acquisition: GPS polled every 10s. Every poll sends a live ping (gated by the
+  same shift window, never persisted, never part of the trail) that keeps the
+  live map near-real-time. A point is recorded into history — and only then
+  queued, uploaded, and persisted — once 5 minutes have passed since the last
+  recorded one. Route playback and distance are therefore coarse: a trail has a
+  point roughly every 5 minutes, and movement between recorded points is not
+  captured. Chosen for battery/data cost over trail fidelity, while keeping the
+  live map itself near-real-time via the ping.
 - Points queue in local SQLite. Flush every ~30s when connected.
 - Points older than 48h are discarded by the client without sending.
 - Schedule resync on: push notification, app foreground, before session start, and

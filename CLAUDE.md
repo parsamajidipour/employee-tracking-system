@@ -183,15 +183,21 @@ the same request, so an issued token cannot outlive the change that should have
 ended it.
 
 **Android.** Foreground service with a persistent notification whenever tracking is
-active. Acquisition is a flat 5-minute heartbeat, no distance filter
-(`LocationAcquisitionService`) — chosen for battery life over trail fidelity.
-This was `distanceFilter` 5m plus a 10s heartbeat until this session; that gave a
-near-real-time live map at a battery cost the project no longer accepts. The
-live map and route playback now both lag by up to 5 minutes, and movement
-between heartbeats is not captured. Points queue in local SQLite and flush
-immediately after each point is recorded, with the foreground task's 5s repeat
-cycle as a retry backstop. The service starts at window open and stops at
-window close.
+active. `LocationAcquisitionService` polls GPS every 10s. Every poll fires a live
+ping (`POST /api/v1/track/ping` → `TrackingGate::ping()`) that goes through the
+same `ShiftWindowResolver` gate and updates the live map, but is never written to
+`location_points` — no trail row, no distance, nothing an audit or a trail read
+ever sees. Separately, a point is recorded into the local SQLite queue (and from
+there uploaded and persisted to `location_points`, feeding the trail and its
+distance) only once 5 minutes have passed since the last recorded one. So the
+live map stays near-real-time off the ping, while route playback and distance are
+coarse — a shift's trail has a point roughly every 5 minutes, and movement
+between recorded points is not captured. This two-speed split (frequent
+live-only ping, infrequent recorded/trail point) replaced a single `distanceFilter`
+5m + 10s heartbeat that recorded every poll, which cost more battery/data than
+the project now accepts. Points queue in local SQLite and flush immediately
+after each point is recorded, with the foreground task's 5s repeat cycle as a
+retry backstop. The service starts at window open and stops at window close.
 
 **Design.** One design system, defined in `docs/DESIGN.md` — currently the panel
 only (`app/lib/theme/app_theme.dart`, the Flutter side, is behind and flagged as

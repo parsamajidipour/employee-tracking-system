@@ -216,6 +216,46 @@ class TrackingGateTest extends TestCase
         $this->assertGreaterThan(40.0, $total);
     }
 
+    private function pingPayload(CarbonImmutable $recordedAt, array $overrides = []): array
+    {
+        return array_merge([
+            'lat' => 23.5,
+            'lng' => 58.4,
+            'accuracy_m' => 5.0,
+            'battery_pct' => 80,
+            'recorded_at' => $recordedAt->toISOString(),
+        ], $overrides);
+    }
+
+    public function test_ping_in_window_updates_last_known_position_without_writing_a_location_point(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        $recordedAt = $thursday->setTime(10, 0);
+        CarbonImmutable::setTestNow($recordedAt);
+
+        $accepted = $this->gate->ping($this->employee, $this->pingPayload($recordedAt, ['lat' => 24.0, 'lng' => 59.0]));
+
+        $this->assertTrue($accepted);
+        $this->assertSame(0, LocationPoint::where('employee_id', $this->employee->id)->count());
+
+        $lastKnown = json_decode(Redis::get("last_known:{$this->employee->id}"), true);
+        $this->assertEquals(24.0, $lastKnown['lat']);
+        $this->assertEquals(59.0, $lastKnown['lng']);
+    }
+
+    public function test_ping_outside_any_shift_window_is_rejected_and_does_not_touch_last_known_position(): void
+    {
+        $thursday = $this->sunday->addDays(4);
+        $outOfWindow = $thursday->setTime(18, 0);
+        CarbonImmutable::setTestNow($outOfWindow);
+
+        $accepted = $this->gate->ping($this->employee, $this->pingPayload($outOfWindow));
+
+        $this->assertFalse($accepted);
+        $this->assertSame(0, LocationPoint::where('employee_id', $this->employee->id)->count());
+        $this->assertNull(Redis::get("last_known:{$this->employee->id}"));
+    }
+
     public function test_a_batch_of_n_accepted_points_produces_exactly_one_broadcast(): void
     {
         Event::fake([EmployeePositionUpdated::class]);

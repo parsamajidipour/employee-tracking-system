@@ -5,6 +5,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/shift_window.dart';
+import 'live_position_ping_service.dart';
 import 'location_acquisition_service.dart';
 import 'track_upload_service.dart';
 import 'window_sync_service.dart';
@@ -19,8 +20,10 @@ void startCallback() {
 class TrackingTaskHandler extends TaskHandler {
   Timer? _stopTimer;
   final TrackUploadService _upload = TrackUploadService();
+  final LivePositionPingService _livePosition = LivePositionPingService();
   late final LocationAcquisitionService _acquisition = LocationAcquisitionService(
     onPointRecorded: _upload.runUploadCycle,
+    onPositionPolled: _livePosition.ping,
   );
 
   @override

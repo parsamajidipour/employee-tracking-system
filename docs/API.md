@@ -8,6 +8,12 @@
 
 ### POST /api/v1/track
 
+### POST /api/v1/track/ping
+
+Live-map-only position ping, gated by the same shift window as `/track` but
+never persisted to `location_points` — no trail row, no distance, not part of
+history. `{accepted: bool}`.
+
 ### GET /api/v1/me/window
 
 ### GET /api/v1/me/schedule-changes

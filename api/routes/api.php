@@ -27,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('v1')->group(function () {
         Route::post('/track', [TrackController::class, 'store']);
+        Route::post('/track/ping', [TrackController::class, 'ping']);
         Route::get('/me/window', [MeController::class, 'window']);
 
         Route::middleware('capability:view-locations')->group(function () {
