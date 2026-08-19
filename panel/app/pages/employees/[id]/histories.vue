@@ -302,6 +302,26 @@ watch(selectedDate, loadTrail)
         <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Date</label>
         <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-48" />
       </div>
+
+      <div
+        v-if="trail && trail.shifts.length > 0"
+        class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap"
+        role="radiogroup"
+        aria-label="Shift"
+      >
+        <label
+          v-for="shift in trail.shifts"
+          :key="shift.index"
+          class="flex h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 text-[13.5px] transition-colors duration-fast"
+          :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary/60'"
+        >
+          <input v-model="selectedShift" type="radio" name="shift" class="sr-only" :value="shift.index" />
+          <span class="h-2.5 w-2.5 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
+          <span class="font-medium">{{ shift.label }}</span>
+          <span class="tabular text-ink-faint">{{ formatDistance(shift.distance_m) }}</span>
+        </label>
+      </div>
+
       <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">Loading…</span>
     </form>
 
@@ -309,20 +329,6 @@ watch(selectedDate, loadTrail)
       <StatCard icon="route" label="Distance (selected shift)" :value="formatDistance(selectedDistanceM)" />
       <StatCard icon="map-pin" label="Points recorded" :value="String(trail.points_count)" />
       <StatCard icon="speed" label="Average speed" :value="formatSpeed(trail.average_speed_mps)" />
-    </div>
-
-    <div v-if="trail && trail.shifts.length > 0" class="mb-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap" role="radiogroup" aria-label="Shift">
-      <label
-        v-for="shift in trail.shifts"
-        :key="shift.index"
-        class="flex h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 text-[13.5px] transition-colors duration-fast"
-        :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary/60'"
-      >
-        <input v-model="selectedShift" type="radio" name="shift" class="sr-only" :value="shift.index" />
-        <span class="h-2.5 w-2.5 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
-        <span class="font-medium">{{ shift.label }}</span>
-        <span class="tabular text-ink-faint">{{ formatDistance(shift.distance_m) }}</span>
-      </label>
     </div>
 
     <section class="surface-flat relative h-[60vh] min-h-[420px] overflow-hidden">
