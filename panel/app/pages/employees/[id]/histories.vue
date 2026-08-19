@@ -85,9 +85,9 @@ function distanceMeters(a: TrailPoint, b: TrailPoint): number {
 
 /**
  * Nearby points collapse into one marker so a dense, mostly-stationary stretch of
- * a day (thousands of points at a 10s heartbeat) doesn't create thousands of DOM
- * markers and hang the browser. The polyline path and the hover-nearest lookup
- * still use the full point list — only the rendered dots are thinned.
+ * a day doesn't create thousands of DOM markers and hang the browser. The
+ * polyline path and the hover-nearest lookup still use the full point list —
+ * only the rendered dots are thinned.
  */
 function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): TrailPoint[] {
   if (points.length === 0) return points

@@ -183,13 +183,15 @@ the same request, so an issued token cannot outlive the change that should have
 ended it.
 
 **Android.** Foreground service with a persistent notification whenever tracking is
-active. Acquisition is `distanceFilter` 5m plus a 10s heartbeat
-(`LocationAcquisitionService`), chosen deliberately over a slower/backed-off
-interval so the panel and the app itself reflect a moving employee within
-seconds, not up to a minute later — battery cost is accepted for this. Points
-queue in local SQLite and flush immediately after each point is recorded, with
-the foreground task's 5s repeat cycle as a retry backstop. The service starts at
-window open and stops at window close.
+active. Acquisition is a flat 5-minute heartbeat, no distance filter
+(`LocationAcquisitionService`) — chosen for battery life over trail fidelity.
+This was `distanceFilter` 5m plus a 10s heartbeat until this session; that gave a
+near-real-time live map at a battery cost the project no longer accepts. The
+live map and route playback now both lag by up to 5 minutes, and movement
+between heartbeats is not captured. Points queue in local SQLite and flush
+immediately after each point is recorded, with the foreground task's 5s repeat
+cycle as a retry backstop. The service starts at window open and stops at
+window close.
 
 **Design.** One design system, defined in `docs/DESIGN.md` — currently the panel
 only (`app/lib/theme/app_theme.dart`, the Flutter side, is behind and flagged as
