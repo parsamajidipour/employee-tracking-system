@@ -80,8 +80,8 @@ async function submit() {
     }
     startCreate()
     await refresh()
-  } catch {
-    toast.error('Save failed — check the fields.')
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Save failed — check the fields.'))
   }
 }
 
@@ -104,8 +104,8 @@ async function remove(template: ShiftTemplate) {
     await apiFetch(`/api/v1/shift-templates/${template.id}`, { method: 'DELETE' })
     toast.success('Shift template deleted.')
     await refresh()
-  } catch {
-    toast.error('Delete failed.')
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Delete failed.'))
   }
 }
 
@@ -127,12 +127,12 @@ onMounted(load)
       <TextInput v-model="form.name" label="Name" required class="max-w-sm" />
 
       <div>
-        <span class="mb-1.5 block text-[12px] font-medium text-ink-soft">Days of week</span>
+        <span class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Days of week</span>
         <div class="flex flex-wrap gap-1.5">
           <label
             v-for="(label, day) in DAY_LABELS"
             :key="day"
-            class="flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-hairline px-2.5 text-[12.5px] transition-colors hover:bg-surface-sunken"
+            class="flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-hairline px-3 text-[13px] transition-colors hover:bg-surface-sunken"
             :class="form.days_of_week.includes(Number(day)) ? '!border-primary bg-primary-soft text-primary-strong' : ''"
           >
             <input type="checkbox" :value="day" v-model="form.days_of_week" class="accent-primary" />
@@ -163,16 +163,16 @@ onMounted(load)
       empty-message="No shift templates yet — add one above."
     >
       <tr v-for="template in templates" :key="template.id" class="row-h text-ink">
-        <td class="px-4 text-[13px] font-medium">{{ template.name }}</td>
-        <td class="px-4 text-[13px] text-ink-soft">{{ dayLabel(template.days_of_week) }}</td>
-        <td class="px-4 text-[13px] tabular">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</td>
-        <td class="px-4 text-[13px] tabular text-ink-soft">{{ template.grace_before_min }}/{{ template.grace_after_min }}</td>
-        <td class="px-4">
-          <div class="flex items-center justify-end gap-0.5">
-            <button type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
+        <td class="px-5 text-[13.5px] font-medium">{{ template.name }}</td>
+        <td class="px-5 text-[13.5px] text-ink-soft">{{ dayLabel(template.days_of_week) }}</td>
+        <td class="px-5 text-[13.5px] tabular">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</td>
+        <td class="px-5 text-[13.5px] tabular text-ink-soft">{{ template.grace_before_min }}/{{ template.grace_after_min }}</td>
+        <td class="px-5">
+          <div class="flex items-center justify-end gap-1">
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
               Edit
             </button>
-            <button type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
               Delete
             </button>
           </div>
