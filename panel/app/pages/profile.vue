@@ -40,8 +40,8 @@ async function submitInfo() {
     })
     await refresh()
     toast.success('Profile updated.')
-  } catch {
-    infoError.value = 'Update failed. Check the email address and try again.'
+  } catch (err) {
+    infoError.value = apiErrorMessage(err, 'Update failed. Check the email address and try again.')
   } finally {
     infoSaving.value = false
   }
@@ -63,8 +63,8 @@ async function submitPassword() {
     passwordForm.password = ''
     passwordForm.password_confirmation = ''
     toast.success('Password changed.')
-  } catch {
-    passwordError.value = 'Change failed. Check the current password and password requirements.'
+  } catch (err) {
+    passwordError.value = apiErrorMessage(err, 'Change failed. Check the current password and password requirements.')
   } finally {
     passwordSaving.value = false
   }
