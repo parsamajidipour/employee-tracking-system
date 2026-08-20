@@ -11,14 +11,14 @@ const props = withDefaults(
 )
 
 const classes = computed(() => [
-  'btn font-semibold',
+  'btn font-semibold transition-shadow',
   props.size === 'sm' ? 'h-10 px-3.5 text-[13.5px]' : '',
   props.disabled ? 'cursor-not-allowed opacity-50 pointer-events-none' : '',
   {
-    'bg-primary text-white shadow-ambient hover:bg-primary-strong': props.variant === 'primary',
-    'bg-surface text-ink border border-hairline shadow-ambient hover:bg-surface-sunken': props.variant === 'secondary',
+    'bg-primary text-white shadow-ambient hover:bg-primary-strong hover:shadow-key': props.variant === 'primary',
+    'bg-surface text-ink border border-hairline shadow-ambient hover:border-ink-faint/40 hover:bg-surface-sunken hover:shadow-key': props.variant === 'secondary',
     'text-ink-soft hover:bg-surface-sunken hover:text-ink': props.variant === 'ghost',
-    'bg-state-danger text-white hover:opacity-90': props.variant === 'danger',
+    'bg-state-danger text-white shadow-ambient hover:opacity-90 hover:shadow-key': props.variant === 'danger',
   },
 ])
 </script>

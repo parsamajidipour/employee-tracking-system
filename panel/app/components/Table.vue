@@ -13,7 +13,7 @@ withDefaults(
 
 <template>
   <div class="surface-flat overflow-x-auto">
-    <table class="w-full text-left text-[13.5px]">
+    <table class="w-full text-left text-[14px]">
       <thead>
         <tr class="border-b border-hairline">
           <th
