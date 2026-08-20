@@ -43,6 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('capability:manage-schedules')->group(function () {
             Route::get('/employees', [EmployeeController::class, 'index']);
             Route::post('/employees', [EmployeeController::class, 'store']);
+            Route::put('/employees/{employee}', [EmployeeController::class, 'update']);
             Route::put('/employees/{employee}/active', [EmployeeController::class, 'setActive']);
             Route::put('/employees/{employee}/password', [EmployeeController::class, 'resetPassword']);
             Route::delete('/employees/{employee}/device', [EmployeeController::class, 'revokeDevice']);

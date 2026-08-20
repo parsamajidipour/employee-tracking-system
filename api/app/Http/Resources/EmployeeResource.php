@@ -21,7 +21,6 @@ class EmployeeResource extends JsonResource
             'name' => $this->name,
             'phone' => $this->phone,
             'email' => $this->email,
-            'username' => $this->username,
             'role' => $this->role,
             'is_active' => $this->is_active,
             'shifts' => $this->whenLoaded('employeeShifts', fn () => $this->employeeShifts->map(fn ($shift) => [

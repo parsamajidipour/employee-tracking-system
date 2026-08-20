@@ -15,11 +15,11 @@ final class DeviceService
 {
     private const UNIQUE_VIOLATION_SQLSTATE = '23505';
 
-    public function login(string $username, string $password, string $deviceIdentifier, ?string $deviceName): DeviceLoginResult
+    public function login(string $identifier, string $password, string $deviceIdentifier, ?string $deviceName): DeviceLoginResult
     {
         $employee = User::query()
-            ->where('username', $username)
             ->where('role', UserRole::Employee)
+            ->where(fn ($query) => $query->where('email', $identifier)->orWhere('phone', $identifier))
             ->first();
 
         if ($employee === null || ! Hash::check($password, $employee->password)) {

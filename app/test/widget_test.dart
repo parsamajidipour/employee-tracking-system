@@ -23,7 +23,7 @@ class _FakePermissionService extends PermissionService {
 }
 
 void main() {
-  testWidgets('login screen shows username and password fields', (tester) async {
+  testWidgets('login screen shows identifier and password fields', (tester) async {
     final authController = AuthController();
 
     await tester.pumpWidget(MaterialApp(
@@ -32,7 +32,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Username'), findsOneWidget);
+    expect(find.text('Email or phone number'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);

@@ -16,7 +16,6 @@ export interface Employee {
   name: string
   phone: string | null
   email: string | null
-  username: string | null
   role: 'admin' | 'hr' | 'supervisor' | 'employee'
   is_active: boolean
   device: EmployeeDevice | null

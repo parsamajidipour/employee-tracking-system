@@ -25,19 +25,20 @@ class DeviceAuthControllerTest extends TestCase
     private function makeEmployee(array $overrides = []): User
     {
         return User::factory()->create([
-            'username' => 'alice',
+            'email' => 'alice@example.com',
+            'phone' => '91234567',
             'password' => Hash::make('correct-password'),
             'is_active' => true,
             ...$overrides,
         ]);
     }
 
-    public function test_login_issues_a_working_token(): void
+    public function test_login_with_email_issues_a_working_token(): void
     {
         $this->makeEmployee();
 
         $response = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-1',
             'device_name' => "Alice's phone",
@@ -52,12 +53,26 @@ class DeviceAuthControllerTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_login_with_phone_issues_a_working_token(): void
+    {
+        $this->makeEmployee();
+
+        $response = $this->postJson('/api/v1/device/login', [
+            'identifier' => '91234567',
+            'password' => 'correct-password',
+            'device_identifier' => 'device-1',
+        ]);
+
+        $response->assertOk();
+        $this->assertNotEmpty($response->json('token'));
+    }
+
     public function test_login_with_wrong_password_is_refused(): void
     {
         $this->makeEmployee();
 
         $response = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'wrong-password',
             'device_identifier' => 'device-1',
         ]);
@@ -71,14 +86,14 @@ class DeviceAuthControllerTest extends TestCase
         $this->makeEmployee();
 
         $first = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-1',
         ]);
         $first->assertOk();
 
         $second = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-2',
         ]);
@@ -92,7 +107,7 @@ class DeviceAuthControllerTest extends TestCase
         $this->makeEmployee(['is_active' => false]);
 
         $response = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-1',
         ]);
@@ -101,12 +116,12 @@ class DeviceAuthControllerTest extends TestCase
         $this->assertSame(0, Device::count());
     }
 
-    public function test_a_non_employee_role_cannot_log_in_even_with_a_username(): void
+    public function test_a_non_employee_role_cannot_log_in_even_with_a_matching_identifier(): void
     {
         $this->makeEmployee(['role' => UserRole::Supervisor]);
 
         $response = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-1',
         ]);
@@ -119,7 +134,7 @@ class DeviceAuthControllerTest extends TestCase
         $employee = $this->makeEmployee();
 
         $login = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-1',
         ]);
@@ -137,7 +152,7 @@ class DeviceAuthControllerTest extends TestCase
         $this->makeEmployee();
 
         $login = $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'correct-password',
             'device_identifier' => 'device-1',
         ]);

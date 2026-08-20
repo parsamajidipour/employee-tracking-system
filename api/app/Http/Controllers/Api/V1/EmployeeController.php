@@ -8,7 +8,11 @@ use App\Http\Requests\ResetEmployeePasswordRequest;
 use App\Http\Requests\SetEmployeeActiveRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\SyncEmployeeShiftsRequest;
+use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
+use App\Mail\EmployeePasswordChangedMail;
+use App\Mail\EmployeeWelcomeMail;
+use App\Models\AppRelease;
 use App\Models\TrackingSession;
 use App\Models\User;
 use App\Services\DeviceService;
@@ -18,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class EmployeeController extends Controller
 {
@@ -34,6 +39,8 @@ class EmployeeController extends Controller
 
     public function store(StoreEmployeeRequest $request): JsonResponse
     {
+        $plainPassword = $request->validated('password');
+
         $employee = DB::transaction(function () use ($request): User {
             $employee = User::create([
                 ...$request->safe()->except(['is_active', 'shift_template_ids']),
@@ -51,7 +58,17 @@ class EmployeeController extends Controller
             return $employee->load('employeeShifts.template');
         });
 
+        $latestRelease = AppRelease::query()->orderByDesc('version_code')->first();
+        Mail::to($employee->email)->queue(new EmployeeWelcomeMail($employee, $plainPassword, $latestRelease));
+
         return EmployeeResource::make($employee)->response()->setStatusCode(201);
+    }
+
+    public function update(UpdateEmployeeRequest $request, User $employee): EmployeeResource
+    {
+        $employee->update($request->validated());
+
+        return EmployeeResource::make($employee->load('employeeShifts.template', 'activeDevice'));
     }
 
     public function syncShifts(SyncEmployeeShiftsRequest $request, User $employee): JsonResponse
@@ -83,9 +100,14 @@ class EmployeeController extends Controller
 
     public function resetPassword(ResetEmployeePasswordRequest $request, User $employee): Response
     {
-        $employee->update(['password' => $request->validated('password')]);
+        $plainPassword = $request->validated('password');
 
+        $employee->update(['password' => $plainPassword]);
         $employee->tokens()->delete();
+
+        if ($employee->email !== null) {
+            Mail::to($employee->email)->queue(new EmployeePasswordChangedMail($employee, $plainPassword));
+        }
 
         return response()->noContent();
     }
@@ -103,11 +125,15 @@ class EmployeeController extends Controller
     {
         abort_unless($employee->role === UserRole::Employee, 404);
 
+        $suffix = hash('crc32b', (string) now()->getTimestampMs()).'_parsa';
+
         $employee->tokens()->delete();
         $employee->employeeShifts()->delete();
         $employee->update([
             'is_active' => false,
-            'username' => hash('crc32b', (string) now()->getTimestampMs()).'_parsa',
+            'username' => $suffix,
+            'phone' => $employee->phone === null ? null : "{$employee->phone}_{$suffix}",
+            'email' => $employee->email === null ? null : "{$suffix}_{$employee->email}",
         ]);
         $employee->delete();
 

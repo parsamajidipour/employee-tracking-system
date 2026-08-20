@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Enums\UserRole;
+use App\Mail\EmployeePasswordChangedMail;
+use App\Mail\EmployeeWelcomeMail;
 use App\Models\Device;
 use App\Models\ShiftTemplate;
 use App\Models\TrackingSession;
@@ -11,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class EmployeeControllerTest extends TestCase
@@ -91,36 +94,110 @@ class EmployeeControllerTest extends TestCase
 
     public function test_store_creates_an_active_employee(): void
     {
+        Mail::fake();
         $this->actingAs(User::factory()->hr()->create());
 
         $response = $this->postJson('/api/v1/employees', [
             'name' => 'New Hire',
             'phone' => '+968 9000 0000',
-            'username' => 'newhire',
+            'email' => 'newhire@example.com',
             'password' => 'password123',
             'is_active' => true,
         ]);
 
         $response->assertCreated();
-        $employee = User::where('username', 'newhire')->first();
+        $employee = User::where('email', 'newhire@example.com')->first();
         $this->assertNotNull($employee);
         $this->assertSame(UserRole::Employee, $employee->role);
         $this->assertTrue($employee->is_active);
     }
 
-    public function test_store_requires_a_unique_username(): void
+    public function test_store_requires_a_unique_email(): void
     {
+        Mail::fake();
         $this->actingAs(User::factory()->hr()->create());
-        User::factory()->create(['username' => 'taken']);
+        User::factory()->create(['email' => 'taken@example.com']);
 
         $response = $this->postJson('/api/v1/employees', [
             'name' => 'New Hire',
-            'username' => 'taken',
+            'phone' => '+968 9000 0001',
+            'email' => 'taken@example.com',
             'password' => 'password123',
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['username']);
+        $response->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_store_requires_a_unique_phone(): void
+    {
+        Mail::fake();
+        $this->actingAs(User::factory()->hr()->create());
+        User::factory()->create(['phone' => '91112222']);
+
+        $response = $this->postJson('/api/v1/employees', [
+            'name' => 'New Hire',
+            'phone' => '91112222',
+            'email' => 'unique@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['phone']);
+    }
+
+    public function test_store_queues_a_welcome_email_with_the_password_and_download_link(): void
+    {
+        Mail::fake();
+        $this->actingAs(User::factory()->hr()->create());
+
+        $response = $this->postJson('/api/v1/employees', [
+            'name' => 'New Hire',
+            'phone' => '91223344',
+            'email' => 'newhire2@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertCreated();
+        Mail::assertQueued(EmployeeWelcomeMail::class, function (EmployeeWelcomeMail $mail) {
+            return $mail->employee->email === 'newhire2@example.com'
+                && $mail->plainPassword === 'password123'
+                && $mail->hasTo('newhire2@example.com');
+        });
+    }
+
+    public function test_update_changes_name_phone_and_email(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create(['name' => 'Old Name', 'phone' => '90000001', 'email' => 'old@example.com']);
+
+        $response = $this->putJson("/api/v1/employees/{$employee->id}", [
+            'name' => 'New Name',
+            'phone' => '90000002',
+            'email' => 'new@example.com',
+        ]);
+
+        $response->assertOk();
+        $employee->refresh();
+        $this->assertSame('New Name', $employee->name);
+        $this->assertSame('90000002', $employee->phone);
+        $this->assertSame('new@example.com', $employee->email);
+    }
+
+    public function test_update_rejects_an_email_already_used_by_another_employee(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        User::factory()->create(['email' => 'taken@example.com']);
+        $employee = User::factory()->create(['email' => 'mine@example.com']);
+
+        $response = $this->putJson("/api/v1/employees/{$employee->id}", [
+            'name' => $employee->name,
+            'phone' => $employee->phone,
+            'email' => 'taken@example.com',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email']);
     }
 
     public function test_set_active_toggles_the_flag(): void
@@ -136,6 +213,7 @@ class EmployeeControllerTest extends TestCase
 
     public function test_reset_password_changes_the_stored_hash(): void
     {
+        Mail::fake();
         $this->actingAs(User::factory()->hr()->create());
         $employee = User::factory()->create();
 
@@ -164,14 +242,44 @@ class EmployeeControllerTest extends TestCase
         $this->assertSame($originalPassword, $employee->refresh()->password);
     }
 
+    public function test_reset_password_queues_a_password_changed_email(): void
+    {
+        Mail::fake();
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create(['email' => 'alice@example.com']);
+
+        $this->putJson("/api/v1/employees/{$employee->id}/password", [
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ])->assertNoContent();
+
+        Mail::assertQueued(EmployeePasswordChangedMail::class, function (EmployeePasswordChangedMail $mail) {
+            return $mail->plainPassword === 'brand-new-password' && $mail->hasTo('alice@example.com');
+        });
+    }
+
+    public function test_reset_password_skips_the_email_when_the_employee_has_none_on_file(): void
+    {
+        Mail::fake();
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create(['email' => null]);
+
+        $this->putJson("/api/v1/employees/{$employee->id}/password", [
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ])->assertNoContent();
+
+        Mail::assertNotQueued(EmployeePasswordChangedMail::class);
+    }
+
     public function test_revoke_device_deletes_the_token_and_marks_the_device_revoked(): void
     {
         Cache::flush();
         $this->actingAs(User::factory()->hr()->create());
-        $employee = User::factory()->create(['username' => 'alice', 'password' => Hash::make('secret123')]);
+        $employee = User::factory()->create(['email' => 'alice@example.com', 'password' => Hash::make('secret123')]);
 
         $this->postJson('/api/v1/device/login', [
-            'username' => 'alice',
+            'identifier' => 'alice@example.com',
             'password' => 'secret123',
             'device_identifier' => 'device-1',
         ])->assertOk();
@@ -198,12 +306,17 @@ class EmployeeControllerTest extends TestCase
     {
         Cache::flush();
         $this->actingAs(User::factory()->hr()->create());
-        $employee = User::factory()->create(['is_active' => true, 'username' => 'gone', 'password' => Hash::make('secret123')]);
+        $employee = User::factory()->create([
+            'is_active' => true,
+            'email' => 'gone@example.com',
+            'phone' => '91119999',
+            'password' => Hash::make('secret123'),
+        ]);
         $template = ShiftTemplate::factory()->create();
         $employee->employeeShifts()->create(['template_id' => $template->id, 'effective_from' => now()]);
 
         $this->postJson('/api/v1/device/login', [
-            'username' => 'gone',
+            'identifier' => 'gone@example.com',
             'password' => 'secret123',
             'device_identifier' => 'device-1',
         ])->assertOk();
@@ -215,16 +328,18 @@ class EmployeeControllerTest extends TestCase
         $this->assertFalse($employee->refresh()->is_active);
         $this->assertDatabaseCount('employee_shifts', 0);
         $this->assertDatabaseCount('personal_access_tokens', 0);
-        $this->assertStringEndsWith('_parsa', $employee->username);
-        $this->assertNotSame('gone', $employee->username);
+        $this->assertNotSame('gone@example.com', $employee->email);
+        $this->assertNotSame('91119999', $employee->phone);
 
         $index = $this->getJson('/api/v1/employees');
         $index->assertOk();
         $index->assertJsonMissing(['id' => $employee->id]);
 
+        Mail::fake();
         $reuse = $this->postJson('/api/v1/employees', [
             'name' => 'New Gone',
-            'username' => 'gone',
+            'phone' => '91119999',
+            'email' => 'gone@example.com',
             'password' => 'password123',
         ]);
         $reuse->assertCreated();

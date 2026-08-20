@@ -450,3 +450,48 @@ and doesn't reintroduce a theme toggle assuming one is expected.
   as scoped extractions, were kept as components and restyled rather than
   removed — the extraction was structurally correct, only the visual layer
   changed underneath them.
+
+## Employee login: email/phone replaces username; no forced HTTPS on generated URLs
+
+**Decision.** `App\Services\DeviceService::login()` now looks employees up by
+`email` OR `phone` (a single `identifier` field on `/api/v1/device/login`),
+not `username`. `StoreEmployeeRequest`/`UpdateEmployeeRequest` require both
+`email` and `phone` (each unique) for every employee going forward. The
+`username` column stays in the `users` table, unused, rather than being
+dropped — it's cheap to leave and a `DROP COLUMN` against live production data
+isn't worth the risk for a column nobody reads anymore. Existing employees
+created before this change keep whatever `username` they had, but it no
+longer authenticates anything — an admin must add an email (and now-required
+phone) via the new `PUT /api/v1/employees/{id}` endpoint before that employee
+can sign in again on the app. This was an explicit, informed choice (offered
+against a safer "keep username as a fallback" alternative) — nobody should
+"fix" it later by quietly reintroducing username login as a workaround.
+
+Separately, `AppServiceProvider::boot()` no longer calls
+`URL::forceScheme('https')` in production. This deployment has no TLS
+termination anywhere (confirmed: `http://` on port 8000 answers, `https://`
+on the same port doesn't even complete a TCP/TLS handshake) — the line was
+forcing every `route()`-generated absolute URL, including app-release
+`download_url`, to a scheme the server can't actually serve. It silently
+broke both the panel's "Download" link and the Android app's in-app update
+download; only the Android app's failure was visibly reported (a browser's
+retry/redirect behavior probably logged the panel's).
+
+**Why.** A workforce-tracking app's login is exactly the kind of change
+CLAUDE.md says to ask about rather than assume — existing production
+employees can be locked out by getting this wrong, so the tradeoff was put to
+the user directly rather than picked silently.
+
+**Consequences.**
+- `EmployeeWelcomeMail` and `EmployeePasswordChangedMail`
+  (`App\Mail\`) are new, and both include the plaintext password in the email
+  body by explicit product request. `resources/views/` still does not exist
+  in this repo (`start-container`'s startup checklist fails the deploy if it
+  does — "API-only build contains no server views") so both Mailables build
+  their HTML as a PHP string via `Content::make(htmlString: ...)` and a small
+  `BuildsBrandedEmail` trait, never a Blade view.
+- `MAIL_MAILER=log` in `api/.env` — emails queue and "send" successfully but
+  only ever land in the Laravel log, not a real inbox, until a real mailer is
+  configured. Implemented and tested as far as the queue boundary; actual
+  delivery needs real SMTP/API credentials in production, which is an
+  operations step outside this session's scope.

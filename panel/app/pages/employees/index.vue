@@ -15,6 +15,41 @@ const passwordError = ref<string | null>(null)
 const newPassword = ref('')
 const confirmPassword = ref('')
 
+const editModalOpen = ref(false)
+const editTarget = ref<Employee | null>(null)
+const editSaving = ref(false)
+const editError = ref<string | null>(null)
+const editForm = reactive({ name: '', phone: '', email: '' })
+
+function openEdit(employee: Employee) {
+  editTarget.value = employee
+  editForm.name = employee.name
+  editForm.phone = employee.phone ?? ''
+  editForm.email = employee.email ?? ''
+  editError.value = null
+  editModalOpen.value = true
+}
+
+async function submitEdit() {
+  if (!editTarget.value) return
+
+  editSaving.value = true
+  editError.value = null
+  try {
+    await apiFetch(`/api/v1/employees/${editTarget.value.id}`, {
+      method: 'PUT',
+      body: { name: editForm.name, phone: editForm.phone, email: editForm.email },
+    })
+    toast.success('Employee updated.')
+    editModalOpen.value = false
+    await refresh()
+  } catch (err) {
+    editError.value = apiErrorMessage(err, 'Update failed — check the fields (phone and email must be unique).')
+  } finally {
+    editSaving.value = false
+  }
+}
+
 function openChangePassword(employee: Employee) {
   passwordTarget.value = employee
   newPassword.value = ''
@@ -125,7 +160,7 @@ onMounted(load)
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="truncate text-[14px] font-medium text-ink">{{ employee.name }}</p>
-              <p class="truncate text-[12px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</p>
+              <p class="truncate text-[12px] text-ink-faint">{{ employee.email ?? '—' }}</p>
             </div>
             <Badge :variant="employee.is_active ? 'success' : 'neutral'">
               {{ employee.is_active ? 'Active' : 'Inactive' }}
@@ -163,6 +198,9 @@ onMounted(load)
             <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
               Histories
             </NuxtLink>
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openEdit(employee)">
+              Edit
+            </button>
             <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openChangePassword(employee)">
               Change password
             </button>
@@ -182,7 +220,7 @@ onMounted(load)
       <tr v-for="employee in employees" :key="employee.id" class="row-h text-ink hover:bg-surface-sunken/60">
         <td class="px-5">
           <div class="text-[14px] font-medium">{{ employee.name }}</div>
-          <div class="text-[12px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</div>
+          <div class="text-[12px] text-ink-faint">{{ employee.email ?? '—' }}</div>
         </td>
         <td class="px-5 text-[14px] tabular">{{ employee.phone ?? '—' }}</td>
         <td class="px-5">
@@ -215,6 +253,9 @@ onMounted(load)
             <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
               Histories
             </NuxtLink>
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openEdit(employee)">
+              Edit
+            </button>
             <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openChangePassword(employee)">
               Change password
             </button>
@@ -232,11 +273,29 @@ onMounted(load)
       </tr>
     </Table>
 
+    <Modal v-model="editModalOpen" title="Edit employee">
+      <form class="space-y-3.5" @submit.prevent="submitEdit">
+        <InlineAlert v-if="editError">{{ editError }}</InlineAlert>
+
+        <TextInput v-model="editForm.name" label="Name" required />
+        <TextInput v-model="editForm.phone" label="Phone" required hint="Used to log in on the mobile app." />
+        <TextInput v-model="editForm.email" type="email" label="Email" required hint="Used to log in, and to receive account emails." />
+      </form>
+
+      <template #footer>
+        <Button variant="secondary" @click="editModalOpen = false">Cancel</Button>
+        <Button :disabled="editSaving" @click="submitEdit">
+          {{ editSaving ? 'Saving…' : 'Save changes' }}
+        </Button>
+      </template>
+    </Modal>
+
     <Modal v-model="passwordModalOpen" title="Change password">
       <form class="space-y-3.5" @submit.prevent="submitChangePassword">
         <p class="mb-1">
           Set a new password for <span class="font-medium text-ink">{{ passwordTarget?.name }}</span>. They'll need it
-          next time they sign in on the mobile app.
+          next time they sign in on the mobile app, and an email with the new password will be sent to them if they
+          have an email on file.
         </p>
 
         <InlineAlert v-if="passwordError">{{ passwordError }}</InlineAlert>

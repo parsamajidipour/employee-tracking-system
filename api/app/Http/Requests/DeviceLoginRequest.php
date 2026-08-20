@@ -17,7 +17,7 @@ class DeviceLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string'],
+            'identifier' => ['required', 'string'],
             'password' => ['required', 'string'],
             'device_identifier' => ['required', 'string', 'max:255'],
             'device_name' => ['nullable', 'string', 'max:255'],

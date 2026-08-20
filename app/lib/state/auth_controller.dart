@@ -40,11 +40,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String identifier, String password) async {
     final deviceIdentifier = await storage.deviceIdentifier();
 
     final json = await apiClient.postJsonUnauthenticated('/api/v1/device/login', {
-      'username': username,
+      'identifier': identifier,
       'password': password,
       'device_identifier': deviceIdentifier,
       'device_name': 'Android device',

@@ -10,7 +10,7 @@ interface ShiftTemplate {
 const form = reactive({
   name: '',
   phone: '',
-  username: '',
+  email: '',
   password: '',
   is_active: true,
   shift_template_ids: [] as number[],
@@ -41,18 +41,18 @@ async function submit() {
       method: 'POST',
       body: {
         name: form.name,
-        phone: form.phone || null,
-        username: form.username,
+        phone: form.phone,
+        email: form.email,
         password: form.password,
         is_active: form.is_active,
         shift_template_ids: form.shift_template_ids,
       },
     })
     await refreshEmployees()
-    toast.success('Employee created.')
+    toast.success('Employee created. A welcome email was sent with their login details.')
     await navigateTo('/employees')
   } catch (err) {
-    error.value = apiErrorMessage(err, 'Save failed — check the fields (username must be unique, password at least 8 characters).')
+    error.value = apiErrorMessage(err, 'Save failed — check the fields (phone and email must be unique, password at least 8 characters).')
   } finally {
     submitting.value = false
   }
@@ -66,10 +66,10 @@ async function submit() {
 
       <div class="grid gap-4 sm:grid-cols-2">
         <TextInput v-model="form.name" label="Name" required />
-        <TextInput v-model="form.phone" label="Phone" />
+        <TextInput v-model="form.phone" label="Phone" required hint="Used to log in on the mobile app." />
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
-        <TextInput v-model="form.username" label="Username" required hint="Used to log in on the mobile app — not an email." />
+        <TextInput v-model="form.email" type="email" label="Email" required hint="Used to log in, and to send the welcome email." />
         <TextInput v-model="form.password" type="password" label="Password" required :minlength="8" />
       </div>
 

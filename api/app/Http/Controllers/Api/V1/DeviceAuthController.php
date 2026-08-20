@@ -26,7 +26,7 @@ class DeviceAuthController extends Controller
     public function login(DeviceLoginRequest $request): JsonResponse
     {
         $result = $this->devices->login(
-            $request->validated('username'),
+            $request->validated('identifier'),
             $request->validated('password'),
             $request->validated('device_identifier'),
             $request->validated('device_name'),

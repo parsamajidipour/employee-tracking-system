@@ -19,8 +19,8 @@ class StoreEmployeeRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'username' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:users,username'],
+            'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', Password::min(8)],
             'is_active' => ['boolean'],
             'shift_template_ids' => ['sometimes', 'array'],

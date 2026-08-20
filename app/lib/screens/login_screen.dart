@@ -18,7 +18,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _passwordFocus = FocusNode();
@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     _passwordFocus.dispose();
     super.dispose();
@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await widget.authController.login(
-        _usernameController.text.trim(),
+        _identifierController.text.trim(),
         _passwordController.text,
       );
     } on ApiException catch (e) {
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Text('Welcome back', style: context.text.titleMedium),
                                   const SizedBox(height: AppSpacing.xs),
                                   Text(
-                                    'Use the username your supervisor gave you.',
+                                    'Use the email or phone number your supervisor gave you.',
                                     style: context.text.bodyMedium,
                                   ),
                                   const SizedBox(height: AppSpacing.xl),
@@ -140,21 +140,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                     const SizedBox(height: AppSpacing.lg),
                                   ],
                                   TextFormField(
-                                    controller: _usernameController,
+                                    controller: _identifierController,
                                     decoration: const InputDecoration(
-                                      labelText: 'Username',
+                                      labelText: 'Email or phone number',
                                       prefixIcon: Icon(Icons.person_outline),
                                     ),
+                                    keyboardType: TextInputType.emailAddress,
                                     textInputAction: TextInputAction.next,
                                     autocorrect: false,
                                     enableSuggestions: false,
-                                    autofillHints: const [AutofillHints.username],
+                                    autofillHints: const [
+                                      AutofillHints.email,
+                                      AutofillHints.telephoneNumber,
+                                    ],
                                     enabled: !_submitting,
                                     onFieldSubmitted: (_) =>
                                         _passwordFocus.requestFocus(),
                                     validator: (value) =>
                                         (value == null || value.trim().isEmpty)
-                                            ? 'Enter your username'
+                                            ? 'Enter your email or phone number'
                                             : null,
                                   ),
                                   const SizedBox(height: AppSpacing.md),
