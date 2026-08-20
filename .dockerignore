@@ -1,0 +1,9 @@
+app/
+dist/
+.git
+.github
+information.txt
+*.md
+.env
+.env.*
+!.env.example
