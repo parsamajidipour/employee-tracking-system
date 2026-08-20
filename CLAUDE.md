@@ -110,8 +110,16 @@ localhost and from a phone alike. Do not add a second source for this address.
 `APP_DEBUG` is false. A stack trace is a map of the application, and this one is
 reachable from every device on the office Wi-Fi.
 
-**Android packaging.** One universal APK, all three ABIs, so a single file
-installs everywhere. `minSdk` is whatever the plugin set actually requires and is
+**Android packaging.** One universal APK, `arm64-v8a` and `armeabi-v7a` only, so a
+single file installs on every real phone. `x86_64` is deliberately left out — no
+real phone ships with it, only emulators and a handful of Chromebooks do, and it
+was the single largest ABI in the APK (~18MB of ~53MB before it was dropped).
+`abiFilters` in `android/app/build.gradle` documents this but doesn't actually
+enforce it — Flutter's own gradle plugin packages its engine/app `.so` files
+through its own logic, ignoring `abiFilters` for those. The real mechanism is the
+`--target-platform android-arm,android-arm64` flag, which must be passed on every
+release build (already wired into `scripts/build-apk.sh`) — omit it and `x86_64`
+silently comes back. `minSdk` is whatever the plugin set actually requires and is
 declared explicitly in `build.gradle` rather than left to manifest merging —
 check it against the built APK's `sdkVersion`, they must agree. Release builds
 are signed with the real key and minified; the keystore and `key.properties` are

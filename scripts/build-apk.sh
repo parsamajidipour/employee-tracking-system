@@ -71,7 +71,7 @@ set ANDROID_SDK_ROOT=$SDK_DOS
 set JAVA_HOME=$JDK_DOS
 cd /d $WIN_COPY_DOS
 call $FLUTTER_DOS pub get
-call $FLUTTER_DOS build apk --release --dart-define=API_BASE_URL=$API_BASE
+call $FLUTTER_DOS build apk --release --dart-define=API_BASE_URL=$API_BASE --target-platform android-arm,android-arm64
 echo BUILD_EXIT=%ERRORLEVEL%
 EOF
 

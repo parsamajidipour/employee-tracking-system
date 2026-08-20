@@ -32,6 +32,14 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+
+        // x86_64 dropped deliberately: no real phone ships with it (only
+        // emulators/Chromebooks do), and it was the single largest ABI in
+        // the universal APK (~18MB of ~53MB). arm64-v8a and armeabi-v7a
+        // together still cover every real Android phone.
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
     }
 
     signingConfigs {
