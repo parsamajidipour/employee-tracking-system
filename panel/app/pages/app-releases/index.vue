@@ -20,7 +20,7 @@ const { confirm } = useConfirm()
 const toast = useToast()
 
 const apkFile = ref<File | null>(null)
-const apkInput = ref<HTMLInputElement | null>(null)
+const apkInput = ref<{ reset: () => void } | null>(null)
 const form = reactive({
   version_code: '',
   version_name: '',
@@ -33,17 +33,12 @@ function fileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function onFileChange(event: Event) {
-  apkFile.value = (event.target as HTMLInputElement).files?.[0] ?? null
-}
-
 function resetForm() {
   form.version_code = ''
   form.version_name = ''
   form.release_notes = ''
   form.is_mandatory = false
-  apkFile.value = null
-  if (apkInput.value) apkInput.value.value = ''
+  apkInput.value?.reset()
 }
 
 async function load() {
@@ -111,73 +106,64 @@ onMounted(load)
       </Button>
     </template>
 
-    <form class="surface-flat mb-5 flex flex-col items-start space-y-4 p-5" @submit.prevent="upload">
-      <h2>New release</h2>
-      <InlineAlert v-if="uploadError">{{ uploadError }}</InlineAlert>
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[380px_1fr]">
+      <form class="surface-flat flex flex-col items-start space-y-4 p-5" @submit.prevent="upload">
+        <h2>New release</h2>
+        <InlineAlert v-if="uploadError">{{ uploadError }}</InlineAlert>
 
-      <div class="w-full">
-        <span class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">APK file</span>
-        <input
-          ref="apkInput"
-          type="file"
-          accept=".apk"
-          class="field cursor-pointer file:mr-3 file:cursor-pointer file:rounded-sm file:border-0 file:bg-primary-soft file:px-2.5 file:py-1.5 file:text-[12.5px] file:font-semibold file:text-primary-strong"
-          @change="onFileChange"
-        />
-      </div>
+        <FileInput ref="apkInput" v-model="apkFile" accept=".apk" label="APK file" hint="Universal build, all ABIs" required class="w-full" />
 
-      <div class="grid w-full grid-cols-1 items-start gap-3.5 sm:grid-cols-2">
-        <TextInput v-model="form.version_code" type="number" min="1" label="Version code" hint="Matches versionCode / pubspec +build" required />
-        <TextInput v-model="form.version_name" label="Version name" placeholder="1.1.0" hint="Semantic, e.g. 1.1.0" required />
-      </div>
+        <TextInput v-model="form.version_code" type="number" min="1" label="Version code" hint="Matches versionCode / pubspec +build" required class="w-full" />
+        <TextInput v-model="form.version_name" label="Version name" placeholder="1.1.0" hint="Semantic, e.g. 1.1.0" required class="w-full" />
 
-      <label class="flex h-control cursor-pointer items-center gap-2 rounded-md border border-hairline px-3.5 text-[13px] font-medium transition-colors hover:bg-surface-sunken">
-        <input v-model="form.is_mandatory" type="checkbox" class="h-4 w-4 accent-primary" />
-        Mandatory update
-      </label>
+        <label class="flex w-fit items-center gap-3 text-[13px] font-medium text-ink">
+          <Toggle v-model="form.is_mandatory" />
+          Mandatory update
+        </label>
 
-      <div class="w-full">
-        <span class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Release notes (optional)</span>
-        <textarea v-model="form.release_notes" rows="3" class="field h-auto resize-none py-2.5" placeholder="What changed in this build" />
-      </div>
+        <div class="w-full">
+          <span class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Release notes (optional)</span>
+          <textarea v-model="form.release_notes" rows="3" class="field h-auto resize-none py-2.5" placeholder="What changed in this build" />
+        </div>
 
-      <Button type="submit" :disabled="uploading">
-        <Icon name="upload" class="h-3.5 w-3.5" />
-        {{ uploading ? 'Uploading…' : 'Publish release' }}
-      </Button>
-    </form>
+        <Button type="submit" :disabled="uploading" class="w-full justify-center">
+          <Icon name="upload" class="h-3.5 w-3.5" />
+          {{ uploading ? 'Uploading…' : 'Publish release' }}
+        </Button>
+      </form>
 
-    <Table
-      :headers="['Version', 'Notes', 'Size', 'Type', 'Published', '']"
-      :loading="loading"
-      :error="error"
-      :is-empty="releases.length === 0"
-      empty-message="No releases published yet — upload the first build above."
-    >
-      <tr v-for="release in releases" :key="release.id" class="row-h text-ink">
-        <td class="px-5">
-          <div class="font-semibold tabular text-[13.5px]">v{{ release.version_name }}</div>
-          <div class="text-[12px] text-ink-faint tabular">code {{ release.version_code }}</div>
-        </td>
-        <td class="max-w-64 truncate px-5 text-[13.5px] text-ink-soft">{{ release.release_notes ?? '—' }}</td>
-        <td class="px-5 text-[13.5px] tabular">{{ fileSize(release.file_size) }}</td>
-        <td class="px-5">
-          <Badge :variant="release.is_mandatory ? 'danger' : 'neutral'">
-            {{ release.is_mandatory ? 'Mandatory' : 'Optional' }}
-          </Badge>
-        </td>
-        <td class="px-5 text-[13.5px] tabular">{{ new Date(release.created_at).toLocaleDateString() }}</td>
-        <td class="px-5">
-          <div class="flex items-center justify-end gap-1 whitespace-nowrap">
-            <a :href="release.download_url" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
-              Download
-            </a>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(release)">
-              Retract
-            </button>
-          </div>
-        </td>
-      </tr>
-    </Table>
+      <Table
+        :headers="['Version', 'Notes', 'Size', 'Type', 'Published', '']"
+        :loading="loading"
+        :error="error"
+        :is-empty="releases.length === 0"
+        empty-message="No releases published yet — upload the first build."
+      >
+        <tr v-for="release in releases" :key="release.id" class="row-h text-ink">
+          <td class="px-5">
+            <div class="font-semibold tabular text-[14px]">v{{ release.version_name }}</div>
+            <div class="text-[12px] text-ink-faint tabular">code {{ release.version_code }}</div>
+          </td>
+          <td class="max-w-64 truncate px-5 text-[14px] text-ink-soft">{{ release.release_notes ?? '—' }}</td>
+          <td class="px-5 text-[14px] tabular">{{ fileSize(release.file_size) }}</td>
+          <td class="px-5">
+            <Badge :variant="release.is_mandatory ? 'danger' : 'neutral'">
+              {{ release.is_mandatory ? 'Mandatory' : 'Optional' }}
+            </Badge>
+          </td>
+          <td class="px-5 text-[14px] tabular">{{ new Date(release.created_at).toLocaleDateString() }}</td>
+          <td class="px-5">
+            <div class="flex items-center justify-end gap-1 whitespace-nowrap">
+              <a :href="release.download_url" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                Download
+              </a>
+              <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(release)">
+                Retract
+              </button>
+            </div>
+          </td>
+        </tr>
+      </Table>
+    </div>
   </AppShell>
 </template>
