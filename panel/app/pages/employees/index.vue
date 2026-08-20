@@ -8,40 +8,46 @@ const error = computed(() => (cacheError.value ? 'Could not load employees. Sign
 const { confirm } = useConfirm()
 const toast = useToast()
 
-const resetPasswordOpen = ref(false)
-const resetPasswordTarget = ref<Employee | null>(null)
-const generatedPassword = ref('')
-const resetPasswordSaving = ref(false)
+const passwordModalOpen = ref(false)
+const passwordTarget = ref<Employee | null>(null)
+const passwordSaving = ref(false)
+const passwordError = ref<string | null>(null)
+const newPassword = ref('')
+const confirmPassword = ref('')
 
-function generatePassword(length = 14): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-  const bytes = crypto.getRandomValues(new Uint8Array(length))
-  return Array.from(bytes, (b) => chars[b % chars.length]).join('')
+function openChangePassword(employee: Employee) {
+  passwordTarget.value = employee
+  newPassword.value = ''
+  confirmPassword.value = ''
+  passwordError.value = null
+  passwordModalOpen.value = true
 }
 
-async function openResetPassword(employee: Employee) {
-  resetPasswordTarget.value = employee
-  generatedPassword.value = generatePassword()
-  resetPasswordSaving.value = true
-  try {
-    await apiFetch(`/api/v1/employees/${employee.id}/password`, {
-      method: 'PUT',
-      body: { password: generatedPassword.value },
-    })
-    resetPasswordOpen.value = true
-  } catch {
-    toast.error('Password reset failed.')
-  } finally {
-    resetPasswordSaving.value = false
+async function submitChangePassword() {
+  if (!passwordTarget.value) return
+
+  if (newPassword.value.length < 8) {
+    passwordError.value = 'Password must be at least 8 characters.'
+    return
   }
-}
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = 'Passwords do not match.'
+    return
+  }
 
-async function copyGeneratedPassword() {
+  passwordSaving.value = true
+  passwordError.value = null
   try {
-    await navigator.clipboard.writeText(generatedPassword.value)
-    toast.success('Password copied.')
-  } catch {
-    toast.error('Could not copy — select and copy manually.')
+    await apiFetch(`/api/v1/employees/${passwordTarget.value.id}/password`, {
+      method: 'PUT',
+      body: { password: newPassword.value, password_confirmation: confirmPassword.value },
+    })
+    toast.success('Password changed.')
+    passwordModalOpen.value = false
+  } catch (err) {
+    passwordError.value = apiErrorMessage(err, 'Password change failed.')
+  } finally {
+    passwordSaving.value = false
   }
 }
 
@@ -56,8 +62,8 @@ async function toggleActive(employee: Employee) {
     await apiFetch(`/api/v1/employees/${employee.id}/active`, { method: 'PUT', body: { is_active: next } })
     toast.success(next ? 'Employee activated.' : 'Employee deactivated.')
     await refresh()
-  } catch {
-    toast.error('Update failed.')
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Update failed.'))
   }
 }
 
@@ -71,8 +77,8 @@ async function revokeDevice(employee: Employee) {
     await apiFetch(`/api/v1/employees/${employee.id}/device`, { method: 'DELETE' })
     toast.success('Device revoked.')
     await refresh()
-  } catch {
-    toast.error('Revoke failed.')
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Revoke failed.'))
   }
 }
 
@@ -86,8 +92,8 @@ async function removeEmployee(employee: Employee) {
     await apiFetch(`/api/v1/employees/${employee.id}`, { method: 'DELETE' })
     toast.success('Employee deleted.')
     await refresh()
-  } catch {
-    toast.error('Delete failed.')
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Delete failed.'))
   }
 }
 
@@ -115,51 +121,51 @@ onMounted(load)
       empty-message="No employees yet — add one to get started."
     >
       <tr v-for="employee in employees" :key="employee.id" class="row-h text-ink hover:bg-surface-sunken/60">
-        <td class="px-4">
-          <div class="text-[13px] font-medium">{{ employee.name }}</div>
-          <div class="text-[11.5px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</div>
+        <td class="px-5">
+          <div class="text-[13.5px] font-medium">{{ employee.name }}</div>
+          <div class="text-[12px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</div>
         </td>
-        <td class="px-4 text-[13px] tabular">{{ employee.phone ?? '—' }}</td>
-        <td class="px-4">
-          <div v-if="employee.shifts.length" class="flex max-w-56 flex-wrap gap-1">
+        <td class="px-5 text-[13.5px] tabular">{{ employee.phone ?? '—' }}</td>
+        <td class="px-5">
+          <div v-if="employee.shifts.length" class="flex max-w-56 flex-wrap gap-1.5">
             <Badge v-for="shift in employee.shifts" :key="shift.id" variant="neutral">
               {{ shift.name }} · {{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}
             </Badge>
           </div>
-          <span v-else class="text-[12.5px] text-ink-faint">No shifts</span>
+          <span v-else class="text-[13px] text-ink-faint">No shifts</span>
         </td>
-        <td class="px-4">
+        <td class="px-5">
           <Badge :variant="employee.is_active ? 'success' : 'neutral'">
             {{ employee.is_active ? 'Active' : 'Inactive' }}
           </Badge>
         </td>
-        <td class="px-4">
+        <td class="px-5">
           <template v-if="employee.device">
-            <div class="truncate text-[13px]">{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
-            <div class="text-[11px] text-ink-faint">
+            <div class="truncate text-[13.5px]">{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
+            <div class="text-[12px] text-ink-faint">
               {{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleDateString() : 'never seen' }}
             </div>
           </template>
-          <span v-else class="text-[12.5px] text-ink-faint">—</span>
+          <span v-else class="text-[13px] text-ink-faint">—</span>
         </td>
-        <td class="px-4">
-          <div class="flex items-center justify-end gap-0.5 whitespace-nowrap">
-            <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2 py-1.5 text-[12.5px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+        <td class="px-5">
+          <div class="flex items-center justify-end gap-1 whitespace-nowrap">
+            <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
               Schedule
             </NuxtLink>
-            <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2 py-1.5 text-[12.5px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+            <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
               Histories
             </NuxtLink>
-            <button type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openResetPassword(employee)">
-              Reset password
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openChangePassword(employee)">
+              Change password
             </button>
-            <button type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="toggleActive(employee)">
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="toggleActive(employee)">
               {{ employee.is_active ? 'Deactivate' : 'Activate' }}
             </button>
-            <button v-if="employee.device" type="button" class="rounded-sm px-2 py-1.5 text-[12.5px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="revokeDevice(employee)">
+            <button v-if="employee.device" type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="revokeDevice(employee)">
               Revoke device
             </button>
-            <button type="button" class="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" title="Delete employee" aria-label="Delete employee" @click="removeEmployee(employee)">
+            <button type="button" class="rounded-sm p-2 text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" title="Delete employee" aria-label="Delete employee" @click="removeEmployee(employee)">
               <Icon name="trash" class="h-3.5 w-3.5" />
             </button>
           </div>
@@ -167,17 +173,24 @@ onMounted(load)
       </tr>
     </Table>
 
-    <Modal v-model="resetPasswordOpen" title="Password reset">
-      <p class="mb-3">
-        New password for <span class="font-medium text-ink">{{ resetPasswordTarget?.name }}</span>. This is shown
-        once — copy it now.
-      </p>
-      <div class="flex items-center gap-2 rounded-md border border-hairline bg-surface-sunken px-3 py-2">
-        <code class="flex-1 select-all font-mono text-[13px] tabular-nums text-ink">{{ generatedPassword }}</code>
-        <Button size="sm" variant="secondary" @click="copyGeneratedPassword">Copy</Button>
-      </div>
+    <Modal v-model="passwordModalOpen" title="Change password">
+      <form class="space-y-3.5" @submit.prevent="submitChangePassword">
+        <p class="mb-1">
+          Set a new password for <span class="font-medium text-ink">{{ passwordTarget?.name }}</span>. They'll need it
+          next time they sign in on the mobile app.
+        </p>
+
+        <InlineAlert v-if="passwordError">{{ passwordError }}</InlineAlert>
+
+        <TextInput v-model="newPassword" type="password" label="New password" required :minlength="8" autocomplete="new-password" />
+        <TextInput v-model="confirmPassword" type="password" label="Confirm new password" required :minlength="8" autocomplete="new-password" />
+      </form>
+
       <template #footer>
-        <Button @click="resetPasswordOpen = false">Done</Button>
+        <Button variant="secondary" @click="passwordModalOpen = false">Cancel</Button>
+        <Button :disabled="passwordSaving" @click="submitChangePassword">
+          {{ passwordSaving ? 'Changing…' : 'Change password' }}
+        </Button>
       </template>
     </Modal>
   </AppShell>
