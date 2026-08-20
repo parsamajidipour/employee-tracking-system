@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { shiftColor } from '~/utils/mapMarker'
-import { LIGHT_MAP_STYLE } from '~/utils/lightMapStyle'
 import { formatDistance, formatSpeed } from '~/utils/formatDistance'
 
 interface TrailPoint {
@@ -270,7 +269,6 @@ onMounted(async () => {
     map = new mapsApi.maps.Map(mapContainer.value!, {
       center: { lat: 23.6144, lng: 58.5922 },
       zoom: 9,
-      styles: LIGHT_MAP_STYLE,
       disableDefaultUI: true,
       zoomControl: true,
       clickableIcons: false,

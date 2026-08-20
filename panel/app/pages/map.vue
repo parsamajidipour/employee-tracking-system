@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { getEmployeeMarkerOverlayCtor, type EmployeeMarkerOverlayInstance } from '~/utils/mapMarker'
-import { LIGHT_MAP_STYLE } from '~/utils/lightMapStyle'
 
 const { positions, now, stalenessBucket } = usePositions()
 const { load: loadGoogleMaps, apiKeyConfigured } = useGoogleMaps()
@@ -114,7 +113,6 @@ onMounted(async () => {
     map = new g.maps.Map(mapContainer.value!, {
       center: { lat: 23.6144, lng: 58.5922 },
       zoom: 10,
-      styles: LIGHT_MAP_STYLE,
       disableDefaultUI: true,
       zoomControl: true,
       clickableIcons: false,

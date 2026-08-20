@@ -202,11 +202,15 @@ gives up. Recorded here so the next person touching this file has the
   since nothing in this repo does.
 - `api/config/cors.php`'s `exposed_headers` is back to `[]` — that entry
   existed only for the pmtiles client's range-read `fetch()` calls.
-- No Google Maps "Map ID" (required for `AdvancedMarkerElement`'s custom
-  cloud styling) is provisioned here; `NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID` is
-  optional and falls back to Google's `DEMO_MAP_ID`, which is
-  rate-limited and meant for local development only — create a real Map ID
-  in the Cloud Console before relying on this in production.
+- No Google Maps "Map ID" or custom `styles` array is used anywhere. Both map
+  pages render Google's plain default styling — this was tried the other way
+  (a custom light-theme `styles` array, `panel/app/utils/lightMapStyle.ts`)
+  and reverted in a later session: a hand-picked palette for every feature
+  type is easy to get geographically wrong (desert rendered as green
+  "natural landscape"), and the ongoing cost of maintaining a from-scratch
+  style is not worth it against just using Google's own map. Employee
+  markers, labels, and every other overlay stay app-styled; the base map
+  itself does not.
 
 ---
 

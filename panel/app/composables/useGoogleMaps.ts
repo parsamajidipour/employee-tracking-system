@@ -19,7 +19,6 @@ export function useGoogleMaps() {
 
   return {
     load,
-    mapId: config.googleMapsMapId as string,
     apiKeyConfigured: Boolean(config.googleMapsApiKey),
   }
 }

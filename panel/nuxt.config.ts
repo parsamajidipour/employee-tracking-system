@@ -37,7 +37,6 @@ export default defineNuxtConfig({
       reverbPort: process.env.NUXT_PUBLIC_REVERB_PORT || '18080',
       reverbScheme: process.env.NUXT_PUBLIC_REVERB_SCHEME || 'http',
       googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-      googleMapsMapId: process.env.NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
     },
   },
 })

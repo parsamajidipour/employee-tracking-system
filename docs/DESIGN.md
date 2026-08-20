@@ -30,6 +30,12 @@ Density is compact: more information per screen (tables, stat rows, lists) aimed
 at someone monitoring 50-150 employees, not a handful. Compact does not mean
 cramped — see the touch-target rule in §7.
 
+In practice, `map.vue` and the histories map currently render their canvas and
+overlay panels on light-surface classes (`surfaceSunken`, `.surface`), not the
+dark tokens below — this section describes the intended direction, not yet
+where those two pages landed. Flagging it here rather than silently leaving
+the doc wrong; reconciling which one is right is unstarted follow-up work.
+
 ## 2. Colour
 
 ### Brand
@@ -185,9 +191,13 @@ in `tokens.css`).
    an alert.
 7. Never nest a `.surface`/`.surface-flat` card inside another one. Group content
    with `surfaceSunken` or a hairline rule instead.
-8. The live map and histories map use an inline dark Google Maps style
-   (`utils/darkMapStyle.ts`) rather than a Cloud Console Map ID — this means
-   `mapId` is intentionally *not* passed to either `google.maps.Map` constructor,
-   since Google ignores local `styles` once a Map ID is set. If Advanced Markers
-   or cloud-managed styling become necessary later, that trade-off needs revisiting
-   together, not silently dropping one or the other.
+8. The live map and histories map pass no `styles` array and no `mapId` to
+   `google.maps.Map` — the base map is Google's own default rendering, full
+   stop. A custom `styles` array (first a light theme, then briefly a
+   part-dark one) was tried twice and reverted both times: hand-picking a
+   colour for every feature type is easy to get geographically wrong (desert
+   rendered as green "natural landscape" was the specific failure), and
+   Oman's actual terrain/water/vegetation only reads correctly through
+   Google's own data. Employee markers, route colours, and every panel/overlay
+   on top of the map are still app-styled — only the base map underneath is
+   deliberately left alone.
