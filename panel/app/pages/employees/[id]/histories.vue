@@ -291,7 +291,7 @@ watch(selectedDate, loadTrail)
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="trailLoading" @click="loadTrail">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="trailLoading" />
-        Refresh
+        <span class="hidden sm:inline">Refresh</span>
       </Button>
       <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`">Employee shifts</Button>
     </template>

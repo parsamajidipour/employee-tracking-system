@@ -117,7 +117,7 @@ onMounted(load)
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="loading" @click="refresh">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        Refresh
+        <span class="hidden sm:inline">Refresh</span>
       </Button>
     </template>
 
@@ -163,6 +163,36 @@ onMounted(load)
         :is-empty="templates.length === 0"
         empty-message="No shift templates yet — add one."
       >
+        <template #cards>
+          <div v-for="template in templates" :key="template.id" class="surface-flat space-y-3 p-4">
+            <p class="text-[14px] font-medium text-ink">{{ template.name }}</p>
+
+            <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
+              <div class="col-span-2">
+                <dt class="eyebrow mb-1">Days</dt>
+                <dd class="text-ink-soft">{{ dayLabel(template.days_of_week) }}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow mb-1">Hours</dt>
+                <dd class="tabular text-ink">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow mb-1">Grace</dt>
+                <dd class="tabular text-ink-soft">{{ template.grace_before_min }}/{{ template.grace_after_min }}</dd>
+              </div>
+            </dl>
+
+            <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
+              <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
+                Edit
+              </button>
+              <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
+                Delete
+              </button>
+            </div>
+          </div>
+        </template>
+
         <tr v-for="template in templates" :key="template.id" class="row-h text-ink">
           <td class="px-5 text-[14px] font-medium">{{ template.name }}</td>
           <td class="px-5 text-[14px] text-ink-soft">{{ dayLabel(template.days_of_week) }}</td>

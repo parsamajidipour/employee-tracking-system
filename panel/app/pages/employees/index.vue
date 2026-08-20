@@ -105,11 +105,11 @@ onMounted(load)
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="loading" @click="refresh">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        Refresh
+        <span class="hidden sm:inline">Refresh</span>
       </Button>
       <Button size="sm" to="/employees/create">
         <Icon name="plus" class="h-3.5 w-3.5" />
-        Add employee
+        <span class="hidden sm:inline">Add employee</span>
       </Button>
     </template>
 
@@ -120,6 +120,65 @@ onMounted(load)
       :is-empty="employees.length === 0"
       empty-message="No employees yet — add one to get started."
     >
+      <template #cards>
+        <div v-for="employee in employees" :key="employee.id" class="surface-flat space-y-3 p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-[14px] font-medium text-ink">{{ employee.name }}</p>
+              <p class="truncate text-[12px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</p>
+            </div>
+            <Badge :variant="employee.is_active ? 'success' : 'neutral'">
+              {{ employee.is_active ? 'Active' : 'Inactive' }}
+            </Badge>
+          </div>
+
+          <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
+            <div>
+              <dt class="eyebrow mb-1">Phone</dt>
+              <dd class="tabular text-ink">{{ employee.phone ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt class="eyebrow mb-1">Device</dt>
+              <dd class="truncate text-ink">
+                {{ employee.device ? (employee.device.device_name ?? employee.device.device_identifier) : '—' }}
+              </dd>
+            </div>
+            <div class="col-span-2">
+              <dt class="eyebrow mb-1">Shifts</dt>
+              <dd>
+                <div v-if="employee.shifts.length" class="flex flex-wrap gap-1.5">
+                  <Badge v-for="shift in employee.shifts" :key="shift.id" variant="neutral">
+                    {{ shift.name }} · {{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}
+                  </Badge>
+                </div>
+                <span v-else class="text-ink-faint">No shifts</span>
+              </dd>
+            </div>
+          </dl>
+
+          <div class="flex flex-wrap items-center gap-1 border-t border-hairline pt-2.5">
+            <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+              Schedule
+            </NuxtLink>
+            <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+              Histories
+            </NuxtLink>
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openChangePassword(employee)">
+              Change password
+            </button>
+            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="toggleActive(employee)">
+              {{ employee.is_active ? 'Deactivate' : 'Activate' }}
+            </button>
+            <button v-if="employee.device" type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="revokeDevice(employee)">
+              Revoke device
+            </button>
+            <button type="button" class="ml-auto rounded-sm p-2 text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" title="Delete employee" aria-label="Delete employee" @click="removeEmployee(employee)">
+              <Icon name="trash" class="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </template>
+
       <tr v-for="employee in employees" :key="employee.id" class="row-h text-ink hover:bg-surface-sunken/60">
         <td class="px-5">
           <div class="text-[14px] font-medium">{{ employee.name }}</div>

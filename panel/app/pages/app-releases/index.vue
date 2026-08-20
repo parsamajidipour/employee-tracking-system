@@ -102,7 +102,7 @@ onMounted(load)
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="loading" @click="load">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        Refresh
+        <span class="hidden sm:inline">Refresh</span>
       </Button>
     </template>
 
@@ -139,6 +139,42 @@ onMounted(load)
         :is-empty="releases.length === 0"
         empty-message="No releases published yet — upload the first build."
       >
+        <template #cards>
+          <div v-for="release in releases" :key="release.id" class="surface-flat space-y-3 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-semibold tabular text-[14px] text-ink">v{{ release.version_name }}</p>
+                <p class="text-[12px] text-ink-faint tabular">code {{ release.version_code }}</p>
+              </div>
+              <Badge :variant="release.is_mandatory ? 'danger' : 'neutral'">
+                {{ release.is_mandatory ? 'Mandatory' : 'Optional' }}
+              </Badge>
+            </div>
+
+            <p v-if="release.release_notes" class="text-[13px] text-ink-soft">{{ release.release_notes }}</p>
+
+            <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
+              <div>
+                <dt class="eyebrow mb-1">Size</dt>
+                <dd class="tabular text-ink">{{ fileSize(release.file_size) }}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow mb-1">Published</dt>
+                <dd class="tabular text-ink">{{ new Date(release.created_at).toLocaleDateString() }}</dd>
+              </div>
+            </dl>
+
+            <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
+              <a :href="release.download_url" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                Download
+              </a>
+              <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(release)">
+                Retract
+              </button>
+            </div>
+          </div>
+        </template>
+
         <tr v-for="release in releases" :key="release.id" class="row-h text-ink">
           <td class="px-5">
             <div class="font-semibold tabular text-[14px]">v{{ release.version_name }}</div>

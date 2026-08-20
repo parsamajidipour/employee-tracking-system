@@ -78,7 +78,7 @@ onMounted(refreshProfile)
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="refreshing" @click="refreshProfile">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="refreshing" />
-        Refresh
+        <span class="hidden sm:inline">Refresh</span>
       </Button>
     </template>
 

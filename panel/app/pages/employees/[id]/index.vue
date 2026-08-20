@@ -46,7 +46,7 @@ onMounted(refreshAll)
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="loading" @click="refreshAll">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        Refresh
+        <span class="hidden sm:inline">Refresh</span>
       </Button>
       <Button size="sm" :to="`/employees/${employeeId}/histories`">Histories</Button>
     </template>

@@ -172,6 +172,12 @@ in `tokens.css`).
 - Breakpoints: `<640` phone (nav becomes a full-screen sheet), `640-1024` tablet
   (nav becomes a fixed 320px sheet), `>1024` desktop (nav rail, collapsible
   between 68px icon-only and 224px icon+label).
+- `Table` is the one component with its own, wider cutover: it renders as a
+  single-column stack of cards (`#cards` slot) below `1280px` and only becomes
+  a real `<table>` at `1280px` and up. A 6-column data table with row actions
+  doesn't fit legibly at tablet widths no matter how it's squeezed — the fix
+  is a genuinely different layout, not a smaller one, so this uses `xl`
+  instead of the standard `lg` tablet/desktop line above.
 - Every loading state is a `Skeleton`, never a bare "Loading…" string. Every empty
   state is an `EmptyState` (icon + message), never a bare paragraph.
 
