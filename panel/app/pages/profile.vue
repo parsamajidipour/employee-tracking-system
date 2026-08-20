@@ -82,7 +82,7 @@ onMounted(refreshProfile)
       </Button>
     </template>
 
-    <div class="grid max-w-lg gap-4">
+    <div class="grid max-w-3xl gap-4 lg:grid-cols-2 lg:items-start">
       <form class="surface-flat space-y-4 p-5" @submit.prevent="submitInfo">
         <div>
           <h2 class="text-[15px] font-semibold text-ink">Profile</h2>
