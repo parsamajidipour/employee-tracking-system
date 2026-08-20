@@ -35,6 +35,7 @@ enum _DownloadPhase { idle, downloading, installing, error }
 class _UpdateDialogState extends State<UpdateDialog> {
   _DownloadPhase _phase = _DownloadPhase.idle;
   double _progress = 0;
+  bool _returnedFromInstaller = false;
 
   Future<void> _startUpdate() async {
     setState(() {
@@ -75,7 +76,21 @@ class _UpdateDialogState extends State<UpdateDialog> {
         setState(() => _phase = _DownloadPhase.error);
         return;
       }
-      Navigator.of(context).pop();
+
+      // OpenFilex resolving "done" only means Android accepted the install
+      // intent, not that the user actually completed the install — a real
+      // install replaces this whole process, so nothing here would even run
+      // anyway. If the user cancels the system installer, control comes
+      // straight back here, so a mandatory update must not treat "the
+      // intent was dispatched" as "done" and let them keep using the app.
+      if (!widget.info.isMandatory) {
+        Navigator.of(context).pop();
+        return;
+      }
+      setState(() {
+        _phase = _DownloadPhase.idle;
+        _returnedFromInstaller = true;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _phase = _DownloadPhase.error);
@@ -110,6 +125,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
               if (notes != null && notes.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
                 Text(notes, style: context.text.bodyLarge),
+              ],
+              if (_returnedFromInstaller && _phase == _DownloadPhase.idle) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  "This update is required — the app can't be used until it's "
+                  'installed. Tap Update and complete the install this time.',
+                  style: context.text.bodySmall?.copyWith(color: colors.warning),
+                ),
               ],
               if (_phase == _DownloadPhase.error) ...[
                 const SizedBox(height: AppSpacing.lg),

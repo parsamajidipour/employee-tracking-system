@@ -30,15 +30,19 @@ class TrackUploadService {
     );
   }
 
-  Future<void> runUploadCycle() async {
-    if (_running) return;
+  /// Returns true only when a batch was actually uploaded successfully —
+  /// callers use this to piggyback lightweight follow-up checks (update
+  /// availability, shift changes) onto real upload events instead of
+  /// polling on their own separate schedule.
+  Future<bool> runUploadCycle() async {
+    if (_running) return false;
     _running = true;
 
     try {
       await _repository.purgeOlderThan(DateTime.now().subtract(_maxPointAge));
 
       final batch = await _repository.nextBatch(limit: _batchLimit);
-      if (batch.isEmpty) return;
+      if (batch.isEmpty) return false;
 
       try {
         await _apiClient.postJson('/api/v1/track', {
@@ -46,13 +50,16 @@ class TrackUploadService {
         });
         await _repository.deleteIds(batch.map((point) => point.id!).toList());
         await _storage.saveLastUploadAt(DateTime.now());
+        return true;
       } on ApiException catch (e) {
         if (e.isUnauthorized) {
           await _storage.clearToken();
           FlutterForegroundTask.sendDataToMain(unauthorizedMarker);
           await FlutterForegroundTask.stopService();
         }
+        return false;
       } catch (_) {
+        return false;
       }
     } finally {
       _running = false;

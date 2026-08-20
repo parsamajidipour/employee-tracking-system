@@ -4,8 +4,13 @@ import 'dart:convert';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../config.dart';
 import '../models/shift_window.dart';
+import 'api_client.dart';
+import 'app_update_service.dart';
+import 'auth_storage.dart';
 import 'live_position_ping_service.dart';
+import 'local_notification_service.dart';
 import 'location_acquisition_service.dart';
 import 'track_upload_service.dart';
 import 'window_sync_service.dart';
@@ -21,10 +26,16 @@ class TrackingTaskHandler extends TaskHandler {
   Timer? _stopTimer;
   final TrackUploadService _upload = TrackUploadService();
   final LivePositionPingService _livePosition = LivePositionPingService();
+  late final AppUpdateService _updateService = AppUpdateService(
+    apiClient: ApiClient(baseUrl: apiBaseUrl, storage: AuthStorage(), onUnauthorized: () async {}),
+  );
   late final LocationAcquisitionService _acquisition = LocationAcquisitionService(
-    onPointRecorded: _upload.runUploadCycle,
+    onPointRecorded: _onPointRecorded,
     onPositionPolled: _livePosition.ping,
   );
+
+  bool _hadWindow = false;
+  bool _everReconciled = false;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -43,6 +54,33 @@ class TrackingTaskHandler extends TaskHandler {
     });
 
     _upload.runUploadCycle();
+  }
+
+  Future<void> _onPointRecorded() async {
+    final uploaded = await _upload.runUploadCycle();
+    if (!uploaded) return;
+
+    // Piggyback on a real upload instead of polling separately — keeps
+    // this to roughly once per recorded point (~5 minutes), not a heavier
+    // schedule of its own.
+    await _checkForUpdateIfBackgrounded();
+  }
+
+  Future<void> _checkForUpdateIfBackgrounded() async {
+    try {
+      final info = await _updateService.checkForUpdate();
+      if (info == null) return;
+
+      final onForeground = await FlutterForegroundTask.isAppOnForeground;
+      if (onForeground) return;
+
+      await LocalNotificationService.show(
+        id: 1001,
+        title: 'Update available',
+        body: 'Version ${info.versionName} is ready to install.',
+      );
+    } catch (_) {
+    }
   }
 
   @override
@@ -77,12 +115,14 @@ class TrackingTaskHandler extends TaskHandler {
   Future<void> _reconcileWindow() async {
     try {
       final window = await fetchCurrentWindow();
-      _applyFetchedWindow(window);
+      await _applyFetchedWindow(window);
     } catch (_) {
     }
   }
 
-  void _applyFetchedWindow(ShiftWindow? window) {
+  Future<void> _applyFetchedWindow(ShiftWindow? window) async {
+    await _notifyOnWindowTransition(window);
+
     if (window == null) {
       _stopNow();
       return;
@@ -90,15 +130,48 @@ class TrackingTaskHandler extends TaskHandler {
     _rescheduleStop(window.end);
   }
 
+  Future<void> _notifyOnWindowTransition(ShiftWindow? window) async {
+    final hasWindow = window != null;
+
+    // Only the transition matters, and only from the second reconcile
+    // onward — the very first check on service start isn't a "change",
+    // it's just discovering the current state.
+    if (_everReconciled && hasWindow != _hadWindow) {
+      final onForeground = await FlutterForegroundTask.isAppOnForeground;
+      if (!onForeground) {
+        await LocalNotificationService.show(
+          id: hasWindow ? 1002 : 1003,
+          title: hasWindow ? 'Shift started' : 'Shift ended',
+          body: hasWindow
+              ? 'You are now inside your working-hours window.'
+              : 'Your working-hours window has ended.',
+        );
+      }
+    }
+
+    _hadWindow = hasWindow;
+    _everReconciled = true;
+  }
+
   void _rescheduleStop(DateTime newEnd) {
     _stopTimer?.cancel();
 
     final delay = newEnd.difference(DateTime.now());
     if (!delay.isNegative && delay > Duration.zero) {
-      _stopTimer = Timer(delay, _stopNow);
+      _stopTimer = Timer(delay, _onScheduledEnd);
     } else {
-      _stopNow();
+      _onScheduledEnd();
     }
+  }
+
+  // The window's own end time can arrive before the next 5s reconcile does
+  // — this goes through the same transition-notify path as a reconcile
+  // finding a closed window, so "shift ended" still fires reliably rather
+  // than only when a reconcile happens to catch it first. Notification is
+  // awaited before the service (and its isolate) actually stops.
+  Future<void> _onScheduledEnd() async {
+    await _notifyOnWindowTransition(null);
+    _stopNow();
   }
 
   void _stopNow() {
