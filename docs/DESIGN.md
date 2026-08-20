@@ -111,9 +111,11 @@ changing value doesn't reflow its row.
 
 ## 4. Spacing and shape
 
-4px base. Compact control height (`--control-h`, 36px) and row height (`--row-h`,
-38px) on desktop; both bump to 44/48px automatically under `(pointer: coarse)` —
-touch never gets the compact desktop sizing, regardless of density preference.
+4px base. Control height (`--control-h`, 48px) and row height (`--row-h`, 52px)
+on desktop; both bump to 52/56px automatically under `(pointer: coarse)` — touch
+never gets the compact desktop sizing, regardless of density preference. Sized up
+from an earlier, tighter 36/38px pass — dense enough to scan 50-150 employees,
+but not so tight it reads as cramped on a real monitor.
 
 Radii — smaller and more deliberate than a "friendly" system, reading as precise
 rather than soft:
