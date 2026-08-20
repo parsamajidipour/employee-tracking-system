@@ -122,10 +122,10 @@ onMounted(load)
     >
       <tr v-for="employee in employees" :key="employee.id" class="row-h text-ink hover:bg-surface-sunken/60">
         <td class="px-5">
-          <div class="text-[13.5px] font-medium">{{ employee.name }}</div>
+          <div class="text-[14px] font-medium">{{ employee.name }}</div>
           <div class="text-[12px] text-ink-faint">{{ employee.username ?? employee.email ?? '—' }}</div>
         </td>
-        <td class="px-5 text-[13.5px] tabular">{{ employee.phone ?? '—' }}</td>
+        <td class="px-5 text-[14px] tabular">{{ employee.phone ?? '—' }}</td>
         <td class="px-5">
           <div v-if="employee.shifts.length" class="flex max-w-56 flex-wrap gap-1.5">
             <Badge v-for="shift in employee.shifts" :key="shift.id" variant="neutral">
@@ -141,7 +141,7 @@ onMounted(load)
         </td>
         <td class="px-5">
           <template v-if="employee.device">
-            <div class="truncate text-[13.5px]">{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
+            <div class="truncate text-[14px]">{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
             <div class="text-[12px] text-ink-faint">
               {{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleDateString() : 'never seen' }}
             </div>

@@ -51,8 +51,8 @@ async function submit() {
     await refreshEmployees()
     toast.success('Employee created.')
     await navigateTo('/employees')
-  } catch {
-    error.value = 'Save failed — check the fields (username must be unique, password at least 8 characters).'
+  } catch (err) {
+    error.value = apiErrorMessage(err, 'Save failed — check the fields (username must be unique, password at least 8 characters).')
   } finally {
     submitting.value = false
   }
@@ -78,8 +78,8 @@ async function submit() {
         <ShiftPicker v-model="form.shift_template_ids" :shifts="templates" :loading="loadingShifts" />
       </fieldset>
 
-      <label class="flex items-center gap-2 text-[13px] text-ink">
-        <input type="checkbox" v-model="form.is_active" class="accent-primary" />
+      <label class="flex w-fit items-center gap-3 text-[13px] font-medium text-ink">
+        <Toggle v-model="form.is_active" />
         Active
       </label>
 
