@@ -77,6 +77,8 @@ services:
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?SEED_ADMIN_EMAIL is required}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD is required}
+    volumes:
+      - api_storage:/var/www/html/storage/app/private
     ports:
       - "${API_PORT:-8000}:8000"
       - "${REVERB_PORT:-8080}:8080"
@@ -113,3 +115,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  api_storage:
