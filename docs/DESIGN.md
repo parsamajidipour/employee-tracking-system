@@ -191,13 +191,17 @@ in `tokens.css`).
    an alert.
 7. Never nest a `.surface`/`.surface-flat` card inside another one. Group content
    with `surfaceSunken` or a hairline rule instead.
-8. The live map and histories map pass no `styles` array and no `mapId` to
-   `google.maps.Map` — the base map is Google's own default rendering, full
-   stop. A custom `styles` array (first a light theme, then briefly a
-   part-dark one) was tried twice and reverted both times: hand-picking a
-   colour for every feature type is easy to get geographically wrong (desert
-   rendered as green "natural landscape" was the specific failure), and
-   Oman's actual terrain/water/vegetation only reads correctly through
-   Google's own data. Employee markers, route colours, and every panel/overlay
-   on top of the map are still app-styled — only the base map underneath is
-   deliberately left alone.
+8. The live map and histories map pass no `mapId` to `google.maps.Map`, and
+   the only `styles` rule either one carries is `utils/mapPoiStyle.ts`'s
+   single `{ featureType: 'poi', visibility: 'off' }` — hiding Google's
+   business/place pins because 50-150 tracked employees are already enough
+   markers without restaurants and mosques competing for the same map. No
+   other feature type, geometry, or colour is touched. A fuller custom
+   `styles` array (first a light theme, then briefly a part-dark one) was
+   tried twice and reverted both times: hand-picking a colour for every
+   feature type is easy to get geographically wrong (desert rendered as green
+   "natural landscape" was the specific failure), and Oman's actual
+   terrain/water/vegetation only reads correctly through Google's own data.
+   Employee markers, route colours, and every panel/overlay on top of the map
+   are still app-styled — the base map underneath gets exactly one rule, not
+   a repaint.

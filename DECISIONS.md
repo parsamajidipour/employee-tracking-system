@@ -202,15 +202,16 @@ gives up. Recorded here so the next person touching this file has the
   since nothing in this repo does.
 - `api/config/cors.php`'s `exposed_headers` is back to `[]` — that entry
   existed only for the pmtiles client's range-read `fetch()` calls.
-- No Google Maps "Map ID" or custom `styles` array is used anywhere. Both map
-  pages render Google's plain default styling — this was tried the other way
-  (a custom light-theme `styles` array, `panel/app/utils/lightMapStyle.ts`)
-  and reverted in a later session: a hand-picked palette for every feature
-  type is easy to get geographically wrong (desert rendered as green
-  "natural landscape"), and the ongoing cost of maintaining a from-scratch
-  style is not worth it against just using Google's own map. Employee
-  markers, labels, and every other overlay stay app-styled; the base map
-  itself does not.
+- No Google Maps "Map ID" is used anywhere, and the only `styles` rule either
+  map page carries is `panel/app/utils/mapPoiStyle.ts`'s single
+  `{ featureType: 'poi', visibility: 'off' }`, hiding Google's business/place
+  pins so they don't compete with employee markers. A fuller custom colour
+  palette (`panel/app/utils/lightMapStyle.ts`) was tried and reverted in a
+  later session: a hand-picked colour for every feature type is easy to get
+  geographically wrong (desert rendered as green "natural landscape"), and
+  the ongoing cost of maintaining a from-scratch style is not worth it
+  against just using Google's own map. Employee markers, labels, and every
+  other overlay stay app-styled; the base map's geometry and colour do not.
 
 ---
 
