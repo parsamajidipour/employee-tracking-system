@@ -21,6 +21,7 @@ const loadingShifts = ref(true)
 const error = ref<string | null>(null)
 const submitting = ref(false)
 const toast = useToast()
+const { refresh: refreshEmployees } = useEmployees()
 
 onMounted(async () => {
   try {
@@ -47,6 +48,7 @@ async function submit() {
         shift_template_ids: form.shift_template_ids,
       },
     })
+    await refreshEmployees()
     toast.success('Employee created.')
     await navigateTo('/employees')
   } catch {
