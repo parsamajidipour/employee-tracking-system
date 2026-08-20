@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { shiftColor } from '~/utils/mapMarker'
 import { HIDE_POI_MAP_STYLE } from '~/utils/mapPoiStyle'
-import { formatDistance, formatSpeed } from '~/utils/formatDistance'
+import { formatDistance } from '~/utils/formatDistance'
 
 interface TrailPoint {
   lng: number
@@ -325,14 +325,24 @@ watch(selectedDate, loadTrail)
       <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">Loading…</span>
     </form>
 
-    <div v-if="trail && trail.points.length > 0" class="mb-4 grid gap-3 sm:grid-cols-3">
-      <StatCard icon="route" label="Distance (selected shift)" :value="formatDistance(selectedDistanceM)" />
-      <StatCard icon="map-pin" label="Points recorded" :value="String(trail.points_count)" />
-      <StatCard icon="speed" label="Average speed" :value="formatSpeed(trail.average_speed_mps)" />
-    </div>
-
     <section class="surface-flat relative h-[60vh] min-h-[420px] overflow-hidden">
       <div ref="mapContainer" class="!absolute !inset-0 bg-surface-sunken" />
+
+      <div
+        v-if="trail && trail.points.length > 0"
+        class="surface-dark absolute left-3 top-3 z-10 flex gap-3 px-3 py-2"
+      >
+        <div class="flex items-center gap-1.5">
+          <Icon name="route" class="h-3.5 w-3.5 text-primary" />
+          <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ formatDistance(selectedDistanceM) }}</span>
+        </div>
+        <div class="h-full w-px bg-hairline-dark" />
+        <div class="flex items-center gap-1.5">
+          <Icon name="map-pin" class="h-3.5 w-3.5 text-primary" />
+          <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ trail.points_count }} pts</span>
+        </div>
+      </div>
+
       <div v-if="mapError" class="absolute inset-x-4 top-4 z-10">
         <InlineAlert>{{ mapError }}</InlineAlert>
       </div>
