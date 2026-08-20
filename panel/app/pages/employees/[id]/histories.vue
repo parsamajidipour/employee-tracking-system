@@ -14,7 +14,7 @@ interface TrailPoint {
   recorded_at: string
   shift_index: number | null
 }
-interface TrailShift { index: number; source: string; start: string; end: string; label: string; distance_m: number }
+interface TrailShift { index: number; start: string; end: string; label: string; distance_m: number }
 interface Trail {
   date: string
   start?: string

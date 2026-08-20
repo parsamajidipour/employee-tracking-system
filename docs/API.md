@@ -39,6 +39,13 @@ is missing on disk.
 
 ### GET /api/v1/employees/{id}/trail
 
+Reads `location_points` for the given calendar day directly — never
+re-resolves the employee's current shift schedule. `shifts` in the response
+are groups of points sharing the same `tracking_sessions` row (set once at
+ingest time), not a re-derivation from `ShiftWindowResolver`. This means a
+day's trail stays readable even if the `employee_shifts` row that governed it
+is later changed or deleted.
+
 ### PUT /api/v1/employees/{id}/schedule
 
 ### GET/POST /api/v1/app-releases, DELETE /api/v1/app-releases/{id}

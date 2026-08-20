@@ -49,6 +49,13 @@ instead of finding a way around it.
   else calls it. Controllers, jobs, commands, the app-facing endpoint, all of it.
 - The gate: `App\Services\TrackingGate`, which calls the resolver. The ingest
   controller does not decide anything itself.
+- History reads (`EmployeeHistoryController::trail`) never call the resolver.
+  Whether a point exists in `location_points` was already decided once, at
+  ingest, by the gate above — a history read just shows what's there, grouped
+  by `tracking_sessions` (set at ingest, never recomputed). Re-resolving the
+  employee's *current* schedule to read back the past was tried and reverted
+  in this session: a later shift edit or deletion made already-recorded days
+  unreadable even though the points were still safely stored.
 - No window arithmetic in controllers, Eloquent scopes, or Blade/Vue.
 
 ## Conventions

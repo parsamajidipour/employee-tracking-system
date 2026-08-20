@@ -6,7 +6,6 @@ use App\Enums\AccessAuditAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AccessAuditLogger;
-use App\Services\ShiftWindowResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,39 +15,50 @@ class EmployeeHistoryController extends Controller
 {
     public function __construct(private readonly AccessAuditLogger $audit) {}
 
-    public function trail(Request $request, User $employee, ShiftWindowResolver $resolver): JsonResponse
+    /**
+     * Reads whatever was actually recorded for that calendar day, grouped by
+     * the tracking_sessions boundaries set at ingest time. Deliberately does
+     * not re-resolve the employee's current shift schedule: a later shift
+     * change or deletion must never make an already-recorded day unreadable.
+     */
+    public function trail(Request $request, User $employee): JsonResponse
     {
         $validated = $request->validate(['date' => ['nullable', 'date_format:Y-m-d']]);
-        $date = $validated['date'] ?? CarbonImmutable::now(config('tracking.timezone'))->toDateString();
-        $windows = $resolver->resolveAllForDate($employee, $date)->values();
+        $timezone = config('tracking.timezone');
+        $date = $validated['date'] ?? CarbonImmutable::now($timezone)->toDateString();
+        $startAt = CarbonImmutable::parse($date, $timezone)->startOfDay()->utc();
+        $endAt = $startAt->addDay();
 
         $this->audit->record($request->user(), $employee->id, AccessAuditAction::ViewTrail, $request->ip());
-
-        if ($windows->isEmpty()) {
-            return response()->json(['date' => $date, 'distance_m' => 0, 'shifts' => [], 'points' => []]);
-        }
-
-        $start = $windows->min(fn ($window) => $window->effectiveStart()->getTimestamp());
-        $end = $windows->max(fn ($window) => $window->effectiveEnd()->getTimestamp());
-        $startAt = CarbonImmutable::createFromTimestampUTC($start);
-        $endAt = CarbonImmutable::createFromTimestampUTC($end);
-        $timezone = config('tracking.timezone');
 
         $rows = DB::table('location_points')
             ->where('employee_id', $employee->id)
             ->whereBetween('recorded_at', [$startAt, $endAt])
             ->orderBy('recorded_at')
-            ->selectRaw('ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat, distance_m, accuracy_m, speed_mps, heading_deg, battery_pct, recorded_at')
+            ->selectRaw('ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat, distance_m, accuracy_m, speed_mps, heading_deg, battery_pct, recorded_at, session_id')
             ->get();
 
-        $shiftDistances = array_fill(0, $windows->count(), 0.0);
+        if ($rows->isEmpty()) {
+            return response()->json(['date' => $date, 'distance_m' => 0, 'shifts' => [], 'points' => []]);
+        }
 
-        $points = $rows->map(function ($point) use ($windows, &$shiftDistances) {
+        $sessionIndex = [];
+        $shiftDistances = [];
+        $shiftBounds = [];
+
+        $points = $rows->map(function ($point) use (&$sessionIndex, &$shiftDistances, &$shiftBounds) {
             $recordedAt = CarbonImmutable::parse($point->recorded_at, 'UTC');
-            $shiftIndex = $this->resolveOwningShift($windows, $recordedAt);
-            if ($shiftIndex !== null) {
-                $shiftDistances[$shiftIndex] += (float) $point->distance_m;
+            $key = $point->session_id ?? 'none';
+
+            if (! array_key_exists($key, $sessionIndex)) {
+                $shiftIndex = count($sessionIndex);
+                $sessionIndex[$key] = $shiftIndex;
+                $shiftDistances[$shiftIndex] = 0.0;
+                $shiftBounds[$shiftIndex] = ['start' => $recordedAt, 'end' => $recordedAt];
             }
+            $shiftIndex = $sessionIndex[$key];
+            $shiftDistances[$shiftIndex] += (float) $point->distance_m;
+            $shiftBounds[$shiftIndex]['end'] = $recordedAt;
 
             return [
                 'lng' => (float) $point->lng,
@@ -69,14 +79,13 @@ class EmployeeHistoryController extends Controller
             ->selectRaw('SUM(distance_m) AS distance_m, AVG(speed_mps) AS average_speed_mps, MAX(speed_mps) AS max_speed_mps, AVG(accuracy_m) AS average_accuracy_m, MIN(recorded_at) AS first_point_at, MAX(recorded_at) AS last_point_at, COUNT(*) AS points_count')
             ->first();
 
-        $shifts = $windows->values()->map(fn ($window, $index) => [
+        $shifts = collect($shiftBounds)->map(fn ($bounds, $index) => [
             'index' => $index,
-            'source' => $window->source->value,
-            'start' => $window->effectiveStart()->toISOString(),
-            'end' => $window->effectiveEnd()->toISOString(),
-            'label' => $window->effectiveStart()->setTimezone($timezone)->format('H:i').'–'.$window->effectiveEnd()->setTimezone($timezone)->format('H:i'),
+            'start' => $bounds['start']->toISOString(),
+            'end' => $bounds['end']->toISOString(),
+            'label' => $bounds['start']->setTimezone($timezone)->format('H:i').'–'.$bounds['end']->setTimezone($timezone)->format('H:i'),
             'distance_m' => $shiftDistances[$index],
-        ]);
+        ])->values();
 
         return response()->json([
             'date' => $date,
@@ -143,34 +152,6 @@ class EmployeeHistoryController extends Controller
         $h = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
 
         return 2 * $earthRadius * asin(min(1.0, sqrt($h)));
-    }
-
-    /**
-     * When multiple shift windows apply on the same date (e.g. a mid-day schedule
-     * change), a point in the overlap belongs to whichever window ends first —
-     * that's the shift actually in effect at the boundary, not the one that
-     * happens to sort first.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\ValueObjects\ShiftWindow>  $windows
-     */
-    private function resolveOwningShift($windows, CarbonImmutable $recordedAt): ?int
-    {
-        $bestIndex = null;
-        $bestEnd = null;
-
-        foreach ($windows as $index => $window) {
-            if (! $window->contains($recordedAt)) {
-                continue;
-            }
-
-            $windowEnd = $window->effectiveEnd()->getTimestamp();
-            if ($bestEnd === null || $windowEnd < $bestEnd) {
-                $bestEnd = $windowEnd;
-                $bestIndex = $index;
-            }
-        }
-
-        return $bestIndex;
     }
 
     public function index(Request $request, User $employee): JsonResponse
