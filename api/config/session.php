@@ -12,6 +12,8 @@ return [
 
     'encrypt' => env('SESSION_ENCRYPT', false),
 
+    'serialization' => env('SESSION_SERIALIZATION', 'php'),
+
     'files' => storage_path('framework/sessions'),
 
     'connection' => env('SESSION_CONNECTION', 'default'),
