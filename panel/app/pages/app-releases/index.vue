@@ -33,8 +33,13 @@ function fileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function nextVersionCode(): string {
+  const highest = releases.value.reduce((max, release) => Math.max(max, release.version_code), 0)
+  return String(highest + 1)
+}
+
 function resetForm() {
-  form.version_code = ''
+  form.version_code = nextVersionCode()
   form.version_name = ''
   form.release_notes = ''
   form.is_mandatory = false
@@ -46,6 +51,7 @@ async function load() {
   try {
     releases.value = await apiFetch<AppRelease[]>('/api/v1/app-releases')
     error.value = null
+    form.version_code = nextVersionCode()
   } catch (err) {
     error.value = apiErrorMessage(err, 'Could not load releases. Sign in and try again.')
   } finally {
@@ -113,7 +119,7 @@ onMounted(load)
 
         <FileInput ref="apkInput" v-model="apkFile" accept=".apk" label="APK file" hint="Universal build, all ABIs" required class="w-full" />
 
-        <TextInput v-model="form.version_code" type="number" min="1" label="Version code" hint="Matches versionCode / pubspec +build" required class="w-full" />
+        <TextInput v-model="form.version_code" type="number" min="1" label="Version code" hint="Matches versionCode / pubspec +build — defaults to the next unused number" required class="w-full" />
         <TextInput v-model="form.version_name" label="Version name" placeholder="1.1.0" hint="Semantic, e.g. 1.1.0" required class="w-full" />
 
         <label class="flex w-fit items-center gap-3 text-[13px] font-medium text-ink">
