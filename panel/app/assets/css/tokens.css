@@ -48,14 +48,14 @@
   --motion-slow: 260ms;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --control-h: 44px;
-  --row-h: 46px;
+  --control-h: 48px;
+  --row-h: 52px;
 }
 
 @media (pointer: coarse) {
   :root {
-    --control-h: 48px;
-    --row-h: 52px;
+    --control-h: 52px;
+    --row-h: 56px;
   }
 }
 
@@ -124,7 +124,7 @@
   }
 
   .eyebrow {
-    font-size: 10.5px;
+    font-size: 11px;
     line-height: 14px;
     font-weight: 650;
     letter-spacing: 0.06em;
@@ -144,28 +144,30 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 11px;
+    padding: 6px 12px;
     border-radius: var(--radius-pill);
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
-    line-height: 17px;
+    line-height: 18px;
   }
 
   .field {
     width: 100%;
     height: var(--control-h);
     background: var(--surface-sunken);
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 0 15px;
+    padding: 0 16px;
     color: var(--text-primary);
-    font-size: 15px;
-    transition: background-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease);
+    font-size: 15.5px;
+    transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease),
+      box-shadow var(--motion-fast) var(--ease);
   }
 
   .field:focus {
     outline: none;
     background: var(--surface);
+    border-color: var(--primary);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
@@ -181,7 +183,7 @@
     height: var(--control-h);
     padding: 0 18px;
     border-radius: var(--radius-md);
-    font-size: 14.5px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.005em;
     transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease),
@@ -202,11 +204,6 @@
 
   .scale-in {
     animation: scale-in var(--motion-base) var(--ease) both;
-  }
-
-  .bg-grid-dark {
-    background-image: radial-gradient(var(--border-dark) 1.5px, transparent 1.5px);
-    background-size: 26px 26px;
   }
 }
 
