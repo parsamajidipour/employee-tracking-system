@@ -1,12 +1,15 @@
 <script setup lang="ts">
 const { user, refresh } = useAuthUser()
 const toast = useToast()
-const saving = ref(false)
 const refreshing = ref(false)
-const error = ref<string | null>(null)
-const form = reactive({
-  name: '',
-  email: '',
+
+const infoSaving = ref(false)
+const infoError = ref<string | null>(null)
+const infoForm = reactive({ name: '', email: '' })
+
+const passwordSaving = ref(false)
+const passwordError = ref<string | null>(null)
+const passwordForm = reactive({
   current_password: '',
   password: '',
   password_confirmation: '',
@@ -14,8 +17,8 @@ const form = reactive({
 
 watchEffect(() => {
   if (!user.value) return
-  form.name = user.value.name
-  form.email = user.value.email
+  infoForm.name = user.value.name
+  infoForm.email = user.value.email
 })
 
 async function refreshProfile() {
@@ -27,29 +30,43 @@ async function refreshProfile() {
   }
 }
 
-async function submit() {
-  saving.value = true
-  error.value = null
+async function submitInfo() {
+  infoSaving.value = true
+  infoError.value = null
   try {
     await apiFetch('/api/v1/admin/profile', {
       method: 'PUT',
-      body: {
-        name: form.name,
-        email: form.email,
-        current_password: form.current_password || null,
-        password: form.password || null,
-        password_confirmation: form.password_confirmation || null,
-      },
+      body: { name: infoForm.name, email: infoForm.email },
     })
-    form.current_password = ''
-    form.password = ''
-    form.password_confirmation = ''
     await refresh()
     toast.success('Profile updated.')
   } catch {
-    error.value = 'Update failed. Check the current password, email and password requirements.'
+    infoError.value = 'Update failed. Check the email address and try again.'
   } finally {
-    saving.value = false
+    infoSaving.value = false
+  }
+}
+
+async function submitPassword() {
+  passwordSaving.value = true
+  passwordError.value = null
+  try {
+    await apiFetch('/api/v1/admin/password', {
+      method: 'PUT',
+      body: {
+        current_password: passwordForm.current_password,
+        password: passwordForm.password,
+        password_confirmation: passwordForm.password_confirmation,
+      },
+    })
+    passwordForm.current_password = ''
+    passwordForm.password = ''
+    passwordForm.password_confirmation = ''
+    toast.success('Password changed.')
+  } catch {
+    passwordError.value = 'Change failed. Check the current password and password requirements.'
+  } finally {
+    passwordSaving.value = false
   }
 }
 
@@ -65,22 +82,33 @@ onMounted(refreshProfile)
       </Button>
     </template>
 
-    <form class="surface-flat max-w-lg space-y-4 p-5" @submit.prevent="submit">
-      <InlineAlert v-if="error">{{ error }}</InlineAlert>
-      <TextInput v-model="form.name" label="Name" required autocomplete="name" />
-      <TextInput v-model="form.email" type="email" label="Email" required autocomplete="email" />
-
-      <div class="border-t border-hairline pt-4">
-        <h2 class="mb-1 text-[13px] font-semibold text-ink">Change password</h2>
-        <p class="mb-3.5 text-[11.5px] text-ink-faint">Leave these fields empty to keep the current password.</p>
-        <div class="space-y-3">
-          <TextInput v-model="form.current_password" type="password" label="Current password" autocomplete="current-password" />
-          <TextInput v-model="form.password" type="password" label="New password" :minlength="10" autocomplete="new-password" />
-          <TextInput v-model="form.password_confirmation" type="password" label="Confirm new password" :minlength="10" autocomplete="new-password" />
+    <div class="grid max-w-lg gap-4">
+      <form class="surface-flat space-y-4 p-5" @submit.prevent="submitInfo">
+        <div>
+          <h2 class="text-[15px] font-semibold text-ink">Profile</h2>
+          <p class="mt-0.5 text-[12.5px] text-ink-faint">Your name and email address.</p>
         </div>
-      </div>
 
-      <Button type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save profile' }}</Button>
-    </form>
+        <InlineAlert v-if="infoError">{{ infoError }}</InlineAlert>
+        <TextInput v-model="infoForm.name" label="Name" required autocomplete="name" />
+        <TextInput v-model="infoForm.email" type="email" label="Email" required autocomplete="email" />
+
+        <Button type="submit" :disabled="infoSaving">{{ infoSaving ? 'Saving…' : 'Save profile' }}</Button>
+      </form>
+
+      <form class="surface-flat space-y-4 p-5" @submit.prevent="submitPassword">
+        <div>
+          <h2 class="text-[15px] font-semibold text-ink">Change password</h2>
+          <p class="mt-0.5 text-[12.5px] text-ink-faint">Choose a new password for your admin account.</p>
+        </div>
+
+        <InlineAlert v-if="passwordError">{{ passwordError }}</InlineAlert>
+        <TextInput v-model="passwordForm.current_password" type="password" label="Current password" required autocomplete="current-password" />
+        <TextInput v-model="passwordForm.password" type="password" label="New password" required :minlength="10" autocomplete="new-password" />
+        <TextInput v-model="passwordForm.password_confirmation" type="password" label="Confirm new password" required :minlength="10" autocomplete="new-password" />
+
+        <Button type="submit" :disabled="passwordSaving">{{ passwordSaving ? 'Changing…' : 'Change password' }}</Button>
+      </form>
+    </div>
   </AppShell>
 </template>

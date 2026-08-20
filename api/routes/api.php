@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [SessionController::class, 'show']);
     Route::post('/logout', [SessionController::class, 'destroy']);
     Route::put('/v1/admin/profile', [AdminProfileController::class, 'update']);
+    Route::put('/v1/admin/password', [AdminProfileController::class, 'updatePassword']);
 
     Route::prefix('v1')->group(function () {
         Route::post('/track', [TrackController::class, 'store']);
