@@ -60,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {});
       }
+      _fetch();
       _refreshServiceDerivedState();
     });
     _fetch();
@@ -77,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.82),
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(AppSpacing.xxl),

@@ -22,12 +22,40 @@ class PermissionOnboardingScreen extends StatefulWidget {
 enum _Step { fineLocation, backgroundLocation, notifications, batteryOptimization }
 
 class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen> {
-  static const _steps = _Step.values;
-
+  List<_Step> _steps = const [];
   int _stepIndex = 0;
   bool _requesting = false;
+  bool _checking = true;
 
   _Step get _currentStep => _steps[_stepIndex];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOutstandingSteps();
+  }
+
+  Future<void> _loadOutstandingSteps() async {
+    final snapshot = await widget.permissionService.currentSnapshot();
+    final outstanding = [
+      if (!snapshot.fineLocationGranted) _Step.fineLocation,
+      if (!snapshot.backgroundLocationGranted) _Step.backgroundLocation,
+      if (!snapshot.notificationsGranted) _Step.notifications,
+      if (!snapshot.batteryOptimizationExempt) _Step.batteryOptimization,
+    ];
+
+    if (!mounted) return;
+
+    if (outstanding.isEmpty) {
+      widget.onComplete();
+      return;
+    }
+
+    setState(() {
+      _steps = outstanding;
+      _checking = false;
+    });
+  }
 
   Future<void> _requestCurrent() async {
     setState(() => _requesting = true);
@@ -97,6 +125,12 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(strokeWidth: 2.4)),
+      );
+    }
+
     final (icon, title, explanation, buttonLabel) = _stepContent(_currentStep);
     final colors = context.colors;
 

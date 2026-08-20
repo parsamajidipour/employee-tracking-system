@@ -27,7 +27,7 @@ class AppUpdateService {
     }
   }
 
-  Future<File> downloadApk(AppUpdateInfo info) async {
+  Future<File> downloadApk(AppUpdateInfo info, {void Function(double progress)? onProgress}) async {
     final request = http.Request('GET', Uri.parse(info.downloadUrl));
     final response = await http.Client().send(request);
 
@@ -35,10 +35,20 @@ class AppUpdateService {
       throw Exception('Download failed (${response.statusCode}).');
     }
 
+    final total = response.contentLength;
+    var received = 0;
+
     final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/smart-inspection-${info.versionName}.apk');
     final sink = file.openWrite();
-    await response.stream.pipe(sink);
+
+    await response.stream.map((chunk) {
+      received += chunk.length;
+      if (total != null && total > 0) {
+        onProgress?.call(received / total);
+      }
+      return chunk;
+    }).pipe(sink);
     await sink.close();
 
     return file;
