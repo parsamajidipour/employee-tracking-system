@@ -19,7 +19,6 @@ class EmployeeWelcomeMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly User $employee,
         public readonly string $plainPassword,
-        public readonly ?AppRelease $latestRelease,
     ) {}
 
     public function envelope(): Envelope
@@ -48,8 +47,9 @@ class EmployeeWelcomeMail extends Mailable implements ShouldQueue
 
         $table = "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">{$rows}</table>";
 
-        $button = $this->latestRelease !== null
-            ? $this->renderButton(route('app-releases.download', $this->latestRelease->id), 'Download the app')
+        $latestRelease = AppRelease::query()->orderByDesc('version_code')->first();
+        $button = $latestRelease !== null
+            ? $this->renderButton(route('app-releases.download', $latestRelease->id), 'Download the app')
             : '';
 
         return $intro.$table.$button;

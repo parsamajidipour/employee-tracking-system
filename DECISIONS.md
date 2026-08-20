@@ -495,3 +495,20 @@ the user directly rather than picked silently.
   configured. Implemented and tested as far as the queue boundary; actual
   delivery needs real SMTP/API credentials in production, which is an
   operations step outside this session's scope.
+
+## Caching: app-release lookups only, deliberately not window/shift resolution
+
+**Decision.** `AppReleaseController::latest()` is cached (Redis, `app-release:latest`,
+invalidated on upload/retract). `ShiftWindowResolver` and the `me/window` read path
+stay uncached, even though the app now polls both more often (every ~5 minutes,
+tied to the upload cycle — see the Flutter changes in the same commit).
+
+**Why.** The release lookup is safe to cache: it only changes on an explicit admin
+action and carries no time-sensitivity. Window resolution is the opposite — it's
+this project's most invariant-heavy code path (`CLAUDE.md` #1–#8), computed fresh
+against `now()` on every call, with edge-case tests for grace periods, midnight
+crossings, and exception vetoes. Caching it risks serving a stale in/out-of-window
+verdict, which is exactly the class of bug the "no manual refresh needed" fix this
+session was trying to close, not reopen. At this app's scale (50–150 employees
+polling every few minutes) the resolver's query cost was never the bottleneck
+being asked about.

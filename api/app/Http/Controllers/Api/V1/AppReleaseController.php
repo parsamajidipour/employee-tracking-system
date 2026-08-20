@@ -9,11 +9,14 @@ use App\Models\AppRelease;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AppReleaseController extends Controller
 {
+    private const LATEST_CACHE_KEY = 'app-release:latest';
+
     public function index(): AnonymousResourceCollection
     {
         return AppReleaseResource::collection(
@@ -23,7 +26,11 @@ class AppReleaseController extends Controller
 
     public function latest(): JsonResponse
     {
-        $release = AppRelease::query()->orderByDesc('version_code')->first();
+        $release = Cache::remember(
+            self::LATEST_CACHE_KEY,
+            now()->addDay(),
+            fn () => AppRelease::query()->orderByDesc('version_code')->first(),
+        );
 
         if ($release === null) {
             return response()->json(['message' => 'No release available.'], 404);
@@ -46,6 +53,8 @@ class AppReleaseController extends Controller
             'is_mandatory' => $request->boolean('is_mandatory'),
         ]);
 
+        Cache::forget(self::LATEST_CACHE_KEY);
+
         return AppReleaseResource::make($release)->response()->setStatusCode(201);
     }
 
@@ -53,6 +62,8 @@ class AppReleaseController extends Controller
     {
         Storage::disk('local')->delete($appRelease->file_path);
         $appRelease->delete();
+
+        Cache::forget(self::LATEST_CACHE_KEY);
 
         return response()->noContent();
     }

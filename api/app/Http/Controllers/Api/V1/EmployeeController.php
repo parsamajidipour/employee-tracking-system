@@ -12,7 +12,6 @@ use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Mail\EmployeePasswordChangedMail;
 use App\Mail\EmployeeWelcomeMail;
-use App\Models\AppRelease;
 use App\Models\TrackingSession;
 use App\Models\User;
 use App\Services\DeviceService;
@@ -58,8 +57,7 @@ class EmployeeController extends Controller
             return $employee->load('employeeShifts.template');
         });
 
-        $latestRelease = AppRelease::query()->orderByDesc('version_code')->first();
-        Mail::to($employee->email)->queue(new EmployeeWelcomeMail($employee, $plainPassword, $latestRelease));
+        Mail::to($employee->email)->queue(new EmployeeWelcomeMail($employee, $plainPassword));
 
         return EmployeeResource::make($employee)->response()->setStatusCode(201);
     }

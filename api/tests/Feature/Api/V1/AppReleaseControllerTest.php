@@ -6,12 +6,20 @@ use App\Models\AppRelease;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AppReleaseControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Cache::flush();
+    }
 
     public function test_latest_version_returns_the_highest_version_code(): void
     {
@@ -40,6 +48,38 @@ class AppReleaseControllerTest extends TestCase
         $response = $this->getJson('/api/v1/app/latest-version');
 
         $response->assertOk();
+    }
+
+    public function test_latest_version_cache_is_invalidated_by_a_new_upload(): void
+    {
+        Storage::fake('local');
+        AppRelease::factory()->create(['version_code' => 1, 'version_name' => '1.0.0']);
+
+        $this->getJson('/api/v1/app/latest-version')->assertJsonPath('version_code', 1);
+
+        $this->actingAs(User::factory()->admin()->create());
+        $this->postJson('/api/v1/app-releases', [
+            'apk' => UploadedFile::fake()->create('app.apk', 100),
+            'version_code' => 2,
+            'version_name' => '1.1.0',
+        ])->assertCreated();
+
+        $this->getJson('/api/v1/app/latest-version')->assertJsonPath('version_code', 2);
+    }
+
+    public function test_latest_version_cache_is_invalidated_by_a_retract(): void
+    {
+        Storage::fake('local');
+        AppRelease::factory()->create(['version_code' => 1, 'version_name' => '1.0.0']);
+        $newer = AppRelease::factory()->create(['version_code' => 2, 'version_name' => '1.1.0', 'file_path' => 'releases/app-v2.apk']);
+        Storage::disk('local')->put('releases/app-v2.apk', 'binary');
+
+        $this->getJson('/api/v1/app/latest-version')->assertJsonPath('version_code', 2);
+
+        $this->actingAs(User::factory()->admin()->create());
+        $this->deleteJson("/api/v1/app-releases/{$newer->id}")->assertNoContent();
+
+        $this->getJson('/api/v1/app/latest-version')->assertJsonPath('version_code', 1);
     }
 
     public function test_only_admin_can_upload_a_release(): void
