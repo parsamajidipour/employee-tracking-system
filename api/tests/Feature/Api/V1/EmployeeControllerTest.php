@@ -139,10 +139,29 @@ class EmployeeControllerTest extends TestCase
         $this->actingAs(User::factory()->hr()->create());
         $employee = User::factory()->create();
 
-        $response = $this->putJson("/api/v1/employees/{$employee->id}/password", ['password' => 'brand-new-password']);
+        $response = $this->putJson("/api/v1/employees/{$employee->id}/password", [
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'brand-new-password',
+        ]);
 
         $response->assertNoContent();
         $this->assertTrue(Hash::check('brand-new-password', $employee->refresh()->password));
+    }
+
+    public function test_reset_password_rejects_a_mismatched_confirmation(): void
+    {
+        $this->actingAs(User::factory()->hr()->create());
+        $employee = User::factory()->create();
+        $originalPassword = $employee->password;
+
+        $response = $this->putJson("/api/v1/employees/{$employee->id}/password", [
+            'password' => 'brand-new-password',
+            'password_confirmation' => 'something-else',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['password']);
+        $this->assertSame($originalPassword, $employee->refresh()->password);
     }
 
     public function test_revoke_device_deletes_the_token_and_marks_the_device_revoked(): void
