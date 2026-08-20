@@ -5,15 +5,18 @@ const props = withDefaults(
     size?: 'sm' | 'md'
     type?: 'button' | 'submit'
     disabled?: boolean
+    loading?: boolean
     to?: string
   }>(),
-  { variant: 'primary', size: 'md', type: 'button', disabled: false },
+  { variant: 'primary', size: 'md', type: 'button', disabled: false, loading: false },
 )
+
+const isDisabled = computed(() => props.disabled || props.loading)
 
 const classes = computed(() => [
   'btn font-semibold transition-shadow',
   props.size === 'sm' ? 'h-10 px-3.5 text-[13.5px]' : '',
-  props.disabled ? 'cursor-not-allowed opacity-50 pointer-events-none' : '',
+  isDisabled.value ? 'cursor-not-allowed opacity-50 pointer-events-none' : '',
   {
     'bg-primary text-white shadow-ambient hover:bg-primary-strong hover:shadow-key': props.variant === 'primary',
     'bg-surface text-ink border border-hairline shadow-ambient hover:border-ink-faint/40 hover:bg-surface-sunken hover:shadow-key': props.variant === 'secondary',
@@ -24,10 +27,12 @@ const classes = computed(() => [
 </script>
 
 <template>
-  <NuxtLink v-if="to" :to="to" :class="classes">
+  <NuxtLink v-if="to" :to="to" :class="classes" :aria-disabled="isDisabled">
+    <Icon v-if="loading" name="refresh" class="h-3.5 w-3.5" spin />
     <slot />
   </NuxtLink>
-  <button v-else :type="type" :disabled="disabled" :class="classes">
+  <button v-else :type="type" :disabled="isDisabled" :class="classes">
+    <Icon v-if="loading" name="refresh" class="h-3.5 w-3.5" spin />
     <slot />
   </button>
 </template>

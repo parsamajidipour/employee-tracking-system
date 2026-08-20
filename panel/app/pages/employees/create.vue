@@ -84,7 +84,7 @@ async function submit() {
       </label>
 
       <div class="flex items-center gap-2 pt-2">
-        <Button type="submit" :disabled="submitting">{{ submitting ? 'Creating…' : 'Create employee' }}</Button>
+        <Button type="submit" :loading="submitting">{{ submitting ? 'Creating…' : 'Create employee' }}</Button>
         <Button variant="secondary" to="/employees">Cancel</Button>
       </div>
     </form>

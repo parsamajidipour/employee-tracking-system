@@ -69,7 +69,10 @@ function buildBody() {
   }
 }
 
+const submitting = ref(false)
+
 async function submit() {
+  submitting.value = true
   try {
     if (editingId.value === null) {
       await apiFetch('/api/v1/shift-templates', { method: 'POST', body: buildBody() })
@@ -82,6 +85,8 @@ async function submit() {
     await refresh()
   } catch (err) {
     toast.error(apiErrorMessage(err, 'Save failed — check the fields.'))
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -151,8 +156,8 @@ onMounted(load)
         </div>
 
         <div class="flex items-center gap-2">
-          <Button type="submit">{{ editingId === null ? 'Add template' : 'Save changes' }}</Button>
-          <Button v-if="editingId !== null" type="button" variant="secondary" @click="startCreate">Cancel</Button>
+          <Button type="submit" :loading="submitting">{{ editingId === null ? 'Add template' : 'Save changes' }}</Button>
+          <Button v-if="editingId !== null" type="button" variant="secondary" :disabled="submitting" @click="startCreate">Cancel</Button>
         </div>
       </form>
 

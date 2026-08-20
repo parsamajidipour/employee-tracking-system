@@ -64,7 +64,7 @@ onMounted(refreshAll)
           <p class="text-[13px] text-ink-soft">{{ employee.email ?? '—' }}</p>
           <p class="mt-1 text-[11.5px] text-ink-faint">Select one or more shifts. Tracking is allowed only inside selected times.</p>
         </div>
-        <Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save shifts' }}</Button>
+        <Button :loading="saving" @click="save">{{ saving ? 'Saving…' : 'Save shifts' }}</Button>
       </div>
 
       <div class="max-w-4xl">

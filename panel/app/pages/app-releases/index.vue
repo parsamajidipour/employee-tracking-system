@@ -127,7 +127,7 @@ onMounted(load)
         </div>
 
         <Button type="submit" :disabled="uploading" class="w-full justify-center">
-          <Icon name="upload" class="h-3.5 w-3.5" />
+          <Icon :name="uploading ? 'refresh' : 'upload'" class="h-3.5 w-3.5" :spin="uploading" />
           {{ uploading ? 'Uploading…' : 'Publish release' }}
         </Button>
       </form>

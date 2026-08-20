@@ -284,7 +284,7 @@ onMounted(load)
 
       <template #footer>
         <Button variant="secondary" @click="editModalOpen = false">Cancel</Button>
-        <Button :disabled="editSaving" @click="submitEdit">
+        <Button :loading="editSaving" @click="submitEdit">
           {{ editSaving ? 'Saving…' : 'Save changes' }}
         </Button>
       </template>
@@ -306,7 +306,7 @@ onMounted(load)
 
       <template #footer>
         <Button variant="secondary" @click="passwordModalOpen = false">Cancel</Button>
-        <Button :disabled="passwordSaving" @click="submitChangePassword">
+        <Button :loading="passwordSaving" @click="submitChangePassword">
           {{ passwordSaving ? 'Changing…' : 'Change password' }}
         </Button>
       </template>

@@ -47,7 +47,7 @@ async function submit() {
           <TextInput v-model="email" type="email" label="Email" icon="mail" autocomplete="username" required />
           <TextInput v-model="password" type="password" label="Password" icon="lock" autocomplete="current-password" required />
 
-          <Button type="submit" :disabled="submitting" class="w-full justify-center">
+          <Button type="submit" :loading="submitting" class="w-full justify-center">
             {{ submitting ? 'Signing in…' : 'Sign in' }}
           </Button>
         </form>

@@ -93,7 +93,7 @@ onMounted(refreshProfile)
         <TextInput v-model="infoForm.name" label="Name" required autocomplete="name" />
         <TextInput v-model="infoForm.email" type="email" label="Email" required autocomplete="email" />
 
-        <Button type="submit" :disabled="infoSaving">{{ infoSaving ? 'Saving…' : 'Save profile' }}</Button>
+        <Button type="submit" :loading="infoSaving">{{ infoSaving ? 'Saving…' : 'Save profile' }}</Button>
       </form>
 
       <form class="surface-flat space-y-4 p-5" @submit.prevent="submitPassword">
@@ -107,7 +107,7 @@ onMounted(refreshProfile)
         <TextInput v-model="passwordForm.password" type="password" label="New password" required :minlength="10" autocomplete="new-password" />
         <TextInput v-model="passwordForm.password_confirmation" type="password" label="Confirm new password" required :minlength="10" autocomplete="new-password" />
 
-        <Button type="submit" :disabled="passwordSaving">{{ passwordSaving ? 'Changing…' : 'Change password' }}</Button>
+        <Button type="submit" :loading="passwordSaving">{{ passwordSaving ? 'Changing…' : 'Change password' }}</Button>
       </form>
     </div>
   </AppShell>
