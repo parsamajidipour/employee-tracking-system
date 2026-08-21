@@ -8,7 +8,8 @@ import 'location_queue_repository.dart';
 
 class LocationAcquisitionService {
   static const _pollInterval = Duration(seconds: 10);
-  static const _recordInterval = Duration(minutes: 5);
+  static const _recordInterval = Duration(seconds: 15);
+  static const _minRecordDistanceM = 20.0;
 
   final LocationQueueRepository _repository;
   final Future<void> Function()? _onPointRecorded;
@@ -17,6 +18,7 @@ class LocationAcquisitionService {
 
   Timer? _pollTimer;
   DateTime? _lastRecordedAt;
+  Position? _lastRecordedPosition;
 
   LocationAcquisitionService({
     LocationQueueRepository? repository,
@@ -28,6 +30,7 @@ class LocationAcquisitionService {
 
   void start() {
     _lastRecordedAt = null;
+    _lastRecordedPosition = null;
     _schedulePoll();
   }
 
@@ -50,10 +53,21 @@ class LocationAcquisitionService {
 
       await _onPositionPolled?.call(position, batteryPct);
 
-      final due = _lastRecordedAt == null || position.timestamp.difference(_lastRecordedAt!) >= _recordInterval;
-      if (due) {
-        _lastRecordedAt = position.timestamp;
-        await _recordPosition(position, batteryPct);
+      final timeDue = _lastRecordedAt == null || position.timestamp.difference(_lastRecordedAt!) >= _recordInterval;
+      if (timeDue) {
+        final movedEnough = _lastRecordedPosition == null ||
+            Geolocator.distanceBetween(
+              _lastRecordedPosition!.latitude,
+              _lastRecordedPosition!.longitude,
+              position.latitude,
+              position.longitude,
+            ) >=
+                _minRecordDistanceM;
+        if (movedEnough) {
+          _lastRecordedAt = position.timestamp;
+          _lastRecordedPosition = position;
+          await _recordPosition(position, batteryPct);
+        }
       }
     } catch (_) {
     } finally {

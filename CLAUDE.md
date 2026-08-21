@@ -204,13 +204,12 @@ same `ShiftWindowResolver` gate and updates the live map, but is never written t
 `location_points` — no trail row, no distance, nothing an audit or a trail read
 ever sees. Separately, a point is recorded into the local SQLite queue (and from
 there uploaded and persisted to `location_points`, feeding the trail and its
-distance) only once 5 minutes have passed since the last recorded one. So the
-live map stays near-real-time off the ping, while route playback and distance are
-coarse — a shift's trail has a point roughly every 5 minutes, and movement
-between recorded points is not captured. This two-speed split (frequent
-live-only ping, infrequent recorded/trail point) replaced a single `distanceFilter`
-5m + 10s heartbeat that recorded every poll, which cost more battery/data than
-the project now accepts. Points queue in local SQLite and flush immediately
+distance) once 15 seconds have passed since the last recorded one, **and** the
+device has moved at least 20m from that last recorded point — either condition
+unmet and nothing is recorded, so a stationary employee produces no new trail
+points at all. So the live map stays near-real-time off the ping, and route
+playback/distance stay close to real movement without recording redundant
+points while stationary. Points queue in local SQLite and flush immediately
 after each point is recorded, with the foreground task's 5s repeat cycle as a
 retry backstop. The service starts at window open and stops at window close.
 
