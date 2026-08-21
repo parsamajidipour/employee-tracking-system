@@ -40,10 +40,6 @@ class TrackingServiceController {
     );
   }
 
-  Future<void> stopService() async {
-    await FlutterForegroundTask.stopService();
-  }
-
   Future<void> applyWindowDecision(ShiftWindow? current) async {
     if (_busy) return;
     _busy = true;

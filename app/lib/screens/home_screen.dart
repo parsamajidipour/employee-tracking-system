@@ -75,47 +75,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await showUpdateDialog(context, info: info, updateService: _updateService);
   }
 
-  Future<void> _confirmSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.82),
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-        child: AppCard(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Sign out?', style: context.text.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Tracking stops and you will need to sign in again to resume.',
-                style: context.text.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Sign out'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    await widget.trackingServiceController.stopService();
-    await widget.authController.signOut();
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -231,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
         children: [
           FadeSlideIn(
-            child: _Greeting(snapshot: snapshot, onSignOut: _confirmSignOut),
+            child: _Greeting(snapshot: snapshot),
           ),
           const SizedBox(height: AppSpacing.xl),
           FadeSlideIn(
@@ -274,10 +233,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 }
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.snapshot, required this.onSignOut});
+  const _Greeting({required this.snapshot});
 
   final WindowSnapshot snapshot;
-  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -308,12 +266,6 @@ class _Greeting extends StatelessWidget {
         StatusPill(
           label: onShift ? 'In window' : 'Outside hours',
           tone: onShift ? StatusTone.active : StatusTone.idle,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        IconButton(
-          onPressed: onSignOut,
-          tooltip: 'Sign out',
-          icon: Icon(Icons.logout_outlined, color: colors.textSecondary),
         ),
       ],
     );
