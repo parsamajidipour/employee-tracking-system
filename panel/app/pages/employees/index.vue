@@ -181,11 +181,7 @@ onMounted(load)
             <div class="col-span-2">
               <dt class="eyebrow mb-1">Shifts</dt>
               <dd>
-                <div v-if="employee.shifts.length" class="flex flex-wrap gap-1.5">
-                  <Badge v-for="shift in employee.shifts" :key="shift.id" variant="neutral">
-                    {{ shift.name }} · {{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}
-                  </Badge>
-                </div>
+                <ShiftsPopover v-if="employee.shifts.length" :shifts="employee.shifts" />
                 <span v-else class="text-ink-faint">No shifts</span>
               </dd>
             </div>
@@ -224,11 +220,7 @@ onMounted(load)
         </td>
         <td class="px-5 text-[14px] tabular">{{ employee.phone ?? '—' }}</td>
         <td class="px-5">
-          <div v-if="employee.shifts.length" class="flex max-w-56 flex-wrap gap-1.5">
-            <Badge v-for="shift in employee.shifts" :key="shift.id" variant="neutral">
-              {{ shift.name }} · {{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}
-            </Badge>
-          </div>
+          <ShiftsPopover v-if="employee.shifts.length" :shifts="employee.shifts" />
           <span v-else class="text-[13px] text-ink-faint">No shifts</span>
         </td>
         <td class="px-5">
