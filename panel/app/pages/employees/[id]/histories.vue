@@ -104,6 +104,26 @@ function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): Tr
   return kept.filter((_, i) => i % stride === 0 || i === kept.length - 1)
 }
 
+/**
+ * `distance_m` is already the server's noise-floor verdict from
+ * TrackingGate::segmentDistance — zero means the ingest gate judged that hop
+ * to be GPS drift, not movement. Reusing that verdict for the drawn line
+ * (instead of re-deriving a threshold here) keeps the polyline consistent
+ * with the distance figure shown next to it. Only the path fed to the
+ * Polyline is filtered; the raw point list still backs markers and hover.
+ */
+function realMovementPath(points: TrailPoint[]): TrailPoint[] {
+  if (points.length === 0) return points
+  const kept: TrailPoint[] = [points[0]!]
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i]!
+    if (point.distance_m > 0) kept.push(point)
+  }
+  const last = points[points.length - 1]!
+  if (kept[kept.length - 1] !== last) kept.push(last)
+  return kept
+}
+
 function nearestPoint(points: TrailPoint[], lat: number, lng: number): TrailPoint {
   let closest = points[0]!
   let bestDistance = Infinity
@@ -167,7 +187,7 @@ function renderTrail() {
     const color = shiftIndex === null ? UNASSIGNED_COLOR : shiftColor(shiftIndex)
 
     const line = new mapsApi.maps.Polyline({
-      path: groupPoints.map((p) => ({ lat: p.lat, lng: p.lng })),
+      path: realMovementPath(groupPoints).map((p) => ({ lat: p.lat, lng: p.lng })),
       strokeColor: color,
       strokeOpacity: 0.9,
       strokeWeight: 3.5,
