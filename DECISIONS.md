@@ -268,12 +268,16 @@ map too rather than leaving the two pages on different map stacks.
 - No Google Cloud project, API key, or billing is a dependency of this
   codebase any more. `panel/.env`'s `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` (if
   still present locally) is simply unused now; nothing reads it.
-- The dark map style on both pages comes from `@protomaps/basemaps`'s
-  `namedFlavor('dark')` passed to `layers()`, not a hand-authored style —
-  keeps `docs/DESIGN.md`'s dark-surface rule satisfied without maintaining a
-  bespoke vector style layer-by-layer (the flat/vivid palette entry above
-  already noted the cost of that path for Google's base map and chose not to
-  pay it there either). `docs/DESIGN.md` rule 8 is rewritten accordingly.
+- The map style on both pages comes from `@protomaps/basemaps`'s
+  `namedFlavor('light')` passed to `layers()`, not a hand-authored style —
+  no bespoke vector style to maintain layer-by-layer (the flat/vivid palette
+  entry above already noted the cost of that path for Google's base map and
+  chose not to pay it there either). `'dark'` was tried first and reverted
+  within the same session at explicit request: the actual ask was for the
+  map to look like ordinary, recognisable OpenStreetMap, which reads as
+  light, not dark. `docs/DESIGN.md` rule 8 and its §1 "hybrid" framing are
+  rewritten accordingly — dark surface is now scoped to the nav rail and to
+  floating chips/panels *on top of* a map, not the map canvas itself.
 - Start/End terminal markers (histories) and the employee marker (live map)
   use MapLibre's DOM-based `Marker` with a plain HTML div rather than a
   `symbol` text layer — the style object here doesn't set a `glyphs` URL

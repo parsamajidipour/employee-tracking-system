@@ -276,7 +276,7 @@ onMounted(() => {
     style: {
       version: 8,
       sources: { protomaps: { type: 'vector', url: `pmtiles://${basemapUrl}`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
-      layers: protomapsLayers('protomaps', namedFlavor('dark'), { lang: 'en' }),
+      layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
     },
     center: [58.5922, 23.6144],
     zoom: 9,

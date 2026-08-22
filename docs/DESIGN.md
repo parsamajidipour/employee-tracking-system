@@ -19,22 +19,19 @@ this changed, and what it replaced.
 
 Hybrid, not uniformly light or dark: **light surfaces for data** — tables, forms,
 cards, lists — because that is what a compact, information-dense screen needs to
-stay legible for long stretches. **Dark surfaces for operational context** — the
-live map, the histories route map, and the left navigation rail — because those
-are monitoring surfaces, not reading surfaces, and a dark map reads location data
-(dots, routes, glow) far better than a light basemap competing for the same
-attention. This is a deliberate split, not two half-finished themes: nothing
-toggles between them, each surface just uses whichever fits what it's showing.
+stay legible for long stretches. **Dark surface for the left navigation rail**,
+kept dark as a constant orientation anchor against whichever light content sits
+next to it. The live map and histories route map are **light**, not dark — a
+directed reversal of this section's earlier "maps should be dark" stance, made
+when the basemap itself moved back to a self-hosted OpenStreetMap style (see
+`DECISIONS.md`'s map-stack entries): the actual request was for the map to look
+like recognisable, standard OpenStreetMap, which is a light basemap. This is a
+deliberate split, not two half-finished themes: nothing toggles between them,
+each surface just uses whichever fits what it's showing.
 
 Density is compact: more information per screen (tables, stat rows, lists) aimed
 at someone monitoring 50-150 employees, not a handful. Compact does not mean
 cramped — see the touch-target rule in §7.
-
-In practice, `map.vue` and the histories map currently render their canvas and
-overlay panels on light-surface classes (`surfaceSunken`, `.surface`), not the
-dark tokens below — this section describes the intended direction, not yet
-where those two pages landed. Flagging it here rather than silently leaving
-the doc wrong; reconciling which one is right is unstarted follow-up work.
 
 ## 2. Colour
 
@@ -67,12 +64,12 @@ token, by design — they need more distinct values than a token file should hol
 | `textSecondary` | `#63636F` | Labels, captions |
 | `textTertiary` | `#9A9AA6` | Placeholder, disabled, non-essential |
 
-### Dark surface (live map, histories map, nav rail)
+### Dark surface (nav rail)
 
 | Token | Value | Use |
 |---|---|---|
-| `surfaceDark` | `#0B0B10` | Map canvas background |
-| `surfaceDarkRaised` | `#16161D` | Floating panels, nav rail, marker labels |
+| `surfaceDark` | `#0B0B10` | Reserved; no map canvas uses this any more (maps are light — see §1) |
+| `surfaceDarkRaised` | `#16161D` | Nav rail, marker labels, dark floating chips for contrast on a light map (e.g. the histories page's distance/point-count badge) |
 | `surfaceDarkHover` | `#1E1E27` | Hover/active row on a dark surface |
 | `borderDark` | `#26262F` | Hairlines on dark surfaces |
 | `textDarkPrimary` | `#F5F5F7` | Headings/values on dark |
@@ -183,8 +180,10 @@ in `tokens.css`).
 
 ## 8. Harmony rules
 
-1. Light for data (tables, forms, cards), dark for operational context (maps, nav
-   rail). Nothing else is dark — don't dark-mode a form or a table.
+1. Light for data (tables, forms, cards) and for the maps (§1). Dark is reserved
+   for the nav rail and for floating chips/overlays on top of a map, where a dark
+   chip gives the best contrast against a light basemap. Nothing else is dark —
+   don't dark-mode a form or a table.
 2. `primary` (indigo) is the only brand hue in chrome. The employee/shift colour
    hashing on the maps is the one named exception (§2).
 3. Status is always the same triple: colour dot, icon, word — same order, same
@@ -201,13 +200,15 @@ in `tokens.css`).
    with `surfaceSunken` or a hairline rule instead.
 8. The live map and histories map render with MapLibre GL against the
    self-hosted Oman PMTiles extract, styled with `@protomaps/basemaps`'
-   `namedFlavor('dark')` passed straight to `layers()` — not a hand-picked
-   colour per feature type. A fuller custom style (first a light theme, then
-   briefly a part-dark one, back when both maps ran on Google) was tried
-   twice and reverted both times: hand-picking a colour for every feature
-   type is easy to get geographically wrong (desert rendered as green
-   "natural landscape" was the specific failure). Using a maintained flavor
-   instead of a bespoke palette avoids that failure mode entirely. Employee
-   markers, route colours, and every panel/overlay on top of the map are
-   still app-styled — the base map underneath gets exactly the maintained
-   dark flavor, not a repaint.
+   `namedFlavor('light')` passed straight to `layers()` — not a hand-picked
+   colour per feature type, and not the `'dark'` flavor either (tried first,
+   reverted at explicit request: the ask was for the map to read as ordinary,
+   recognisable OpenStreetMap, which is light). A fuller custom style (first
+   a light theme, then briefly a part-dark one, back when both maps ran on
+   Google) was tried twice and reverted both times: hand-picking a colour for
+   every feature type is easy to get geographically wrong (desert rendered as
+   green "natural landscape" was the specific failure). Using a maintained
+   flavor instead of a bespoke palette avoids that failure mode entirely.
+   Employee markers, route colours, and every panel/overlay on top of the map
+   are still app-styled — the base map underneath gets exactly the
+   maintained light flavor, not a repaint.
