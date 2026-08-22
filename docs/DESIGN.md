@@ -198,17 +198,17 @@ in `tokens.css`).
    an alert.
 7. Never nest a `.surface`/`.surface-flat` card inside another one. Group content
    with `surfaceSunken` or a hairline rule instead.
-8. The live map and histories map render with MapLibre GL against the
-   self-hosted Oman PMTiles extract, styled with `@protomaps/basemaps`'
-   `namedFlavor('light')` passed straight to `layers()` — not a hand-picked
-   colour per feature type, and not the `'dark'` flavor either (tried first,
-   reverted at explicit request: the ask was for the map to read as ordinary,
-   recognisable OpenStreetMap, which is light). A fuller custom style (first
-   a light theme, then briefly a part-dark one, back when both maps ran on
-   Google) was tried twice and reverted both times: hand-picking a colour for
-   every feature type is easy to get geographically wrong (desert rendered as
-   green "natural landscape" was the specific failure). Using a maintained
-   flavor instead of a bespoke palette avoids that failure mode entirely.
-   Employee markers, route colours, and every panel/overlay on top of the map
-   are still app-styled — the base map underneath gets exactly the
-   maintained light flavor, not a repaint.
+8. The live map and histories map render with MapLibre GL against a `raster`
+   source pointed directly at `tile.openstreetmap.org` — the official OSM
+   Standard tile layer, pixel-identical to osm.org, not a re-themed vector
+   basemap. No `filter`/`opacity`/desaturation CSS is applied to it and none
+   should be added — a washed-out or tinted OSM basemap was explicitly
+   rejected in favour of the real thing. This supersedes two earlier attempts
+   in the same session (Google Maps, then a self-hosted PMTiles vector
+   extract in a custom `namedFlavor`) — see `DECISIONS.md`'s map-stack
+   entries for why each was tried and dropped. Pointing at OSM's own tile
+   server directly is a knowing, accepted departure from OSM's tile usage
+   policy for exactly this kind of embedding; `DECISIONS.md` records the
+   tradeoff. Employee markers, route colours, and every panel/overlay on top
+   of the map are still app-styled — the base map underneath is untouched OSM
+   Standard, not a repaint.

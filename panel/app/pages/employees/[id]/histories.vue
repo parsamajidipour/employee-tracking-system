@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, Popup as MapLibrePopup, addProtocol, setWorkerUrl } from 'maplibre-gl'
+import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, Popup as MapLibrePopup, setWorkerUrl } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { Protocol as PMTilesProtocol } from 'pmtiles'
-import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
 import { shiftColor } from '~/utils/mapMarker'
 import { formatDistance } from '~/utils/formatDistance'
 
@@ -259,24 +257,21 @@ onMounted(() => {
   loadEmployees()
 
   setWorkerUrl(maplibreWorkerUrl)
-  addProtocol('pmtiles', new PMTilesProtocol().tile)
-
-  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
-
-  fetch(basemapUrl, { method: 'HEAD' })
-    .then((response) => {
-      if (!response.ok) mapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
-    })
-    .catch(() => {
-      mapError.value = 'Could not reach the map tile server.'
-    })
 
   map = new MapLibreMap({
     container: mapContainer.value!,
     style: {
       version: 8,
-      sources: { protomaps: { type: 'vector', url: `pmtiles://${basemapUrl}`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
-      layers: protomapsLayers('protomaps', namedFlavor('light'), { lang: 'en' }),
+      sources: {
+        osm: {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '© OpenStreetMap contributors',
+          maxzoom: 19,
+        },
+      },
+      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }],
     },
     center: [58.5922, 23.6144],
     zoom: 9,

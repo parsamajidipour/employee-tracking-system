@@ -41,16 +41,12 @@ if you want to run `api/` outside Docker too.
    This brings up Postgres (with PostGIS enabled), Redis, and `api/`, then
    runs migrations and serves the API at http://localhost:8000 (port
    configurable via `API_PORT` in the root `.env`).
-3. Build the self-hosted basemap extract once per clone:
-   ```
-   ./scripts/install-basemap.sh
-   ```
-   Both map pages (`panel/app/pages/map.vue` and
-   `panel/app/pages/employees/[id]/histories.vue`) render with MapLibre GL
-   against this extract (`api/storage/app/basemap/oman.pmtiles`), served by
-   `api/`'s own `/api/basemap/oman.pmtiles` route — no API key, no billing
-   account. See `DECISIONS.md`'s "Histories map reverted to self-hosted
-   PMTiles" entry for the history here.
+3. Nothing to configure for the map. Both map pages (`panel/app/pages/map.vue`
+   and `panel/app/pages/employees/[id]/histories.vue`) render with MapLibre
+   GL against the official OSM Standard raster tiles
+   (`tile.openstreetmap.org`) — no API key, no billing account, no local
+   extract to build. See `DECISIONS.md`'s map-stack entries for the history
+   of what this replaced and the OSM tile usage policy tradeoff it accepts.
 4. Start the panel on the host:
    ```
    cd panel

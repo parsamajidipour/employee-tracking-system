@@ -598,3 +598,64 @@ verdict, which is exactly the class of bug the "no manual refresh needed" fix th
 session was trying to close, not reopen. At this app's scale (50–150 employees
 polling every few minutes) the resolver's query cost was never the bottleneck
 being asked about.
+
+## Map tiles: OSM's own `tile.openstreetmap.org`, not self-hosted PMTiles — a knowing tile usage policy exception
+
+**Decision.** Both map pages now source their basemap directly from OSM's
+official raster tile server (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`),
+via a plain MapLibre GL `raster` source/layer — no vector style, no
+`namedFlavor`, no CSS filter or overlay of any kind on top of it. This
+supersedes the self-hosted PMTiles entry above, which itself only stood for
+part of this same session: Google Maps → self-hosted PMTiles (MapLibre GL +
+`@protomaps/basemaps`, `'dark'` then `'light'` flavor) → this. The self-hosted
+PMTiles infrastructure that entry restored is removed again, all in the same
+session: `api/app/Http/Controllers/BasemapController.php`, its route,
+`scripts/install-basemap.sh`, its call in `scripts/deploy.sh`, the basemap
+volume mount in `docker-compose.prod.yml`, and the `pmtiles`/
+`@protomaps/basemaps` packages in `panel/package.json` are all deleted, not
+just unused.
+
+**Why.** Directed change, made with the tradeoff stated up front rather than
+discovered later: the self-hosted extract's own entry above documents that
+"OpenStreetMap's usage policy doesn't permit embedding it in an application
+like this one" — that's still true, and pointing a MapLibre `raster` source
+at `tile.openstreetmap.org` is exactly the embedding that policy is about.
+The requester was told this directly, including the realistic risk (OSM's
+infrastructure can rate-limit or block the deploy VPS's IP under real load),
+and chose it anyway because the actual requirement was pixel-identical
+OSM Standard styling — the same colours, roads, and labels as osm.org itself
+— which no vector re-styling (Carto Positron-alikes, a custom
+`@protomaps/basemaps` flavor, or a hand-authored style) can fully reproduce,
+and a full self-hosted `osm-carto` raster-rendering stack (`osm2pgsql` +
+`renderd`/`mod_tile`, a real OSM data import) was judged too heavy an
+addition for this project's "single VPS, boring option" scale to take on
+just for basemap cosmetics.
+
+**Consequences.**
+- **Real, accepted risk: OSM may rate-limit or block this deployment's IP.**
+  Nothing in this codebase works around that risk (no proxy, no caching layer
+  in front of the tile requests) — it is a direct, unmitigated dependency on
+  a third party's goodwill policy. If OSM tiles stop loading in production
+  and the browser console shows 429/403s from `tile.openstreetmap.org`, this
+  is why. The fix at that point is a dedicated tile provider (Thunderforest,
+  MapTiler, Geoapify, or similar) or reverting to the self-hosted PMTiles
+  setup two entries up (still in git history), not trying to route around
+  OSM's blocking.
+- The viewport-privacy consequence from the Google Maps entry is back,
+  pointed at a different third party: OSM's tile servers see every map
+  pan/zoom from the panel, the same way Google's did. No employee location
+  coordinates are sent to OSM — markers are still drawn client-side from data
+  already fetched over `api/`'s own WebSocket/REST endpoints — but the
+  viewport itself is visible to OSM's infrastructure.
+- No self-hosted basemap file exists any more. `api/storage/app/basemap/
+  oman.pmtiles`, if still present on a given machine from the entry above,
+  is inert — nothing serves or reads it. It's git-ignored, so no cleanup
+  commit is needed to remove it from the repo; it can be deleted by hand
+  wherever it's sitting.
+- `docs/DESIGN.md` rule 8 is rewritten again to describe the raster OSM
+  source and to state explicitly that no filter/opacity/desaturation may be
+  layered on top of it — a washed-out or tinted OSM basemap was the specific
+  thing rejected in favour of this.
+- The self-hosted Oman extract two entries up remains the fallback if this
+  policy exception ever becomes a real operational problem — it's a proven,
+  working setup (git history, this same session), not a hypothetical.
