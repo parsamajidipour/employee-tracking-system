@@ -1,3 +1,5 @@
+import { Marker as MapLibreMarker, type Map as MapLibreMap } from 'maplibre-gl'
+
 export interface EmployeeMarkerPosition {
   lat: number
   lng: number
@@ -18,156 +20,88 @@ export interface EmployeeMarkerOverlayInstance {
   destroy(): void
 }
 
-type EmployeeMarkerOverlayCtor = new (
-  map: google.maps.Map,
+/**
+ * MapLibre's `Marker` already reprojects its DOM element on every map render,
+ * so unlike the old Google `OverlayView` version this needs no manual
+ * `draw()`/projection step — `moveTo` only has to animate the lng/lat and let
+ * the Marker place it. The glide between position updates (instead of
+ * snapping) is what turns GPS noise around a stationary point into a smooth
+ * micro-drift rather than a visible jitter; the coordinate driving it is
+ * always the exact reported position, nothing here rounds or discards
+ * accuracy.
+ */
+export function createEmployeeMarker(
+  map: MapLibreMap,
   position: EmployeeMarkerPosition,
   name: string,
   onSelect: () => void,
-) => EmployeeMarkerOverlayInstance
+): EmployeeMarkerOverlayInstance {
+  const div = document.createElement('div')
+  div.className = 'group relative h-6 w-6 cursor-pointer select-none'
+  div.style.zIndex = '10'
 
-let cachedCtor: EmployeeMarkerOverlayCtor | null = null
+  const pulse = document.createElement('div')
+  pulse.className = 'absolute inset-0 -z-10 rounded-full opacity-0'
 
-/**
- * `google.maps.OverlayView` only exists once the Maps JS API script has finished
- * loading, so this class can't be declared at module scope (`class X extends
- * google.maps.OverlayView` would throw ReferenceError on import, before the
- * script tag has run). Building it lazily from the loaded `google` namespace is
- * the fix — call this once after `useGoogleMaps().load()` resolves.
- *
- * The overlay always shows a name label (not hover-only) and glides between
- * position updates instead of snapping, so GPS noise around a stationary point
- * reads as a smooth micro-drift rather than a visible jitter. The coordinate
- * driving the glide is always the exact reported position — nothing here
- * rounds or discards accuracy.
- */
-export function getEmployeeMarkerOverlayCtor(mapsApi: typeof google): EmployeeMarkerOverlayCtor {
-  if (cachedCtor) return cachedCtor
+  const dot = document.createElement('div')
+  dot.className = 'relative h-6 w-6 rounded-full border-[3px] border-white shadow-[0_2px_10px_rgba(0,0,0,0.4)] transition-shadow duration-150'
 
-  class EmployeeMarkerOverlay extends mapsApi.maps.OverlayView implements EmployeeMarkerOverlayInstance {
-    private div: HTMLDivElement | null = null
-    private pulse: HTMLDivElement | null = null
-    private dot: HTMLDivElement | null = null
-    private label: HTMLSpanElement | null = null
-    private current: google.maps.LatLng
-    private animationFrame: number | null = null
-    private color = '#2563eb'
+  const label = document.createElement('span')
+  label.textContent = name
+  label.className =
+    'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-raised ring-1 ring-hairline'
 
-    constructor(
-      map: google.maps.Map,
-      position: EmployeeMarkerPosition,
-      private name: string,
-      private onSelect: () => void,
-    ) {
-      super()
-      this.current = new mapsApi.maps.LatLng(position.lat, position.lng)
-      this.setMap(map)
-    }
+  div.append(pulse, dot, label)
+  div.addEventListener('click', onSelect)
 
-    override onAdd(): void {
-      this.div = document.createElement('div')
-      this.div.className = 'group absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer select-none transition-transform duration-150 ease-out'
-      this.div.style.zIndex = '10'
+  const marker = new MapLibreMarker({ element: div }).setLngLat([position.lng, position.lat]).addTo(map)
 
-      this.pulse = document.createElement('div')
-      this.pulse.className = 'absolute inset-0 -z-10 rounded-full opacity-0'
+  let current: EmployeeMarkerPosition = position
+  let animationFrame: number | null = null
 
-      this.dot = document.createElement('div')
-      this.dot.className = 'relative h-6 w-6 rounded-full border-[3px] border-white shadow-[0_2px_10px_rgba(0,0,0,0.4)] transition-shadow duration-150'
-
-      this.label = document.createElement('span')
-      this.label.textContent = this.name
-      this.label.className =
-        'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-raised ring-1 ring-hairline'
-
-      this.div.append(this.pulse, this.dot, this.label)
-      this.div.addEventListener('click', () => this.onSelect())
-
-      this.getPanes()?.overlayMouseTarget.appendChild(this.div)
-    }
-
-    override draw(): void {
-      const projection = this.getProjection()
-      if (!projection || !this.div) return
-
-      const point = projection.fromLatLngToDivPixel(this.current)
-      if (!point) return
-
-      this.div.style.left = `${point.x}px`
-      this.div.style.top = `${point.y}px`
-    }
-
-    override onRemove(): void {
-      if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame)
-      this.div?.remove()
-      this.div = null
-      this.dot = null
-      this.pulse = null
-      this.label = null
-    }
-
-    setName(name: string): void {
-      this.name = name
-      if (this.label) this.label.textContent = name
-    }
+  return {
+    setName(newName: string): void {
+      label.textContent = newName
+    },
 
     setColor(color: string): void {
-      this.color = color
-      if (this.dot) this.dot.style.backgroundColor = color
-      if (this.pulse) this.pulse.style.backgroundColor = color
-    }
+      dot.style.backgroundColor = color
+      pulse.style.backgroundColor = color
+    },
 
     setSelected(selected: boolean): void {
-      if (!this.div || !this.dot) return
-      this.div.style.zIndex = selected ? '20' : '10'
-      this.dot.style.boxShadow = selected
-        ? `0 0 0 3px var(--primary), 0 2px 10px rgba(0,0,0,0.4)`
-        : '0 2px 10px rgba(0,0,0,0.4)'
-      this.dot.style.scale = selected ? '1.15' : '1'
-    }
+      div.style.zIndex = selected ? '20' : '10'
+      dot.style.boxShadow = selected ? `0 0 0 3px var(--primary), 0 2px 10px rgba(0,0,0,0.4)` : '0 2px 10px rgba(0,0,0,0.4)'
+      dot.style.scale = selected ? '1.15' : '1'
+    },
 
     setPulsing(pulsing: boolean): void {
-      if (!this.pulse) return
-      this.pulse.className = pulsing
-        ? 'absolute inset-0 -z-10 rounded-full opacity-40 animate-ping'
-        : 'absolute inset-0 -z-10 rounded-full opacity-0'
-    }
+      pulse.className = pulsing ? 'absolute inset-0 -z-10 rounded-full opacity-40 animate-ping' : 'absolute inset-0 -z-10 rounded-full opacity-0'
+    },
 
-    moveTo(position: EmployeeMarkerPosition): void {
-      const start = this.current
-      const target = new mapsApi.maps.LatLng(position.lat, position.lng)
+    moveTo(target: EmployeeMarkerPosition): void {
+      const start = current
+      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
 
-      if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame)
-
-      const startLat = start.lat()
-      const startLng = start.lng()
-      const endLat = target.lat()
-      const endLng = target.lng()
       const startedAt = performance.now()
 
       const tick = (now: number) => {
         const t = Math.min(1, (now - startedAt) / GLIDE_DURATION_MS)
         const eased = easeOutCubic(t)
-        this.current = new mapsApi.maps.LatLng(startLat + (endLat - startLat) * eased, startLng + (endLng - startLng) * eased)
-        this.draw()
+        current = { lat: start.lat + (target.lat - start.lat) * eased, lng: start.lng + (target.lng - start.lng) * eased }
+        marker.setLngLat([current.lng, current.lat])
 
-        if (t < 1) {
-          this.animationFrame = requestAnimationFrame(tick)
-        } else {
-          this.animationFrame = null
-        }
+        animationFrame = t < 1 ? requestAnimationFrame(tick) : null
       }
 
-      this.animationFrame = requestAnimationFrame(tick)
-    }
+      animationFrame = requestAnimationFrame(tick)
+    },
 
     destroy(): void {
-      if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame)
-      this.setMap(null)
-    }
+      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+      marker.remove()
+    },
   }
-
-  cachedCtor = EmployeeMarkerOverlay
-  return EmployeeMarkerOverlay
 }
 
 /** Initial bearing in degrees (0 = north, clockwise) from one point to another. */

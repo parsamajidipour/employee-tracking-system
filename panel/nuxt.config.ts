@@ -26,13 +26,6 @@ export default defineNuxtConfig({
       ],
     },
   },
-  typescript: {
-    tsConfig: {
-      compilerOptions: {
-        types: ['google.maps'],
-      },
-    },
-  },
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '',
@@ -41,7 +34,6 @@ export default defineNuxtConfig({
       reverbHost: process.env.NUXT_PUBLIC_REVERB_HOST || '',
       reverbPort: process.env.NUXT_PUBLIC_REVERB_PORT || '18080',
       reverbScheme: process.env.NUXT_PUBLIC_REVERB_SCHEME || 'http',
-      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     },
   },
 })

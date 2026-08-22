@@ -213,54 +213,76 @@ gives up. Recorded here so the next person touching this file has the
   against just using Google's own map. Employee markers, labels, and every
   other overlay stay app-styled; the base map's geometry and colour do not.
 
-## Histories map reverted to self-hosted PMTiles; live map (`map.vue`) stays on Google Maps for now
+## Both maps reverted to self-hosted PMTiles; Google Maps removed from the panel entirely
 
-**Decision.** `panel/app/pages/employees/[id]/histories.vue` renders with MapLibre GL
-JS against the self-hosted `oman.pmtiles` extract again — the exact setup the
-entry above superseded — restored from git history (`0e6fc25^`) rather than
-rebuilt from scratch, with all the page's later feature work (shift grouping/
-selection, hover tooltips, decimated dot markers, the `anchorWalk` line
-simplification) ported onto it. `api/app/Http/Controllers/BasemapController.php`,
+**Decision.** Both `panel/app/pages/employees/[id]/histories.vue` and
+`panel/app/pages/map.vue` render with MapLibre GL JS against the self-hosted
+`oman.pmtiles` extract again — the exact setup the Google Maps entry above
+superseded — restored from git history (`0e6fc25^`) rather than rebuilt from
+scratch, with each page's later feature work ported onto it: histories keeps
+shift grouping/selection, hover tooltips, decimated dot markers, and the
+`anchorWalk` line simplification; the live map keeps the pulsing/selectable
+employee marker, staleness-based colour, glide-on-move animation, and the
+online-count/detail-panel UI. `api/app/Http/Controllers/BasemapController.php`,
 its route, `scripts/install-basemap.sh`, its call in `scripts/deploy.sh`, and
 the basemap volume mount in `docker-compose.prod.yml` are all restored.
-`map.vue` (the live map) is deliberately **not** touched in this pass — it
-still uses `@googlemaps/js-api-loader`, so `panel/package.json` carries both
-map stacks simultaneously until `map.vue` gets the same treatment. This is a
-known, accepted intermediate state, not an oversight.
+
+Google Maps is fully removed, not left coexisting: `@googlemaps/js-api-loader`
+and `@types/google.maps` are out of `panel/package.json`;
+`useGoogleMaps.ts` and `utils/mapPoiStyle.ts` are deleted;
+`NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` is gone from `nuxt.config.ts`'s
+`runtimeConfig`, `docker-compose.prod.yml`'s `panel` service environment, and
+`panel/.env.example`. `utils/mapMarker.ts`'s Google-specific
+`getEmployeeMarkerOverlayCtor` (a `google.maps.OverlayView` subclass, built
+lazily because that base class doesn't exist until the Maps JS script loads)
+is replaced by `createEmployeeMarker`, a plain factory function wrapping
+MapLibre's `Marker` — no lazy construction needed since MapLibre is a real
+npm ES module, not a runtime-injected global, and no manual
+projection/`draw()` step since `Marker` reprojects itself on every map
+render. This was done in the same session as the histories-only version of
+this decision, which briefly existed as a real deployed intermediate state
+(see the deploy history around commits `cca226a`/`fc0acdd`) before being
+completed here — that earlier revision of this entry describing `map.vue` as
+"deliberately not touched for now" is superseded by this one, not preserved
+alongside it, since it was never referenced from anywhere else and leaving
+it would misdescribe the current, completed state.
 
 **Why.** Directed change: the per-request Roads-API-style "snap the line to
 the street" behavior the requester actually wanted turns out to need a
 routing/map-matching layer, and doing that against Google's stack means
 enabling and paying for Google's Roads API on top of the Maps JS API already
-in use. The requester chose to move the base map off Google first (removing
+in use. The requester chose to move both maps off Google first (removing
 that ongoing cost and putting map data on infrastructure this deployment
 already controls), then build map-matching on top of the self-hosted OSM
 extract next — not to call `tile.openstreetmap.org` directly, which the
 superseded entry above already documents as against OSM's usage policy for
-an app like this and was the reason PMTiles replaced it the first time.
+an app like this and was the reason PMTiles replaced it the first time. On
+seeing the histories-only version working, the requester asked for the live
+map too rather than leaving the two pages on different map stacks.
 
 **Consequences.**
-- The Google Maps decision's privacy tradeoff is partially reversed: the
-  histories map's viewport no longer reaches Google, only this deployment's
-  own basemap route. The live map's viewport still does, until `map.vue` is
-  migrated too.
-- `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` must stay configured and billed as long
-  as `map.vue` depends on it — this change doesn't retire that dependency,
-  only stops adding to it on the page it touched.
-- The dark map style comes from `@protomaps/basemaps`'s `namedFlavor('dark')`
-  passed to `layers()`, not a hand-authored style — keeps `docs/DESIGN.md`'s
-  dark-surface rule for this page satisfied without maintaining a bespoke
-  vector style layer-by-layer (the flat/vivid palette entry above already
-  noted the cost of that path for Google's base map and chose not to pay it
-  there either).
-- Start/End terminal markers use MapLibre's DOM-based `Marker` with a plain
-  HTML div (colored circle + letter) rather than a `symbol` text layer — the
-  style object here doesn't set a `glyphs` URL (neither did the pre-Google
-  version this restores), so vector text labels aren't available without
-  pulling in a font/glyph server dependency nobody has asked for yet. Small
-  per-point dots use a `circle` GeoJSON layer instead of individual DOM
-  markers for the same reason `decimatePoints` exists at all — hundreds of
-  DOM nodes would be the expensive path `docs/DESIGN.md` says to avoid.
+- The Google Maps decision's privacy tradeoff is fully reversed again: no
+  panel page sends its viewport to Google any more, only to this
+  deployment's own basemap route — back to the self-hosted PMTiles entry's
+  original privacy posture.
+- No Google Cloud project, API key, or billing is a dependency of this
+  codebase any more. `panel/.env`'s `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` (if
+  still present locally) is simply unused now; nothing reads it.
+- The dark map style on both pages comes from `@protomaps/basemaps`'s
+  `namedFlavor('dark')` passed to `layers()`, not a hand-authored style —
+  keeps `docs/DESIGN.md`'s dark-surface rule satisfied without maintaining a
+  bespoke vector style layer-by-layer (the flat/vivid palette entry above
+  already noted the cost of that path for Google's base map and chose not to
+  pay it there either). `docs/DESIGN.md` rule 8 is rewritten accordingly.
+- Start/End terminal markers (histories) and the employee marker (live map)
+  use MapLibre's DOM-based `Marker` with a plain HTML div rather than a
+  `symbol` text layer — the style object here doesn't set a `glyphs` URL
+  (neither did the pre-Google version this restores), so vector text labels
+  aren't available without pulling in a font/glyph server dependency nobody
+  has asked for yet. Small per-point dots on the histories page use a
+  `circle` GeoJSON layer instead of individual DOM markers for the same
+  reason `decimatePoints` exists at all — hundreds of DOM nodes would be the
+  expensive path `docs/DESIGN.md` says to avoid.
 - `oman.pmtiles` itself (the ~80MB extract in `api/storage/app/basemap/`,
   git-ignored) was never deleted from the deploy host or this dev machine
   when the Google Maps switch happened — only the code referencing it was
@@ -270,8 +292,8 @@ an app like this and was the reason PMTiles replaced it the first time.
 - Next step, not done here: map-matching the recorded points to the road
   network for display (the actual ask — "the line should move along the
   street like Google Maps' routes do"), most likely a self-hosted OSRM
-  instance against the same Oman extract, kept off `map.vue` and off Google
-  entirely, consistent with this decision's direction.
+  instance against the same Oman extract, kept off Google entirely,
+  consistent with this decision's direction.
 
 ---
 

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { getEmployeeMarkerOverlayCtor, type EmployeeMarkerOverlayInstance } from '~/utils/mapMarker'
-import { HIDE_POI_MAP_STYLE } from '~/utils/mapPoiStyle'
+import { LngLatBounds, Map as MapLibreMap, addProtocol, setWorkerUrl } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+import { Protocol as PMTilesProtocol } from 'pmtiles'
+import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
+import { createEmployeeMarker, type EmployeeMarkerOverlayInstance } from '~/utils/mapMarker'
 
 const { positions, now, stalenessBucket } = usePositions()
-const { load: loadGoogleMaps, apiKeyConfigured } = useGoogleMaps()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 const mapError = ref<string | null>(null)
-let map: google.maps.Map | undefined
-let MarkerOverlay: ReturnType<typeof getEmployeeMarkerOverlayCtor> | undefined
+let map: MapLibreMap | undefined
 const markers = new Map<number, EmployeeMarkerOverlayInstance>()
 
 const selectedEmployeeId = ref<number | null>(null)
@@ -56,14 +57,13 @@ function closeDetail() {
 function focusEmployee(employeeId: number) {
   const position = positions.value.find((p) => p.employee_id === employeeId)
   if (position && map) {
-    map.panTo({ lat: position.lat, lng: position.lng })
-    map.setZoom(Math.max(map.getZoom() ?? 10, 13))
+    map.flyTo({ center: [position.lng, position.lat], zoom: Math.max(map.getZoom(), 13) })
   }
   selectEmployee(employeeId)
 }
 
 function syncMarkers() {
-  if (!map || !MarkerOverlay) return
+  if (!map?.isStyleLoaded()) return
 
   const seen = new Set<number>()
 
@@ -73,9 +73,7 @@ function syncMarkers() {
     let marker = markers.get(position.employee_id)
 
     if (!marker) {
-      marker = new MarkerOverlay(map, { lat: position.lat, lng: position.lng }, position.name, () =>
-        selectEmployee(position.employee_id),
-      )
+      marker = createEmployeeMarker(map, { lat: position.lat, lng: position.lng }, position.name, () => selectEmployee(position.employee_id))
       markers.set(position.employee_id, marker)
     } else {
       marker.setName(position.name)
@@ -101,53 +99,61 @@ watch(now, syncMarkers)
 
 const MAX_AUTO_ZOOM = 15
 
-onMounted(async () => {
-  if (!apiKeyConfigured) {
-    mapError.value = 'Google Maps API key is not configured. Contact an administrator.'
-    return
-  }
+onMounted(() => {
+  setWorkerUrl(maplibreWorkerUrl)
+  addProtocol('pmtiles', new PMTilesProtocol().tile)
 
-  try {
-    const g = await loadGoogleMaps()
-    MarkerOverlay = getEmployeeMarkerOverlayCtor(g)
+  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
 
-    map = new g.maps.Map(mapContainer.value!, {
-      center: { lat: 23.6144, lng: 58.5922 },
-      zoom: 10,
-      styles: HIDE_POI_MAP_STYLE,
-      disableDefaultUI: true,
-      zoomControl: true,
-      clickableIcons: false,
-      restriction: {
-        latLngBounds: { north: 26.6, south: 16.6, east: 59.95, west: 52.1 },
-        strictBounds: false,
-      },
+  fetch(basemapUrl, { method: 'HEAD' })
+    .then((response) => {
+      if (!response.ok) mapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
+    })
+    .catch(() => {
+      mapError.value = 'Could not reach the map tile server.'
     })
 
+  map = new MapLibreMap({
+    container: mapContainer.value!,
+    style: {
+      version: 8,
+      sources: { protomaps: { type: 'vector', url: `pmtiles://${basemapUrl}`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
+      layers: protomapsLayers('protomaps', namedFlavor('dark'), { lang: 'en' }),
+    },
+    center: [58.5922, 23.6144],
+    zoom: 10,
+    maxBounds: [
+      [52.1, 16.6],
+      [59.95, 26.6],
+    ],
+  })
+
+  map.on('error', (e) => {
+    if (!mapError.value) mapError.value = 'The map could not be loaded.'
+    console.error('MapLibre error', e.error)
+  })
+
+  map.on('load', () => {
     syncMarkers()
 
     const stop = watch(
       positions,
       (snapshot) => {
         if (snapshot.length === 0 || !map) return
-        const bounds = new g.maps.LatLngBounds()
-        for (const position of snapshot) bounds.extend({ lat: position.lat, lng: position.lng })
-        map.fitBounds(bounds, 60)
-        g.maps.event.addListenerOnce(map, 'idle', () => {
-          if (map && (map.getZoom() ?? 0) > MAX_AUTO_ZOOM) map.setZoom(MAX_AUTO_ZOOM)
-        })
+        const [first, ...rest] = snapshot
+        const bounds = rest.reduce((b, position) => b.extend([position.lng, position.lat]), new LngLatBounds([first!.lng, first!.lat], [first!.lng, first!.lat]))
+        map.fitBounds(bounds, { padding: 60, maxZoom: MAX_AUTO_ZOOM, duration: 500 })
         stop()
       },
       { deep: true },
     )
-  } catch {
-    mapError.value = 'The map could not be loaded. Check the Google Maps API key and network access.'
-  }
+  })
 })
 
 onUnmounted(() => {
   for (const marker of markers.values()) marker.destroy()
   markers.clear()
+  map?.remove()
 })
 </script>
 

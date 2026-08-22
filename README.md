@@ -41,12 +41,16 @@ if you want to run `api/` outside Docker too.
    This brings up Postgres (with PostGIS enabled), Redis, and `api/`, then
    runs migrations and serves the API at http://localhost:8000 (port
    configurable via `API_PORT` in the root `.env`).
-3. Set a Google Maps JavaScript API key. Both map pages (`panel/app/pages/map.vue`
-   and `panel/app/pages/employees/[id]/histories.vue`) render with the Google
-   Maps JS API — see `DECISIONS.md`'s "Live map tiles" entry for why this
-   replaced the earlier self-hosted PMTiles setup. Put a key with the Maps
-   JavaScript API enabled and billing active on the Google Cloud project into
-   `panel/.env`'s `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`. Never commit this key.
+3. Build the self-hosted basemap extract once per clone:
+   ```
+   ./scripts/install-basemap.sh
+   ```
+   Both map pages (`panel/app/pages/map.vue` and
+   `panel/app/pages/employees/[id]/histories.vue`) render with MapLibre GL
+   against this extract (`api/storage/app/basemap/oman.pmtiles`), served by
+   `api/`'s own `/api/basemap/oman.pmtiles` route — no API key, no billing
+   account. See `DECISIONS.md`'s "Histories map reverted to self-hosted
+   PMTiles" entry for the history here.
 4. Start the panel on the host:
    ```
    cd panel
