@@ -12,7 +12,10 @@ use App\Http\Controllers\Api\V1\PositionController;
 use App\Http\Controllers\Api\V1\ShiftExceptionController;
 use App\Http\Controllers\Api\V1\ShiftTemplateController;
 use App\Http\Controllers\Api\V1\TrackController;
+use App\Http\Controllers\BasemapController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/basemap/oman.pmtiles', [BasemapController::class, 'oman']);
 
 Route::get('/v1/app/latest-version', [AppReleaseController::class, 'latest']);
 Route::get('/app-releases/{appRelease}/download', [AppReleaseController::class, 'download'])->name('app-releases.download');

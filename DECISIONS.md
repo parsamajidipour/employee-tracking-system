@@ -213,6 +213,66 @@ gives up. Recorded here so the next person touching this file has the
   against just using Google's own map. Employee markers, labels, and every
   other overlay stay app-styled; the base map's geometry and colour do not.
 
+## Histories map reverted to self-hosted PMTiles; live map (`map.vue`) stays on Google Maps for now
+
+**Decision.** `panel/app/pages/employees/[id]/histories.vue` renders with MapLibre GL
+JS against the self-hosted `oman.pmtiles` extract again — the exact setup the
+entry above superseded — restored from git history (`0e6fc25^`) rather than
+rebuilt from scratch, with all the page's later feature work (shift grouping/
+selection, hover tooltips, decimated dot markers, the `anchorWalk` line
+simplification) ported onto it. `api/app/Http/Controllers/BasemapController.php`,
+its route, `scripts/install-basemap.sh`, its call in `scripts/deploy.sh`, and
+the basemap volume mount in `docker-compose.prod.yml` are all restored.
+`map.vue` (the live map) is deliberately **not** touched in this pass — it
+still uses `@googlemaps/js-api-loader`, so `panel/package.json` carries both
+map stacks simultaneously until `map.vue` gets the same treatment. This is a
+known, accepted intermediate state, not an oversight.
+
+**Why.** Directed change: the per-request Roads-API-style "snap the line to
+the street" behavior the requester actually wanted turns out to need a
+routing/map-matching layer, and doing that against Google's stack means
+enabling and paying for Google's Roads API on top of the Maps JS API already
+in use. The requester chose to move the base map off Google first (removing
+that ongoing cost and putting map data on infrastructure this deployment
+already controls), then build map-matching on top of the self-hosted OSM
+extract next — not to call `tile.openstreetmap.org` directly, which the
+superseded entry above already documents as against OSM's usage policy for
+an app like this and was the reason PMTiles replaced it the first time.
+
+**Consequences.**
+- The Google Maps decision's privacy tradeoff is partially reversed: the
+  histories map's viewport no longer reaches Google, only this deployment's
+  own basemap route. The live map's viewport still does, until `map.vue` is
+  migrated too.
+- `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` must stay configured and billed as long
+  as `map.vue` depends on it — this change doesn't retire that dependency,
+  only stops adding to it on the page it touched.
+- The dark map style comes from `@protomaps/basemaps`'s `namedFlavor('dark')`
+  passed to `layers()`, not a hand-authored style — keeps `docs/DESIGN.md`'s
+  dark-surface rule for this page satisfied without maintaining a bespoke
+  vector style layer-by-layer (the flat/vivid palette entry above already
+  noted the cost of that path for Google's base map and chose not to pay it
+  there either).
+- Start/End terminal markers use MapLibre's DOM-based `Marker` with a plain
+  HTML div (colored circle + letter) rather than a `symbol` text layer — the
+  style object here doesn't set a `glyphs` URL (neither did the pre-Google
+  version this restores), so vector text labels aren't available without
+  pulling in a font/glyph server dependency nobody has asked for yet. Small
+  per-point dots use a `circle` GeoJSON layer instead of individual DOM
+  markers for the same reason `decimatePoints` exists at all — hundreds of
+  DOM nodes would be the expensive path `docs/DESIGN.md` says to avoid.
+- `oman.pmtiles` itself (the ~80MB extract in `api/storage/app/basemap/`,
+  git-ignored) was never deleted from the deploy host or this dev machine
+  when the Google Maps switch happened — only the code referencing it was
+  removed. `scripts/install-basemap.sh`'s existing-file/size-floor check
+  means restoring the call in `deploy.sh` is a no-op against a file that's
+  already there, and a real extract if it isn't.
+- Next step, not done here: map-matching the recorded points to the road
+  network for display (the actual ask — "the line should move along the
+  street like Google Maps' routes do"), most likely a self-hosted OSRM
+  instance against the same Oman extract, kept off `map.vue` and off Google
+  entirely, consistent with this decision's direction.
+
 ---
 
 <details>

@@ -37,6 +37,8 @@ services:
     build:
       context: ./api
     restart: unless-stopped
+    volumes:
+      - ./api/storage/app/basemap:/var/www/html/storage/app/basemap:ro
     depends_on:
       postgres:
         condition: service_healthy

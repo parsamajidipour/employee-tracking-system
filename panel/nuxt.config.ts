@@ -4,9 +4,14 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
   modules: ['@nuxtjs/tailwindcss'],
-  css: ['~/assets/css/tokens.css'],
+  css: ['~/assets/css/tokens.css', 'maplibre-gl/dist/maplibre-gl.css'],
   tailwindcss: {
     cssPath: false,
+  },
+  vite: {
+    worker: {
+      format: 'es',
+    },
   },
   app: {
     head: {

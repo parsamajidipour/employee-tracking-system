@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, Popup as MapLibrePopup, addProtocol, setWorkerUrl } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+import { Protocol as PMTilesProtocol } from 'pmtiles'
+import { layers as protomapsLayers, namedFlavor } from '@protomaps/basemaps'
 import { shiftColor } from '~/utils/mapMarker'
-import { HIDE_POI_MAP_STYLE } from '~/utils/mapPoiStyle'
 import { formatDistance } from '~/utils/formatDistance'
 
 interface TrailPoint {
@@ -43,8 +46,6 @@ const employeeId = Number(route.params.id)
 const { data: employeesData, load: loadEmployees } = useEmployees()
 const employee = computed(() => employeesData.value?.find((item) => item.id === employeeId) ?? null)
 
-const { load: loadGoogleMaps, apiKeyConfigured } = useGoogleMaps()
-
 const selectedDate = ref(todayLocalDate())
 const selectedShift = ref<number | null>(null)
 const trail = ref<Trail | null>(null)
@@ -53,24 +54,30 @@ const mapError = ref<string | null>(null)
 const error = ref<string | null>(null)
 
 const mapContainer = ref<HTMLDivElement | null>(null)
-let map: google.maps.Map | undefined
-let mapsApi: typeof google | undefined
-let hoverInfoWindow: google.maps.InfoWindow | undefined
-let polylines: google.maps.Polyline[] = []
-let terminalMarkers: google.maps.Marker[] = []
-let pointMarkers: google.maps.Marker[] = []
+let map: MapLibreMap | undefined
+let hoverPopup: MapLibrePopup | undefined
+let terminalMarkers: MapLibreMarker[] = []
 
 function timeLabel(value: string): string {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-function attachHoverTooltip(marker: google.maps.Marker, html: string) {
-  marker.addListener('mouseover', () => {
-    if (!map || !hoverInfoWindow) return
-    hoverInfoWindow.setContent(html)
-    hoverInfoWindow.open({ map, anchor: marker })
+function terminalElement(kind: 'S' | 'E', color: string): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-white text-[11px] font-extrabold shadow-raised'
+  el.style.backgroundColor = color
+  el.style.color = '#0b0b10'
+  el.textContent = kind
+  return el
+}
+
+function attachMarkerHoverTooltip(marker: MapLibreMarker, html: string) {
+  const el = marker.getElement()
+  el.addEventListener('mouseenter', () => {
+    if (!map || !hoverPopup) return
+    hoverPopup.setLngLat(marker.getLngLat()).setHTML(html).addTo(map)
   })
-  marker.addListener('mouseout', () => hoverInfoWindow?.close())
+  el.addEventListener('mouseleave', () => hoverPopup?.remove())
 }
 
 function distanceMeters(a: TrailPoint, b: TrailPoint): number {
@@ -139,24 +146,24 @@ function nearestPoint(points: TrailPoint[], lat: number, lng: number): TrailPoin
   return closest
 }
 
-function attachLineHoverTooltip(line: google.maps.Polyline, points: TrailPoint[]) {
-  line.addListener('mousemove', (event: google.maps.PolyMouseEvent) => {
-    if (!map || !hoverInfoWindow || !event.latLng) return
-    const point = nearestPoint(points, event.latLng.lat(), event.latLng.lng())
-    hoverInfoWindow.setContent(`<div class="text-xs font-medium">${timeLabel(point.recorded_at)}</div>`)
-    hoverInfoWindow.setPosition(event.latLng)
-    hoverInfoWindow.open({ map })
+let hoverPoints: TrailPoint[] = []
+
+function attachHoverLayerTooltip(map: MapLibreMap, layerId: string) {
+  map.on('mousemove', layerId, (event) => {
+    if (!hoverPopup || hoverPoints.length === 0) return
+    map.getCanvas().style.cursor = 'pointer'
+    const point = nearestPoint(hoverPoints, event.lngLat.lat, event.lngLat.lng)
+    hoverPopup.setLngLat(event.lngLat).setHTML(`<div class="text-xs font-medium">${timeLabel(point.recorded_at)}</div>`).addTo(map)
   })
-  line.addListener('mouseout', () => hoverInfoWindow?.close())
+  map.on('mouseleave', layerId, () => {
+    map.getCanvas().style.cursor = ''
+    hoverPopup?.remove()
+  })
 }
 
 function clearOverlays() {
-  for (const line of polylines) line.setMap(null)
-  for (const marker of terminalMarkers) marker.setMap(null)
-  for (const marker of pointMarkers) marker.setMap(null)
-  polylines = []
+  for (const marker of terminalMarkers) marker.remove()
   terminalMarkers = []
-  pointMarkers = []
 }
 
 function visiblePoints(): TrailPoint[] {
@@ -175,84 +182,53 @@ function groupByShift(points: TrailPoint[]): Map<number | null, TrailPoint[]> {
 }
 
 function renderTrail() {
-  if (!map || !mapsApi) return
+  if (!map?.isStyleLoaded()) return
   clearOverlays()
 
   const points = visiblePoints()
-  if (points.length === 0) return
+  hoverPoints = points
+  if (points.length === 0) {
+    ;(map.getSource('history-trail') as GeoJSONSource)?.setData({ type: 'FeatureCollection', features: [] })
+    ;(map.getSource('history-dots') as GeoJSONSource)?.setData({ type: 'FeatureCollection', features: [] })
+    return
+  }
 
-  const bounds = new mapsApi.maps.LatLngBounds()
   const groups = groupByShift(points)
+  const lineFeatures: object[] = []
+  const dotFeatures: object[] = []
+  const bounds = new LngLatBounds([points[0]!.lng, points[0]!.lat], [points[0]!.lng, points[0]!.lat])
 
   for (const [shiftIndex, groupPoints] of groups) {
     if (groupPoints.length === 0) continue
     const color = shiftIndex === null ? UNASSIGNED_COLOR : shiftColor(shiftIndex)
 
-    const line = new mapsApi.maps.Polyline({
-      path: linePath(groupPoints).map((p) => ({ lat: p.lat, lng: p.lng })),
-      strokeColor: color,
-      strokeOpacity: 0.9,
-      strokeWeight: 3.5,
-      map,
+    lineFeatures.push({
+      type: 'Feature',
+      properties: { color },
+      geometry: { type: 'LineString', coordinates: linePath(groupPoints).map((p) => [p.lng, p.lat]) },
     })
-    attachLineHoverTooltip(line, groupPoints)
-    polylines.push(line)
 
     const first = groupPoints[0]!
     const last = groupPoints.at(-1)!
 
-    const start = new mapsApi.maps.Marker({
-      position: { lat: first.lat, lng: first.lng },
-      map,
-      icon: {
-        path: mapsApi.maps.SymbolPath.CIRCLE,
-        scale: 9,
-        fillColor: '#22c55e',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 2.5,
-      },
-      label: { text: 'S', color: '#0b0b10', fontSize: '11px', fontWeight: '800' },
-      zIndex: 7,
-    })
-    attachHoverTooltip(start, `<div class="text-xs font-medium">Start · ${timeLabel(first.recorded_at)}</div>`)
+    const start = new MapLibreMarker({ element: terminalElement('S', '#22c55e') }).setLngLat([first.lng, first.lat]).addTo(map)
+    attachMarkerHoverTooltip(start, `<div class="text-xs font-medium">Start · ${timeLabel(first.recorded_at)}</div>`)
     terminalMarkers.push(start)
 
-    const end = new mapsApi.maps.Marker({
-      position: { lat: last.lat, lng: last.lng },
-      map,
-      icon: {
-        path: mapsApi.maps.SymbolPath.CIRCLE,
-        scale: 9,
-        fillColor: '#f43f5e',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 2.5,
-      },
-      label: { text: 'E', color: '#0b0b10', fontSize: '11px', fontWeight: '800' },
-      zIndex: 8,
-    })
-    attachHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
+    const end = new MapLibreMarker({ element: terminalElement('E', '#f43f5e') }).setLngLat([last.lng, last.lat]).addTo(map)
+    attachMarkerHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
     terminalMarkers.push(end)
 
-    for (const point of groupPoints) bounds.extend({ lat: point.lat, lng: point.lng })
-
+    for (const point of groupPoints) bounds.extend([point.lng, point.lat])
     for (const point of decimatePoints(groupPoints)) {
-      const dot = new mapsApi.maps.Marker({
-        position: { lat: point.lat, lng: point.lng },
-        map,
-        icon: { path: mapsApi.maps.SymbolPath.CIRCLE, scale: 3, fillColor: color, fillOpacity: 0.85, strokeWeight: 0 },
-        zIndex: 3,
-      })
-      attachHoverTooltip(dot, `<div class="text-xs font-medium">${timeLabel(point.recorded_at)}</div>`)
-      pointMarkers.push(dot)
+      dotFeatures.push({ type: 'Feature', properties: { color }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } })
     }
   }
 
-  map.fitBounds(bounds, 72)
-  mapsApi.maps.event.addListenerOnce(map, 'idle', () => {
-    if (map && (map.getZoom() ?? 0) > 16) map.setZoom(16)
-  })
+  ;(map.getSource('history-trail') as GeoJSONSource)?.setData({ type: 'FeatureCollection', features: lineFeatures })
+  ;(map.getSource('history-dots') as GeoJSONSource)?.setData({ type: 'FeatureCollection', features: dotFeatures })
+
+  map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: 500 })
 }
 
 async function loadTrail() {
@@ -279,33 +255,73 @@ const selectedDistanceM = computed(() => {
 
 watch(selectedShift, renderTrail)
 
-onMounted(async () => {
+onMounted(() => {
   loadEmployees()
 
-  if (!apiKeyConfigured) {
-    mapError.value = 'Google Maps API key is not configured. Contact an administrator.'
-    return
-  }
+  setWorkerUrl(maplibreWorkerUrl)
+  addProtocol('pmtiles', new PMTilesProtocol().tile)
 
-  try {
-    mapsApi = await loadGoogleMaps()
-    map = new mapsApi.maps.Map(mapContainer.value!, {
-      center: { lat: 23.6144, lng: 58.5922 },
-      zoom: 9,
-      styles: HIDE_POI_MAP_STYLE,
-      disableDefaultUI: true,
-      zoomControl: true,
-      clickableIcons: false,
-      restriction: { latLngBounds: { north: 26.6, south: 16.6, east: 59.95, west: 52.1 }, strictBounds: false },
+  const basemapUrl = `${apiOrigin()}/api/basemap/oman.pmtiles`
+
+  fetch(basemapUrl, { method: 'HEAD' })
+    .then((response) => {
+      if (!response.ok) mapError.value = 'Map tiles are unavailable on the server (basemap file missing). Contact an administrator.'
     })
-    hoverInfoWindow = new mapsApi.maps.InfoWindow({ disableAutoPan: true })
-    await loadTrail()
-  } catch {
-    mapError.value = 'The map could not be loaded. Check the Google Maps API key and network access.'
-  }
+    .catch(() => {
+      mapError.value = 'Could not reach the map tile server.'
+    })
+
+  map = new MapLibreMap({
+    container: mapContainer.value!,
+    style: {
+      version: 8,
+      sources: { protomaps: { type: 'vector', url: `pmtiles://${basemapUrl}`, attribution: '© OpenStreetMap contributors', maxzoom: 14 } },
+      layers: protomapsLayers('protomaps', namedFlavor('dark'), { lang: 'en' }),
+    },
+    center: [58.5922, 23.6144],
+    zoom: 9,
+    maxBounds: [
+      [52.1, 16.6],
+      [59.95, 26.6],
+    ],
+  })
+  map.on('error', (e) => {
+    if (!mapError.value) mapError.value = 'The map could not be loaded.'
+    console.error('MapLibre error', e.error)
+  })
+  map.on('load', () => {
+    if (!map) return
+    hoverPopup = new MapLibrePopup({ closeButton: false, closeOnClick: false })
+
+    map.addSource('history-trail', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    map.addLayer({
+      id: 'history-trail-line',
+      type: 'line',
+      source: 'history-trail',
+      paint: { 'line-color': ['get', 'color'], 'line-width': 3.5, 'line-opacity': 0.9 },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    })
+
+    map.addSource('history-dots', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    map.addLayer({
+      id: 'history-dots-circle',
+      type: 'circle',
+      source: 'history-dots',
+      paint: { 'circle-radius': 3, 'circle-color': ['get', 'color'], 'circle-opacity': 0.85 },
+    })
+
+    attachHoverLayerTooltip(map, 'history-trail-line')
+    attachHoverLayerTooltip(map, 'history-dots-circle')
+
+    renderTrail()
+  })
+
+  loadTrail()
 })
 
 watch(selectedDate, loadTrail)
+
+onUnmounted(() => map?.remove())
 </script>
 
 <template>
