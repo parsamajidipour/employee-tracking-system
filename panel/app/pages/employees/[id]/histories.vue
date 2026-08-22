@@ -84,12 +84,16 @@ function distanceMeters(a: TrailPoint, b: TrailPoint): number {
 }
 
 /**
- * Nearby points collapse into one marker so a dense, mostly-stationary stretch of
- * a day doesn't create thousands of DOM markers and hang the browser. The
- * polyline path and the hover-nearest lookup still use the full point list —
- * only the rendered dots are thinned.
+ * Walks the raw points, keeping one only once it clears `minMeters` from the
+ * last *kept* point (not the last raw point). Comparing against a stable
+ * anchor — instead of point-to-point — is what keeps GPS drift that
+ * oscillates around a stationary spot from accumulating into a fake path:
+ * each drift hop can individually clear the recorder's own 20m threshold
+ * (so `distance_m` on it is still nonzero) while never actually carrying the
+ * anchor anywhere, so it keeps getting dropped until a point genuinely
+ * displaces from where the walk last stood.
  */
-function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): TrailPoint[] {
+function anchorWalk(points: TrailPoint[], minMeters: number): TrailPoint[] {
   if (points.length === 0) return points
   const kept: TrailPoint[] = [points[0]!]
   for (let i = 1; i < points.length; i++) {
@@ -98,30 +102,28 @@ function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): Tr
   }
   const last = points[points.length - 1]!
   if (kept[kept.length - 1] !== last) kept.push(last)
+  return kept
+}
 
+/**
+ * Nearby points collapse into one marker so a dense, mostly-stationary stretch of
+ * a day doesn't create thousands of DOM markers and hang the browser. The
+ * hover-nearest lookup still uses the full point list — only the rendered
+ * dots are thinned.
+ */
+function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): TrailPoint[] {
+  const kept = anchorWalk(points, minMeters)
   if (kept.length <= hardCap) return kept
   const stride = Math.ceil(kept.length / hardCap)
   return kept.filter((_, i) => i % stride === 0 || i === kept.length - 1)
 }
 
 /**
- * `distance_m` is already the server's noise-floor verdict from
- * TrackingGate::segmentDistance — zero means the ingest gate judged that hop
- * to be GPS drift, not movement. Reusing that verdict for the drawn line
- * (instead of re-deriving a threshold here) keeps the polyline consistent
- * with the distance figure shown next to it. Only the path fed to the
- * Polyline is filtered; the raw point list still backs markers and hover.
+ * A coarser anchor radius than `decimatePoints` uses for dots — the line
+ * only needs to show where the employee actually went, not every GPS fix.
  */
-function realMovementPath(points: TrailPoint[]): TrailPoint[] {
-  if (points.length === 0) return points
-  const kept: TrailPoint[] = [points[0]!]
-  for (let i = 1; i < points.length; i++) {
-    const point = points[i]!
-    if (point.distance_m > 0) kept.push(point)
-  }
-  const last = points[points.length - 1]!
-  if (kept[kept.length - 1] !== last) kept.push(last)
-  return kept
+function linePath(points: TrailPoint[]): TrailPoint[] {
+  return anchorWalk(points, 25)
 }
 
 function nearestPoint(points: TrailPoint[], lat: number, lng: number): TrailPoint {
@@ -187,7 +189,7 @@ function renderTrail() {
     const color = shiftIndex === null ? UNASSIGNED_COLOR : shiftColor(shiftIndex)
 
     const line = new mapsApi.maps.Polyline({
-      path: realMovementPath(groupPoints).map((p) => ({ lat: p.lat, lng: p.lng })),
+      path: linePath(groupPoints).map((p) => ({ lat: p.lat, lng: p.lng })),
       strokeColor: color,
       strokeOpacity: 0.9,
       strokeWeight: 3.5,
