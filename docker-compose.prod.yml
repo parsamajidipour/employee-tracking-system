@@ -37,8 +37,6 @@ services:
     build:
       context: ./api
     restart: unless-stopped
-    volumes:
-      - ./api/storage/app/basemap:/var/www/html/storage/app/basemap:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,6 +79,7 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD is required}
     volumes:
       - api_storage:/var/www/html/storage/app/private
+      - ./api/storage/app/basemap:/var/www/html/storage/app/basemap:ro
     ports:
       - "${API_PORT:-8000}:8000"
       - "${REVERB_PORT:-8080}:8080"
