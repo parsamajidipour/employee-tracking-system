@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Marker as MapLibreMarker, Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl'
+import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 
 const props = defineProps<{
@@ -16,24 +16,12 @@ const DEFAULT_CENTER: [number, number] = [58.5922, 23.6144]
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let map: MapLibreMap | undefined
-let marker: MapLibreMarker | undefined
 
-function placeMarker(lngLat: { lng: number; lat: number }) {
+function emitCenter() {
   if (!map) return
-
-  if (!marker) {
-    marker = new MapLibreMarker({ draggable: true, color: '#4f46e5' }).setLngLat(lngLat).addTo(map)
-    marker.on('dragend', () => {
-      const pos = marker!.getLngLat()
-      emit('update:lat', Number(pos.lat.toFixed(6)))
-      emit('update:lng', Number(pos.lng.toFixed(6)))
-    })
-  } else {
-    marker.setLngLat(lngLat)
-  }
-
-  emit('update:lat', Number(lngLat.lat.toFixed(6)))
-  emit('update:lng', Number(lngLat.lng.toFixed(6)))
+  const center = map.getCenter()
+  emit('update:lat', Number(center.lat.toFixed(6)))
+  emit('update:lng', Number(center.lng.toFixed(6)))
 }
 
 onMounted(() => {
@@ -58,24 +46,18 @@ onMounted(() => {
       layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }],
     },
     center: initialCenter,
-    zoom: props.lat !== null ? 15 : 10,
+    zoom: props.lat !== null ? 15 : 11,
     maxBounds: [
       [52.1, 16.6],
       [59.95, 26.6],
     ],
   })
 
-  map.on('load', () => {
-    if (props.lat !== null && props.lng !== null) {
-      placeMarker({ lat: props.lat, lng: props.lng })
-    }
-  })
-
-  map.on('click', (e) => placeMarker(e.lngLat))
+  map.on('load', emitCenter)
+  map.on('move', emitCenter)
 })
 
 onUnmounted(() => {
-  marker?.remove()
   map?.remove()
 })
 </script>
@@ -83,8 +65,20 @@ onUnmounted(() => {
 <template>
   <div class="relative h-full w-full overflow-hidden rounded-md">
     <div ref="mapContainer" class="h-full w-full bg-surface-sunken"></div>
+
+    <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
+      <svg width="34" height="44" viewBox="0 0 34 44" fill="none">
+        <path
+          d="M17 0C7.6 0 0 7.6 0 17c0 12.7 17 27 17 27s17-14.3 17-27C34 7.6 26.4 0 17 0Z"
+          fill="#4f46e5"
+        />
+        <circle cx="17" cy="17" r="6.5" fill="white" />
+      </svg>
+    </div>
+    <div class="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/30"></div>
+
     <div class="surface pointer-events-none absolute left-3 top-3 px-3 py-2 text-[12.5px] text-ink-soft">
-      Click the map to place the property location — drag the pin to adjust.
+      Move the map to position the pin over the property.
     </div>
   </div>
 </template>

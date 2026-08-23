@@ -4,9 +4,6 @@ import { CASE_PRIORITIES, casePriorityLabel } from '~/utils/caseStatus'
 
 const toast = useToast()
 
-const { data: employeesData, load: loadEmployees } = useEmployees()
-const employees = computed(() => employeesData.value ?? [])
-
 const submitting = ref(false)
 const formError = ref<string | null>(null)
 
@@ -18,7 +15,6 @@ const form = reactive({
   lng: null as number | null,
   priority: 'normal' as (typeof CASE_PRIORITIES)[number],
   notes: '',
-  assigned_to: '' as number | '',
 })
 
 function setLat(value: number) {
@@ -46,10 +42,9 @@ async function submit() {
       lng: form.lng,
       priority: form.priority,
       notes: form.notes || undefined,
-      assigned_to: form.assigned_to || undefined,
     }
     const created = await createCase(payload)
-    toast.success('Case created.')
+    toast.success('Case created. Assign it to a surveyor from here.')
     await navigateTo(`/cases/${created.id}`)
   } catch (err) {
     formError.value = apiErrorMessage(err, 'Could not create case — check the fields.')
@@ -57,8 +52,6 @@ async function submit() {
     submitting.value = false
   }
 }
-
-onMounted(loadEmployees)
 </script>
 
 <template>
@@ -76,30 +69,18 @@ onMounted(loadEmployees)
         <TextInput v-model="form.title" label="Title" required />
         <TextInput v-model="form.property_address" label="Property address" />
 
-        <div class="grid grid-cols-2 gap-3.5">
-          <div>
-            <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">Latitude</label>
-            <p class="field flex items-center tabular text-ink-soft">{{ form.lat?.toFixed(6) ?? 'Pick on map →' }}</p>
-          </div>
-          <div>
-            <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">Longitude</label>
-            <p class="field flex items-center tabular text-ink-soft">{{ form.lng?.toFixed(6) ?? 'Pick on map →' }}</p>
-          </div>
-        </div>
-
         <Select v-model="form.priority" label="Priority">
           <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">{{ casePriorityLabel(priority) }}</option>
-        </Select>
-
-        <Select v-model="form.assigned_to" label="Assign now (optional)">
-          <option value="">Leave unassigned</option>
-          <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
         </Select>
 
         <div>
           <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">Notes</label>
           <textarea v-model="form.notes" rows="3" class="field h-auto py-2.5" />
         </div>
+
+        <p class="text-[12px] text-ink-faint">
+          Assigning to a surveyor happens on the case page after it's created — it's not part of this step.
+        </p>
       </form>
 
       <div class="h-[420px] lg:h-auto lg:min-h-[560px]">
