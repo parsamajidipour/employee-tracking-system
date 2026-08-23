@@ -765,3 +765,19 @@ here rather than silently accepted as equivalent.
   session — see their own README/DECISIONS notes if present — against the
   contracts above (`/api/v1/cases*`, `/api/v1/me/cases*`, `/api/v1/workload*`,
   `/api/v1/tracking-interruptions/*`).
+- `app/pubspec.yaml` gained a `dependency_overrides` pin,
+  `image_picker_android: 0.8.12+22`. `image_picker` (added for camera-only
+  site-survey capture, see below) otherwise resolves the newest
+  `image_picker_android`, whose `androidx.activity`/`androidx.core` versions
+  declare a minimum Android Gradle Plugin higher than the 8.7.0 this project
+  pins in `android/settings.gradle` (that pin's own comment already says AGP,
+  the 8.10.2 Gradle wrapper, and Kotlin 2.1.0 move together, not
+  independently — bumping AGP alone to satisfy a transitive dependency would
+  break that trio). Pinning the plugin's own Android implementation to a
+  slightly older, still-current release was the narrower fix. This was
+  discovered building a release APK in a sandbox whose installed Flutter SDK
+  (3.47.0) is newer than whatever produced the existing `dist/` artifact;
+  that build also needed `--android-skip-build-dependency-validation`
+  (Flutter 3.47 wants Gradle ≥8.14, the project pins 8.10.2 for the same
+  reason above) — a flag, not a file change, so it leaves nothing pinned
+  incorrectly for a build from a properly-matched toolchain.
