@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import type { CaseStatus, NewCasePayload } from '~/composables/useCases'
-import { CASE_PRIORITIES, CASE_STATUSES, caseStatusLabel, caseStatusVariant, casePriorityLabel, casePriorityVariant } from '~/utils/caseStatus'
-
-const toast = useToast()
+import type { CaseStatus } from '~/composables/useCases'
+import { CASE_STATUSES, caseStatusLabel, caseStatusVariant, casePriorityLabel, casePriorityVariant } from '~/utils/caseStatus'
 
 const { data: employeesData, load: loadEmployees } = useEmployees()
 const employees = computed(() => employeesData.value ?? [])
@@ -38,71 +36,6 @@ function goToPage(next: number) {
 
 useCaseAssignmentAlerts(refresh)
 
-const modalOpen = ref(false)
-const submitting = ref(false)
-const formError = ref<string | null>(null)
-
-const form = reactive({
-  reference_no: '',
-  title: '',
-  property_address: '',
-  lat: '',
-  lng: '',
-  priority: 'normal' as (typeof CASE_PRIORITIES)[number],
-  notes: '',
-  assigned_to: '' as number | '',
-})
-
-function resetForm() {
-  form.reference_no = ''
-  form.title = ''
-  form.property_address = ''
-  form.lat = ''
-  form.lng = ''
-  form.priority = 'normal'
-  form.notes = ''
-  form.assigned_to = ''
-  formError.value = null
-}
-
-function openModal() {
-  resetForm()
-  modalOpen.value = true
-}
-
-async function submit() {
-  const lat = Number(form.lat)
-  const lng = Number(form.lng)
-  if (!form.reference_no || !form.title || Number.isNaN(lat) || Number.isNaN(lng)) {
-    formError.value = 'Reference, title, and a valid latitude/longitude are required.'
-    return
-  }
-
-  submitting.value = true
-  formError.value = null
-  try {
-    const payload: NewCasePayload = {
-      reference_no: form.reference_no,
-      title: form.title,
-      property_address: form.property_address || undefined,
-      lat,
-      lng,
-      priority: form.priority,
-      notes: form.notes || undefined,
-      assigned_to: form.assigned_to || undefined,
-    }
-    await createCase(payload)
-    toast.success('Case created.')
-    modalOpen.value = false
-    page.value = 1
-    await refresh()
-  } catch (err) {
-    formError.value = apiErrorMessage(err, 'Could not create case — check the fields.')
-  } finally {
-    submitting.value = false
-  }
-}
-
 onMounted(() => {
   loadEmployees()
   refresh()
@@ -116,7 +49,7 @@ onMounted(() => {
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>
-      <Button size="sm" @click="openModal">
+      <Button size="sm" to="/cases/new">
         <Icon name="plus" class="h-3.5 w-3.5" />
         <span class="hidden sm:inline">New case</span>
       </Button>
@@ -188,39 +121,5 @@ onMounted(() => {
         <Button variant="secondary" size="sm" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">Next</Button>
       </div>
     </div>
-
-    <Modal v-model="modalOpen" title="New case">
-      <form class="space-y-3.5" @submit.prevent="submit">
-        <InlineAlert v-if="formError">{{ formError }}</InlineAlert>
-
-        <TextInput v-model="form.reference_no" label="Reference no." required />
-        <TextInput v-model="form.title" label="Title" required />
-        <TextInput v-model="form.property_address" label="Property address" />
-
-        <div class="grid grid-cols-2 gap-3.5">
-          <TextInput v-model="form.lat" type="number" label="Latitude" required />
-          <TextInput v-model="form.lng" type="number" label="Longitude" required />
-        </div>
-
-        <Select v-model="form.priority" label="Priority">
-          <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">{{ casePriorityLabel(priority) }}</option>
-        </Select>
-
-        <Select v-model="form.assigned_to" label="Assign now (optional)">
-          <option value="">Leave unassigned</option>
-          <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
-        </Select>
-
-        <div>
-          <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">Notes</label>
-          <textarea v-model="form.notes" rows="3" class="field h-auto py-2.5" />
-        </div>
-      </form>
-
-      <template #footer>
-        <Button variant="secondary" @click="modalOpen = false">Cancel</Button>
-        <Button :loading="submitting" @click="submit">{{ submitting ? 'Creating…' : 'Create case' }}</Button>
-      </template>
-    </Modal>
   </AppShell>
 </template>
