@@ -111,24 +111,16 @@ function anchorWalk(points: TrailPoint[], minMeters: number): TrailPoint[] {
 }
 
 /**
- * Nearby points collapse into one marker so a dense, mostly-stationary stretch of
- * a day doesn't create thousands of DOM markers and hang the browser. The
- * hover-nearest lookup still uses the full point list — only the rendered
- * dots are thinned.
+ * Feeds both the line and the dots, so every rendered dot sits on the line —
+ * two independent simplifications of the same points would each keep a
+ * different subset and drift apart. The hover-nearest lookup still uses the
+ * full point list; only the rendered geometry is thinned.
  */
 function decimatePoints(points: TrailPoint[], minMeters = 12, hardCap = 400): TrailPoint[] {
   const kept = anchorWalk(points, minMeters)
   if (kept.length <= hardCap) return kept
   const stride = Math.ceil(kept.length / hardCap)
   return kept.filter((_, i) => i % stride === 0 || i === kept.length - 1)
-}
-
-/**
- * A coarser anchor radius than `decimatePoints` uses for dots — the line
- * only needs to show where the employee actually went, not every GPS fix.
- */
-function linePath(points: TrailPoint[]): TrailPoint[] {
-  return anchorWalk(points, 25)
 }
 
 function nearestPoint(points: TrailPoint[], lat: number, lng: number): TrailPoint {
@@ -200,10 +192,12 @@ function renderTrail() {
     if (groupPoints.length === 0) continue
     const color = shiftIndex === null ? UNASSIGNED_COLOR : shiftColor(shiftIndex)
 
+    const decimated = decimatePoints(groupPoints)
+
     lineFeatures.push({
       type: 'Feature',
       properties: { color },
-      geometry: { type: 'LineString', coordinates: linePath(groupPoints).map((p) => [p.lng, p.lat]) },
+      geometry: { type: 'LineString', coordinates: decimated.map((p) => [p.lng, p.lat]) },
     })
 
     const first = groupPoints[0]!
@@ -218,7 +212,7 @@ function renderTrail() {
     terminalMarkers.push(end)
 
     for (const point of groupPoints) bounds.extend([point.lng, point.lat])
-    for (const point of decimatePoints(groupPoints)) {
+    for (const point of decimated) {
       dotFeatures.push({ type: 'Feature', properties: { color }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } })
     }
   }
@@ -320,7 +314,7 @@ onUnmounted(() => map?.remove())
 </script>
 
 <template>
-  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift" :back-to="`/employees/${employeeId}`">
+  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift" :back-to="`/employees/${employeeId}`" full-bleed>
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="trailLoading" @click="loadTrail">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="trailLoading" />
@@ -328,63 +322,66 @@ onUnmounted(() => map?.remove())
       </Button>
       <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`">Employee shifts</Button>
     </template>
-    <InlineAlert v-if="error" class="mb-4">{{ error }}</InlineAlert>
 
-    <form class="surface-flat mb-4 flex flex-wrap items-end gap-4 p-4" @submit.prevent>
-      <div>
-        <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Date</label>
-        <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-48" />
-      </div>
+    <div class="flex h-full flex-col p-6 sm:p-7">
+      <InlineAlert v-if="error" class="mb-4 flex-none">{{ error }}</InlineAlert>
 
-      <div
-        v-if="trail && trail.shifts.length > 0"
-        class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap"
-        role="radiogroup"
-        aria-label="Shift"
-      >
-        <label
-          v-for="shift in trail.shifts"
-          :key="shift.index"
-          class="flex h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 text-[13.5px] transition-colors duration-fast"
-          :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary/60'"
+      <form class="surface-flat mb-4 flex flex-none flex-wrap items-end gap-4 p-4" @submit.prevent>
+        <div>
+          <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Date</label>
+          <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-48" />
+        </div>
+
+        <div
+          v-if="trail && trail.shifts.length > 0"
+          class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap"
+          role="radiogroup"
+          aria-label="Shift"
         >
-          <input v-model="selectedShift" type="radio" name="shift" class="sr-only" :value="shift.index" />
-          <span class="h-2.5 w-2.5 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
-          <span class="font-medium">{{ shift.label }}</span>
-          <span class="tabular text-ink-faint">{{ formatDistance(shift.distance_m) }}</span>
-        </label>
-      </div>
-
-      <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">Loading…</span>
-    </form>
-
-    <section class="surface-flat relative h-[60vh] min-h-[420px] overflow-hidden">
-      <div ref="mapContainer" class="!absolute !inset-0 bg-surface-sunken" />
-
-      <div
-        v-if="trail && trail.points.length > 0"
-        class="surface-dark absolute left-3 top-3 z-10 flex gap-3 px-3 py-2"
-      >
-        <div class="flex items-center gap-1.5">
-          <Icon name="route" class="h-3.5 w-3.5 text-primary" />
-          <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ formatDistance(selectedDistanceM) }}</span>
+          <label
+            v-for="shift in trail.shifts"
+            :key="shift.index"
+            class="flex h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 text-[13.5px] transition-colors duration-fast"
+            :class="selectedShift === shift.index ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary/60'"
+          >
+            <input v-model="selectedShift" type="radio" name="shift" class="sr-only" :value="shift.index" />
+            <span class="h-2.5 w-2.5 flex-none rounded-full" :style="{ backgroundColor: shiftColor(shift.index) }"></span>
+            <span class="font-medium">{{ shift.label }}</span>
+            <span class="tabular text-ink-faint">{{ formatDistance(shift.distance_m) }}</span>
+          </label>
         </div>
-        <div class="h-full w-px bg-hairline-dark" />
-        <div class="flex items-center gap-1.5">
-          <Icon name="map-pin" class="h-3.5 w-3.5 text-primary" />
-          <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ trail.points_count }} pts</span>
-        </div>
-      </div>
 
-      <div v-if="mapError" class="absolute inset-x-4 top-4 z-10">
-        <InlineAlert>{{ mapError }}</InlineAlert>
-      </div>
-      <div
-        v-if="!trailLoading && trail && trail.points.length === 0"
-        class="surface absolute inset-x-4 top-4 z-10 px-4 py-3"
-      >
-        <EmptyState icon="route" message="No tracked activity for this day." />
-      </div>
-    </section>
+        <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">Loading…</span>
+      </form>
+
+      <section class="surface-flat relative min-h-[420px] flex-1 overflow-hidden">
+        <div ref="mapContainer" class="!absolute !inset-0 bg-surface-sunken" />
+
+        <div
+          v-if="trail && trail.points.length > 0"
+          class="surface-dark absolute left-3 top-3 z-10 flex gap-3 px-3 py-2"
+        >
+          <div class="flex items-center gap-1.5">
+            <Icon name="route" class="h-3.5 w-3.5 text-primary" />
+            <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ formatDistance(selectedDistanceM) }}</span>
+          </div>
+          <div class="h-full w-px bg-hairline-dark" />
+          <div class="flex items-center gap-1.5">
+            <Icon name="map-pin" class="h-3.5 w-3.5 text-primary" />
+            <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ trail.points_count }} pts</span>
+          </div>
+        </div>
+
+        <div v-if="mapError" class="absolute inset-x-4 top-4 z-10">
+          <InlineAlert>{{ mapError }}</InlineAlert>
+        </div>
+        <div
+          v-if="!trailLoading && trail && trail.points.length === 0"
+          class="surface absolute inset-x-4 top-4 z-10 px-4 py-3"
+        >
+          <EmptyState icon="route" message="No tracked activity for this day." />
+        </div>
+      </section>
+    </div>
   </AppShell>
 </template>
