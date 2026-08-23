@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/inspection_case.dart';
 import '../models/permission_snapshot.dart';
 import '../models/shift_window.dart';
 import '../models/window_snapshot.dart';
@@ -19,6 +20,7 @@ import '../widgets/fade_slide_in.dart';
 import '../widgets/status_pill.dart';
 import '../widgets/tracking_status_banner.dart';
 import '../widgets/update_dialog.dart';
+import 'cases_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -45,11 +47,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _error;
   bool _loading = false;
   Timer? _ticker;
+  Timer? _unseenCountTicker;
 
   bool? _serviceRunning;
   int? _queueDepth;
   DateTime? _lastUploadAt;
   PermissionSnapshot? _permissionSnapshot;
+  CaseUnseenCount? _unseenCount;
 
   @override
   void initState() {
@@ -63,9 +67,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _fetch();
       _refreshServiceDerivedState();
     });
+    _unseenCountTicker = Timer.periodic(
+      const Duration(hours: 4),
+      (_) => _fetchUnseenCount(),
+    );
     _fetch();
     _refreshServiceDerivedState();
+    _fetchUnseenCount();
     _checkForUpdate();
+  }
+
+  Future<void> _fetchUnseenCount() async {
+    try {
+      final unseenCount =
+          await widget.authController.caseRepository.fetchUnseenCount();
+      if (!mounted) return;
+      setState(() => _unseenCount = unseenCount);
+    } catch (_) {
+    }
   }
 
   Future<void> _checkForUpdate() async {
@@ -79,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
+    _unseenCountTicker?.cancel();
     super.dispose();
   }
 
@@ -87,7 +107,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _fetch();
       _refreshServiceDerivedState();
+      _fetchUnseenCount();
     }
+  }
+
+  Future<void> _openCases() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => CasesScreen(authController: widget.authController),
+    ));
+    _fetchUnseenCount();
   }
 
   Future<void> _refreshServiceDerivedState() async {
@@ -208,6 +236,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const SizedBox(height: AppSpacing.cardGap),
           FadeSlideIn(
             index: 3,
+            child: _CasesCard(
+              unseenCount: _unseenCount,
+              onTap: _openCases,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          FadeSlideIn(
+            index: 4,
             child: _SyncCard(
               queueDepth: _queueDepth,
               lastUploadAt: _lastUploadAt,
@@ -216,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (needsAttention) ...[
             const SizedBox(height: AppSpacing.cardGap),
             FadeSlideIn(
-              index: 4,
+              index: 5,
               child: _PermissionCard(
                 snapshot: permissions,
                 permissionService: _permissionService,
@@ -225,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
-          FadeSlideIn(index: 5, child: _LastSyncedRow(snapshot: snapshot)),
+          FadeSlideIn(index: 6, child: _LastSyncedRow(snapshot: snapshot)),
         ],
       ),
     );
@@ -382,6 +418,49 @@ class _WindowProgress extends StatelessWidget {
           style: context.text.bodySmall,
         ),
       ],
+    );
+  }
+}
+
+class _CasesCard extends StatelessWidget {
+  const _CasesCard({required this.unseenCount, required this.onTap});
+
+  final CaseUnseenCount? unseenCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final pending = unseenCount?.pending ?? 0;
+
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          IconTile(icon: Icons.assignment_outlined),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Cases', style: context.text.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  pending > 0
+                      ? '$pending pending your response'
+                      : 'View your assigned cases',
+                  style: context.text.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (pending > 0) ...[
+            StatusPill(label: '$pending', tone: StatusTone.warning),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Icon(Icons.chevron_right, color: colors.textTertiary),
+        ],
+      ),
     );
   }
 }

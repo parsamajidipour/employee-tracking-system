@@ -27,6 +27,10 @@ const ICONS: Record<string, string> = {
   command: 'M6 6a2 2 0 1 1 2 2H6V6Zm0 12a2 2 0 1 0 2-2H6v2Zm12-12a2 2 0 1 0-2 2h2V6Zm0 12a2 2 0 1 1-2-2h2v2ZM8 8h8v8H8V8Z',
   lock: 'M6 11V8a6 6 0 1 1 12 0v3M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z',
   mail: 'M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Zm0 0 8 7 8-7',
+  briefcase: 'M4 8h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1ZM9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18',
+  'chart-bar': 'M4 20V10M10 20V4M16 20v-7M4 20h16',
+  camera: 'M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm8 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
+  navigation: 'M3 11l18-8-8 18-2.5-7.5L3 11Z',
 }
 
 withDefaults(defineProps<{ name: keyof typeof ICONS | string; spin?: boolean }>(), { spin: false })

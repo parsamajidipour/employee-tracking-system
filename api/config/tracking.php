@@ -14,4 +14,8 @@ return [
     // the raw (jittery) geodesic distance between them.
     'stationary_noise_floor_m' => (float) env('TRACKING_STATIONARY_NOISE_FLOOR_M', 8.0),
 
+    // A site-survey photo captured further than this from the case's property
+    // location is flagged (never blocked) as not GPS-verified for admin review.
+    'case_photo_radius_m' => (float) env('TRACKING_CASE_PHOTO_RADIUS_M', 150.0),
+
 ];

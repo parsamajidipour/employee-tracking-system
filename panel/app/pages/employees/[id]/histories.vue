@@ -16,6 +16,8 @@ interface TrailPoint {
   shift_index: number | null
 }
 interface TrailShift { index: number; start: string; end: string; label: string; distance_m: number }
+type InterruptionReason = 'gps_disabled' | 'network_disabled' | 'flight_mode' | 'permission_revoked' | 'service_interrupted'
+interface TrailInterruption { reason: InterruptionReason; started_at: string; ended_at: string | null }
 interface Trail {
   date: string
   start?: string
@@ -29,6 +31,15 @@ interface Trail {
   points_count: number
   shifts: TrailShift[]
   points: TrailPoint[]
+  interruptions: TrailInterruption[]
+}
+
+const INTERRUPTION_LABEL: Record<InterruptionReason, string> = {
+  gps_disabled: 'GPS unavailable',
+  network_disabled: 'No network',
+  flight_mode: 'Flight mode',
+  permission_revoked: 'Permission revoked',
+  service_interrupted: 'Tracking service interrupted',
 }
 
 const UNASSIGNED_COLOR = '#8b8b98'
@@ -245,6 +256,12 @@ const selectedDistanceM = computed(() => {
   return trail.value.shifts.find((shift) => shift.index === selectedShift.value)?.distance_m ?? 0
 })
 
+const interruptions = computed(() => trail.value?.interruptions ?? [])
+
+function interruptionLabel(reason: InterruptionReason): string {
+  return INTERRUPTION_LABEL[reason]
+}
+
 watch(selectedShift, renderTrail)
 
 onMounted(() => {
@@ -381,6 +398,18 @@ onUnmounted(() => map?.remove())
         >
           <EmptyState icon="route" message="No tracked activity for this day." />
         </div>
+      </section>
+
+      <section v-if="interruptions.length > 0" class="surface-flat mt-4 flex-none p-4">
+        <h2 class="mb-2.5">Tracking interruptions</h2>
+        <ul class="space-y-2">
+          <li v-for="(interruption, index) in interruptions" :key="index" class="flex items-center gap-2.5 text-[13px]">
+            <Badge variant="warning">{{ interruptionLabel(interruption.reason) }}</Badge>
+            <span class="tabular text-ink-soft">
+              {{ timeLabel(interruption.started_at) }}–{{ interruption.ended_at ? timeLabel(interruption.ended_at) : 'ongoing' }}
+            </span>
+          </li>
+        </ul>
       </section>
     </div>
   </AppShell>

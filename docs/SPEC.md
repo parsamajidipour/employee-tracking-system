@@ -149,9 +149,34 @@ In:
 Out:
 - iOS
 - Geofences and site check-in
-- Task or work-order assignment
 - Payroll or timesheet integration
-- Reporting beyond a basic daily summary
+- OS-level push notifications (FCM/APNs) — no Firebase project exists yet;
+  in-app/broadcast notification and periodic resync are the current substitute
+- Configurable per-employee performance targets and incentive calculations
+- Road-network routing/ETA (OSRM or similar) — nearest-surveyor ranking uses
+  straight-line PostGIS distance instead; see `DECISIONS.md`
+
+## 8a. Phase 2 (added this session): case & field-operations layer
+
+Driven by the "Surveyor Tracking & Field Operations Management System"
+meeting memo. Additive on top of Phase 1 — none of the invariants above were
+touched.
+
+In:
+- Inspection/valuation case management: create, assign, accept/reject,
+  start/complete, cancel — `App\Services\CaseLifecycleService`
+- Assignment distribution by live location + current workload —
+  `App\Services\CaseAssignmentService`, `GET /api/v1/cases/{case}/nearest-surveyors`
+- Job notification on assignment (database + Reverb broadcast; no OS push —
+  see `DECISIONS.md`)
+- Surveyor acceptance with planned inspection date/time
+- GPS-verified site-survey photos, flagged (never blocked) outside
+  `tracking.case_photo_radius_m` of the case location
+- Per-employee workload and productivity dashboard, including a
+  travel/inspection/idle time split for the current shift window —
+  `App\Services\CaseWorkloadService`
+- GPS/network/flight-mode interruption reporting during a shift window,
+  surfaced on the existing trail read as an `interruptions` array
 
 ## 9. Open questions
 

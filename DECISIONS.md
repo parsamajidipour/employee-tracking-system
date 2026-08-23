@@ -659,3 +659,109 @@ just for basemap cosmetics.
 - The self-hosted Oman extract two entries up remains the fallback if this
   policy exception ever becomes a real operational problem — it's a proven,
   working setup (git history, this same session), not a hypothetical.
+
+## Case/assignment/workload layer added; nearest-surveyor ranking stays PostGIS, not OSRM
+
+**Decision.** A new domain was added on top of Phase 1's pure location
+tracking: `inspection_cases`, `case_status_events` (append-only), and
+`case_photos`, with services `CaseLifecycleService`, `CaseAssignmentService`,
+`CaseWorkloadService`, `CasePhotoService`, and `TrackingInterruptionService`.
+This is additive — every Phase 1 invariant in `CLAUDE.md` is unchanged, and
+nothing in this layer writes to `location_points`, `schedule_change_log`, or
+`access_audit_log`. Two new capabilities, `view-cases` and `manage-cases`,
+gate it the same way `view-locations` already gates trails.
+
+This was driven directly by the "Surveyor Tracking & Field Operations
+Management System" meeting memo (`Smart_Inspection_Architecture_FA.pdf`),
+which asks for assignment distribution, workload/productivity dashboards,
+job notifications, and GPS-verified site-survey photos — all explicitly
+listed as **out of Phase 1 scope** in `docs/SPEC.md` §8. `docs/SPEC.md` §8
+is updated alongside this entry to move those bullets from Out to a new
+"Phase 2 (this session)" heading rather than silently contradicting itself.
+
+**Why nearest-surveyor ranking doesn't use OSRM.** The meeting memo's own
+item 6 only asks "who is geographically closest," not a road-network ETA —
+example given is "a surveyor already working in Quriyat" vs. sending someone
+from Muscat, which straight-line distance already answers correctly at this
+country's scale. `CaseAssignmentService::rank()` reads the same
+`last_known:{employee_id}` Redis cache the live map already publishes to,
+and ranks with a single `ST_Distance` geography call — the same mechanism
+`TrackingGate` already uses for per-point distance, so no new data source
+or infrastructure was introduced. Standing up OSRM (a separate long-running
+service, a routing graph built from an OSM extract, another process to
+monitor on a single VPS at 50–150 employees) would be true to the letter of
+"integration with a mapping platform" but not to `CLAUDE.md`'s "reach for
+the boring option" at this scale, and nothing in the meeting notes asks for
+turn-by-turn ETAs — only "who is already nearby." **OSRM was not installed.**
+
+The one place OSRM was already flagged as a real future need is unrelated to
+assignment: the map-matching entry two sections up ("the line should move
+along the street like Google Maps' routes do," for the *trail rendering*,
+not ranking). That need is still open and still belongs to that entry, not
+this one — this session did not touch it.
+
+**Why photo GPS-verification flags rather than blocks.** `CasePhotoService`
+computes `ST_Distance` between the captured coordinate and the case's
+`location`, and marks `is_gps_verified = distance <= config('tracking.
+case_photo_radius_m')` (default 150m — wider than the 15m PDF item 12
+discusses for movement noise, because phone GPS accuracy for a single
+photo capture, especially inside a building, is routinely 20–50m; 150m
+avoids false negatives on a legitimate visit while still catching a photo
+clearly not taken at the property). The upload is **never rejected** on
+this basis — only flagged — because client-side GPS is trivially spoofable
+(`is_mocked` already exists on `location_points` for the same reason) and a
+hard block would let a legitimate surveyor with poor GPS reception get
+stuck unable to submit a report at all. The flag is for the admin's
+workload/case view to see and follow up on, not an automated gate.
+
+**Why "office time" from the meeting memo's dashboard wishlist isn't
+implemented.** There is no office-location concept anywhere in this system
+(no geofence, no configured office coordinate), and the memo itself doesn't
+define one. Inventing one would be a guess presented as a measurement.
+`CaseWorkloadService::dailyActivity()` instead splits a shift window into
+`inspection_minutes` (time inside an assigned case's `started_at`↔
+`completed_at`, the one signal that already exists and is precise),
+`travel_minutes` (time between recorded trail points where `distance_m > 0`),
+and `idle_minutes` (whatever's left over). "Office time" and "target
+achievement" (per-employee configurable monthly/weekly targets, memo item 17)
+are not implemented for the same reason — no target value exists anywhere
+to compare against, and adding one would mean guessing a number nobody
+specified.
+
+**Why job notifications don't reach a killed app in the background.** The
+notification on assignment (`CaseAssignedNotification`) uses Laravel's
+`database` channel (so the panel and a foregrounded/open app can read it)
+and `broadcast` over the existing Reverb `App.Models.User.{id}` private
+channel (so it's instant while the app is running — the same channel
+mechanism `positions` already uses). There is no FCM/APNs channel: true
+OS-level push that wakes a fully-closed app needs a Firebase project and
+service-account credentials that don't exist in this repo and weren't
+supplied. `app/pubspec.yaml` gained no `firebase_messaging` dependency for
+this reason — adding the package without real credentials would be
+decoration, not a working feature. `MyCaseController::unseenCount` exists
+so the existing app-foreground/periodic resync cadence
+(`window_sync_service.dart`, already polling every 4 hours and on
+foreground) can also surface new assignments without a push channel; this
+is polling, not push, and is weaker than a real FCM integration — flagged
+here rather than silently accepted as equivalent.
+
+**Consequences.**
+- `api/config/tracking.php` gained `case_photo_radius_m` (env
+  `TRACKING_CASE_PHOTO_RADIUS_M`), following the same pattern as
+  `stationary_noise_floor_m`.
+- A new `tracking_interruptions` table (mutable — `ended_at` is set by a
+  later request — unlike the two append-only logs `CLAUDE.md` names) records
+  GPS/network/flight-mode/permission interruptions the app detects during a
+  resolved shift window; `EmployeeHistoryController::trail` now returns an
+  `interruptions` array for the requested day alongside `shifts` and `points`.
+  This table is intentionally not append-only: `CLAUDE.md` invariant 9 names
+  `schedule_change_log` and `access_audit_log` specifically, not every table.
+- `CaseSeeder` seeds one case per `CaseStatus` case through the real
+  `CaseLifecycleService` transitions (not direct inserts), so seed data
+  exercises the same status-event logging as production traffic. It refuses
+  to run in production and is a no-op if any case already exists, matching
+  the existing seeders' conventions.
+- Panel (Nuxt) and mobile (Flutter) UI for this layer were built in the same
+  session — see their own README/DECISIONS notes if present — against the
+  contracts above (`/api/v1/cases*`, `/api/v1/me/cases*`, `/api/v1/workload*`,
+  `/api/v1/tracking-interruptions/*`).

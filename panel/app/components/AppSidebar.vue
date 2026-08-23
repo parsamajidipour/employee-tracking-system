@@ -10,12 +10,18 @@ const links = [
   { to: '/employees', label: 'Employees', icon: 'users' },
 ]
 
+const caseLinks = [
+  { to: '/cases', label: 'Cases', icon: 'briefcase' },
+  { to: '/workload', label: 'Workload', icon: 'chart-bar' },
+]
+
 const adminLinks = [{ to: '/app-releases', label: 'App releases', icon: 'download' }]
 
 const trailingLinks = [{ to: '/profile', label: 'Admin profile', icon: 'user-circle' }]
 
 const visibleLinks = computed(() => [
   ...links,
+  ...(user.value?.role === 'admin' || user.value?.role === 'supervisor' ? caseLinks : []),
   ...(user.value?.role === 'admin' ? adminLinks : []),
   ...trailingLinks,
 ])

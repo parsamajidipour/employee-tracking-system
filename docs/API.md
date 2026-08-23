@@ -54,6 +54,55 @@ is later changed or deleted.
 (`version_code`, `version_name`, `release_notes`, `is_mandatory`, `apk` file)
 and list or retract prior releases.
 
+## Case / field-operations endpoints (Phase 2)
+
+### Mobile (self-service, no capability required beyond ownership)
+
+- `GET /api/v1/me/cases` — cases assigned to the current employee, open ones
+  first. `?status=` filters.
+- `GET /api/v1/me/cases/unseen-count` — `{pending, unread_notifications}`.
+- `GET /api/v1/me/cases/{case}` — 403 unless assigned to the caller.
+- `POST /api/v1/me/cases/{case}/accept` — `{planned_at}`. `pending → accepted`.
+- `POST /api/v1/me/cases/{case}/reject` — `{note?}`. `pending → rejected`.
+- `POST /api/v1/me/cases/{case}/start` — `accepted → in_progress`.
+- `POST /api/v1/me/cases/{case}/complete` — `{note?}`. `in_progress → completed`.
+- `POST /api/v1/me/cases/{case}/photos` — multipart `{photo, lat, lng,
+  accuracy_m?, captured_at}`. Never rejected for being far from the case;
+  `is_gps_verified` is a flag, not a gate — see `DECISIONS.md`.
+- `GET /api/v1/case-photos/{casePhoto}` — streams the file. Allowed for the
+  photo's own employee or anyone with `view-cases`.
+- `POST /api/v1/tracking-interruptions/start` — `{reason, at}`. Silently
+  ignored (`accepted: false`) if no shift window resolves at `at`.
+- `POST /api/v1/tracking-interruptions/stop` — `{at}`. Closes any open
+  interruption for the caller.
+
+Invalid status transitions return `409`, not `422` — the request shape was
+valid, the case's current state just doesn't allow it.
+
+### Panel (`capability:view-cases` / `capability:manage-cases`)
+
+- `GET /api/v1/cases` — paginated, filterable by `status` and `assigned_to`.
+- `GET /api/v1/cases/{case}` — includes `status_events` and `photos`.
+- `GET /api/v1/cases/{case}/nearest-surveyors` — ranked by live-position
+  distance (PostGIS, not routed — see `DECISIONS.md`), tie-broken by open
+  case count. Only employees currently inside a resolved shift window and
+  present in the live-position cache are returned.
+- `POST /api/v1/cases` (`manage-cases`) — optional `assigned_to` assigns
+  immediately on creation.
+- `POST /api/v1/cases/{case}/assign` (`manage-cases`) — `{employee_id}`.
+  `409` if the case is not `pending` (already accepted cases cannot be
+  silently reassigned).
+- `POST /api/v1/cases/{case}/cancel` (`manage-cases`) — `{note?}`.
+- `DELETE /api/v1/cases/{case}` (`manage-cases`) — only while still `pending`.
+- `GET /api/v1/workload` — every active employee's case summary
+  (active/pending/scheduled/overdue/completed counts) plus today's
+  travel/inspection/idle-minute split.
+- `GET /api/v1/workload/{employee}` — same, for one employee, `?date=`
+  optional (defaults to today).
+
+`GET /api/v1/employees/{employee}/trail` (existing) now also returns an
+`interruptions` array for the requested day.
+
 ## Error responses
 
 ## Versioning

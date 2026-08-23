@@ -31,6 +31,15 @@ class EmployeeHistoryController extends Controller
 
         $this->audit->record($request->user(), $employee->id, AccessAuditAction::ViewTrail, $request->ip());
 
+        $interruptions = DB::table('tracking_interruptions')
+            ->where('employee_id', $employee->id)
+            ->where('started_at', '<', $endAt)
+            ->where(function ($query) use ($startAt) {
+                $query->whereNull('ended_at')->orWhere('ended_at', '>', $startAt);
+            })
+            ->orderBy('started_at')
+            ->get(['reason', 'started_at', 'ended_at']);
+
         $rows = DB::table('location_points')
             ->where('employee_id', $employee->id)
             ->whereBetween('recorded_at', [$startAt, $endAt])
@@ -38,8 +47,14 @@ class EmployeeHistoryController extends Controller
             ->selectRaw('ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat, distance_m, accuracy_m, speed_mps, heading_deg, battery_pct, recorded_at, session_id')
             ->get();
 
+        $interruptionsPayload = $interruptions->map(fn ($row) => [
+            'reason' => $row->reason,
+            'started_at' => CarbonImmutable::parse($row->started_at, 'UTC')->toISOString(),
+            'ended_at' => $row->ended_at === null ? null : CarbonImmutable::parse($row->ended_at, 'UTC')->toISOString(),
+        ])->values();
+
         if ($rows->isEmpty()) {
-            return response()->json(['date' => $date, 'distance_m' => 0, 'shifts' => [], 'points' => []]);
+            return response()->json(['date' => $date, 'distance_m' => 0, 'shifts' => [], 'points' => [], 'interruptions' => $interruptionsPayload]);
         }
 
         $sessionIndex = [];
@@ -100,6 +115,7 @@ class EmployeeHistoryController extends Controller
             'points_count' => (int) ($summary->points_count ?? 0),
             'shifts' => $shifts,
             'points' => $this->decimatePoints($points)->values(),
+            'interruptions' => $interruptionsPayload,
         ]);
     }
 

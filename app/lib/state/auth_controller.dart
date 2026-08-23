@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../config.dart';
 import '../services/api_client.dart';
 import '../services/auth_storage.dart';
+import '../services/case_repository.dart';
 import '../services/me_repository.dart';
 
 enum AuthStatus { loading, signedOut, signedIn }
@@ -11,6 +12,7 @@ class AuthController extends ChangeNotifier {
   final AuthStorage storage;
   late final ApiClient apiClient;
   late final MeRepository meRepository;
+  late final CaseRepository caseRepository;
 
   AuthStatus status = AuthStatus.loading;
 
@@ -25,6 +27,7 @@ class AuthController extends ChangeNotifier {
       onUnauthorized: handleUnauthorized,
     );
     meRepository = MeRepository(apiClient: apiClient, storage: this.storage);
+    caseRepository = CaseRepository(apiClient: apiClient);
   }
 
   Future<void> initialize() async {
