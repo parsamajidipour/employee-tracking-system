@@ -33,42 +33,44 @@ class AppColors {
   final Color danger;
   final Color neutral;
 
+  // Matches the panel's design system (docs/DESIGN.md, panel/app/assets/css/tokens.css)
+  // — indigo brand accent, not the teal this file used to carry. One brand, one palette.
   static const light = AppColors(
-    primary: Color(0xFF2F9EC0),
-    primaryStrong: Color(0xFF1E7F9B),
-    primarySoft: Color(0xFFDCF0F6),
-    background: Color(0xFFEFF5F8),
+    primary: Color(0xFF4F46E5),
+    primaryStrong: Color(0xFF4338CA),
+    primarySoft: Color(0xFFEEF0FF),
+    background: Color(0xFFF7F7FA),
     surface: Color(0xFFFFFFFF),
-    surfaceMuted: Color(0xFFF6FAFC),
-    border: Color(0xFFE2ECF1),
-    textPrimary: Color(0xFF13333F),
-    textSecondary: Color(0xFF6E8C99),
-    textTertiary: Color(0xFF9DB6C1),
-    success: Color(0xFF3FA98A),
-    warning: Color(0xFFD9973B),
-    danger: Color(0xFFD2635E),
-    neutral: Color(0xFF8AA5B1),
+    surfaceMuted: Color(0xFFF0F0F4),
+    border: Color(0xFFE4E4EA),
+    textPrimary: Color(0xFF0B0B12),
+    textSecondary: Color(0xFF63636F),
+    textTertiary: Color(0xFF9A9AA6),
+    success: Color(0xFF16A34A),
+    warning: Color(0xFFD97706),
+    danger: Color(0xFFE11D48),
+    neutral: Color(0xFF9A9AA6),
   );
 
   static const dark = AppColors(
-    primary: Color(0xFF4FBDD8),
-    primaryStrong: Color(0xFF2F9EC0),
-    primarySoft: Color(0xFF12323D),
-    background: Color(0xFF0E1E26),
-    surface: Color(0xFF162C36),
-    surfaceMuted: Color(0xFF1B333E),
-    border: Color(0xFF22404C),
-    textPrimary: Color(0xFFEAF4F8),
-    textSecondary: Color(0xFF9DB6C1),
-    textTertiary: Color(0xFF6E8C99),
-    success: Color(0xFF57C3A3),
-    warning: Color(0xFFE8AF5C),
-    danger: Color(0xFFE2807B),
-    neutral: Color(0xFF7E9AA6),
+    primary: Color(0xFF818CF8),
+    primaryStrong: Color(0xFF6366F1),
+    primarySoft: Color(0xFF201C42),
+    background: Color(0xFF0B0B10),
+    surface: Color(0xFF16161D),
+    surfaceMuted: Color(0xFF1E1E27),
+    border: Color(0xFF26262F),
+    textPrimary: Color(0xFFF5F5F7),
+    textSecondary: Color(0xFF9494A3),
+    textTertiary: Color(0xFF6B6B78),
+    success: Color(0xFF4ADE80),
+    warning: Color(0xFFFBBF24),
+    danger: Color(0xFFF87171),
+    neutral: Color(0xFF6B6B78),
   );
 
-  static const gradientTop = Color(0xFF4FBDD8);
-  static const gradientBottom = Color(0xFF228DAD);
+  static const gradientTop = Color(0xFF818CF8);
+  static const gradientBottom = Color(0xFF4338CA);
 
   static const brandGradient = LinearGradient(
     begin: Alignment.topCenter,

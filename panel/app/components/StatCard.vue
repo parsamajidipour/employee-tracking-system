@@ -1,6 +1,24 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ icon: string; label: string; value: string; tone?: 'default' | 'dark' }>(), {
-  tone: 'default',
+const props = withDefaults(
+  defineProps<{
+    icon: string
+    label: string
+    value: string
+    tone?: 'default' | 'dark'
+    accent?: 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
+  }>(),
+  { tone: 'default', accent: 'primary' },
+)
+
+const accentClasses = computed(() => {
+  if (props.tone === 'dark') return 'bg-primary-soft-dark text-primary'
+  return {
+    primary: 'bg-primary-soft text-primary-strong',
+    success: 'bg-state-success-soft text-state-success',
+    warning: 'bg-state-warning-soft text-state-warning',
+    danger: 'bg-state-danger-soft text-state-danger',
+    neutral: 'bg-state-neutral-soft text-ink-soft',
+  }[props.accent]
 })
 </script>
 
@@ -11,7 +29,7 @@ withDefaults(defineProps<{ icon: string; label: string; value: string; tone?: 'd
   >
     <span
       class="grid h-10 w-10 flex-none place-items-center rounded-md"
-      :class="tone === 'dark' ? 'bg-primary-soft-dark text-primary' : 'bg-primary-soft text-primary-strong'"
+      :class="accentClasses"
     >
       <Icon :name="icon" class="h-5 w-5" />
     </span>
