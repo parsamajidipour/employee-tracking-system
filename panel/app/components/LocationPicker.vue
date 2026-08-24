@@ -15,6 +15,7 @@ const emit = defineEmits<{
 const DEFAULT_CENTER: [number, number] = [58.5922, 23.6144]
 
 const mapContainer = ref<HTMLDivElement | null>(null)
+const hasPositioned = ref(props.lat !== null && props.lng !== null)
 let map: MapLibreMap | undefined
 
 function emitCenter() {
@@ -53,8 +54,18 @@ onMounted(() => {
     ],
   })
 
-  map.on('load', emitCenter)
-  map.on('move', emitCenter)
+  if (hasPositioned.value) {
+    map.on('load', emitCenter)
+  }
+
+  // Only a user-driven move (drag/scroll/touch) carries an originalEvent —
+  // a programmatic `setCenter`/`jumpTo` does not. That's what lets us tell
+  // "the admin actually chose a spot" apart from "the map merely opened".
+  map.on('moveend', (e) => {
+    if (!e.originalEvent) return
+    hasPositioned.value = true
+    emitCenter()
+  })
 })
 
 onUnmounted(() => {
@@ -70,15 +81,18 @@ onUnmounted(() => {
       <svg width="34" height="44" viewBox="0 0 34 44" fill="none">
         <path
           d="M17 0C7.6 0 0 7.6 0 17c0 12.7 17 27 17 27s17-14.3 17-27C34 7.6 26.4 0 17 0Z"
-          fill="#4f46e5"
+          :fill="hasPositioned ? '#4f46e5' : '#9a9aa6'"
         />
         <circle cx="17" cy="17" r="6.5" fill="white" />
       </svg>
     </div>
     <div class="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/30"></div>
 
-    <div class="surface pointer-events-none absolute left-3 top-3 px-3 py-2 text-[12.5px] text-ink-soft">
-      Move the map to position the pin over the property.
+    <div
+      class="surface pointer-events-none absolute left-3 top-3 px-3 py-2 text-[12.5px]"
+      :class="hasPositioned ? 'text-ink-soft' : 'font-semibold text-state-warning'"
+    >
+      {{ hasPositioned ? 'Move the map to adjust the pin.' : 'Move the map to place the pin on the property — required.' }}
     </div>
   </div>
 </template>
