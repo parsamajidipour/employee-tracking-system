@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CaseStatus } from '~/composables/useCases'
-import { CASE_STATUSES, caseStatusLabel, caseStatusVariant, casePriorityLabel, casePriorityVariant } from '~/utils/caseStatus'
+import { CASE_STATUSES, caseStatusLabel, casePriorityLabel, casePriorityVariant, caseAssignmentDisplay } from '~/utils/caseStatus'
 
 const { data: employeesData, load: loadEmployees } = useEmployees()
 const employees = computed(() => employeesData.value ?? [])
@@ -34,7 +34,7 @@ function goToPage(next: number) {
   refresh()
 }
 
-useCaseAssignmentAlerts(refresh)
+useCaseStream(() => { refresh() })
 
 onMounted(() => {
   loadEmployees()
@@ -84,7 +84,7 @@ onMounted(() => {
               <p class="truncate text-[14px] font-medium text-ink">{{ item.title }}</p>
               <p class="truncate text-[12px] text-ink-faint">{{ item.reference_no }}</p>
             </div>
-            <Badge :variant="caseStatusVariant(item.status)">{{ caseStatusLabel(item.status) }}</Badge>
+            <Badge :variant="caseAssignmentDisplay(item).variant">{{ caseAssignmentDisplay(item).label }}</Badge>
           </div>
           <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
             <div>
@@ -103,7 +103,7 @@ onMounted(() => {
         <td class="px-5 text-[14px] font-medium tabular">{{ item.reference_no }}</td>
         <td class="px-5 text-[14px]">{{ item.title }}</td>
         <td class="px-5 text-[14px] text-ink-soft">{{ item.assignee_name ?? 'Unassigned' }}</td>
-        <td class="px-5"><Badge :variant="caseStatusVariant(item.status)">{{ caseStatusLabel(item.status) }}</Badge></td>
+        <td class="px-5"><Badge :variant="caseAssignmentDisplay(item).variant">{{ caseAssignmentDisplay(item).label }}</Badge></td>
         <td class="px-5"><Badge :variant="casePriorityVariant(item.priority)">{{ casePriorityLabel(item.priority) }}</Badge></td>
         <td class="px-5 text-[13px] tabular text-ink-faint">{{ new Date(item.created_at).toLocaleDateString() }}</td>
         <td class="px-5 text-right">

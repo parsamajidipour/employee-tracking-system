@@ -2,11 +2,48 @@
 import type { Employee } from '~/composables/useEmployees'
 
 const { data: employeesData, loading, error: cacheError, load, refresh } = useEmployees()
-const employees = computed(() => employeesData.value ?? [])
+const allEmployees = computed(() => employeesData.value ?? [])
 const error = computed(() => (cacheError.value ? 'Could not load employees. Sign in and try again.' : null))
 
 const { confirm } = useConfirm()
 const toast = useToast()
+
+const search = ref('')
+const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
+const coverageFilter = ref<'all' | 'scheduled' | 'unscheduled'>('all')
+
+const employees = computed(() => {
+  const term = search.value.trim().toLowerCase()
+
+  return allEmployees.value.filter((employee) => {
+    if (statusFilter.value === 'active' && !employee.is_active) return false
+    if (statusFilter.value === 'inactive' && employee.is_active) return false
+    if (coverageFilter.value === 'scheduled' && employee.shifts.length === 0) return false
+    if (coverageFilter.value === 'unscheduled' && employee.shifts.length > 0) return false
+    if (!term) return true
+
+    return [employee.name, employee.phone ?? '', employee.email ?? ''].some((field) =>
+      field.toLowerCase().includes(term),
+    )
+  })
+})
+
+const counts = computed(() => ({
+  total: allEmployees.value.length,
+  active: allEmployees.value.filter((employee) => employee.is_active).length,
+  unscheduled: allEmployees.value.filter((employee) => employee.shifts.length === 0).length,
+  paired: allEmployees.value.filter((employee) => employee.device !== null).length,
+}))
+
+const isFiltered = computed(
+  () => search.value.trim() !== '' || statusFilter.value !== 'all' || coverageFilter.value !== 'all',
+)
+
+function clearFilters() {
+  search.value = ''
+  statusFilter.value = 'all'
+  coverageFilter.value = 'all'
+}
 
 const passwordModalOpen = ref(false)
 const passwordTarget = ref<Employee | null>(null)
@@ -88,10 +125,15 @@ async function submitChangePassword() {
 
 async function toggleActive(employee: Employee) {
   const next = !employee.is_active
-  const confirmed = await confirm(`${next ? 'Activate' : 'Deactivate'} ${employee.name}?`, {
-    title: next ? 'Activate employee' : 'Deactivate employee',
-    variant: next ? 'default' : 'danger',
-  })
+  const confirmed = await confirm(
+    next
+      ? `Activate ${employee.name}? They will be able to sign in and be assigned cases again.`
+      : `Deactivate ${employee.name}? Their tokens are revoked immediately and they can no longer be assigned cases.`,
+    {
+      title: next ? 'Activate employee' : 'Deactivate employee',
+      variant: next ? 'default' : 'danger',
+    },
+  )
   if (!confirmed) return
   try {
     await apiFetch(`/api/v1/employees/${employee.id}/active`, { method: 'PUT', body: { is_active: next } })
@@ -132,11 +174,23 @@ async function removeEmployee(employee: Employee) {
   }
 }
 
+function deviceLabel(employee: Employee): string {
+  if (!employee.device) return 'No device paired'
+  return employee.device.device_name ?? employee.device.device_identifier
+}
+
+function lastSeenLabel(employee: Employee): string {
+  if (!employee.device) return 'Not paired'
+  return employee.device.last_seen_at
+    ? new Date(employee.device.last_seen_at).toLocaleDateString()
+    : 'Never seen'
+}
+
 onMounted(load)
 </script>
 
 <template>
-  <AppShell title="Employees" :subtitle="`${employees.length} total`">
+  <AppShell title="Employees" subtitle="Roster, schedules, devices and access" full-bleed>
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="loading" @click="refresh">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
@@ -148,130 +202,189 @@ onMounted(load)
       </Button>
     </template>
 
-    <Table
-      :headers="['Employee', 'Phone', 'Shifts', 'Status', 'Device', '']"
-      :loading="loading"
-      :error="error"
-      :is-empty="employees.length === 0"
-      empty-message="No employees yet — add one to get started."
-    >
-      <template #cards>
-        <div v-for="employee in employees" :key="employee.id" class="surface-flat space-y-3 p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="truncate text-[14px] font-medium text-ink">{{ employee.name }}</p>
-              <p class="truncate text-[12px] text-ink-faint">{{ employee.email ?? '—' }}</p>
+    <div class="flex h-full min-h-0 flex-col gap-4 p-4 sm:p-5">
+      <div class="grid flex-none grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <StatCard icon="users" label="On the roster" :value="String(counts.total)" accent="primary" />
+        <StatCard icon="check-circle" label="Active" :value="String(counts.active)" accent="success" />
+        <StatCard icon="smartphone" label="Device paired" :value="String(counts.paired)" accent="neutral" />
+        <StatCard
+          icon="calendar"
+          label="No shift assigned"
+          :value="String(counts.unscheduled)"
+          :accent="counts.unscheduled > 0 ? 'warning' : 'neutral'"
+        />
+      </div>
+
+      <Card
+        class="min-h-0 flex-1"
+        icon="users"
+        title="Roster"
+        :subtitle="`${employees.length} shown of ${counts.total}`"
+        flush
+      >
+        <div class="flex h-full min-h-0 flex-col">
+          <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-4 py-3 sm:px-5">
+            <div class="min-w-56 flex-1">
+              <TextInput
+                v-model="search"
+                label="Search"
+                icon="search"
+                placeholder="Search by name, phone or email"
+              />
             </div>
-            <Badge :variant="employee.is_active ? 'success' : 'neutral'">
-              {{ employee.is_active ? 'Active' : 'Inactive' }}
-            </Badge>
+            <div class="w-44">
+              <Select v-model="statusFilter" label="Status">
+                <option value="all">All statuses</option>
+                <option value="active">Active only</option>
+                <option value="inactive">Inactive only</option>
+              </Select>
+            </div>
+            <div class="w-48">
+              <Select v-model="coverageFilter" label="Shift coverage">
+                <option value="all">Any coverage</option>
+                <option value="scheduled">Has a shift</option>
+                <option value="unscheduled">No shift assigned</option>
+              </Select>
+            </div>
+            <Button v-if="isFiltered" variant="ghost" size="sm" @click="clearFilters">
+              <Icon name="close" class="h-3.5 w-3.5" />
+              Clear
+            </Button>
           </div>
 
-          <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
-            <div>
-              <dt class="eyebrow mb-1">Phone</dt>
-              <dd class="tabular text-ink">{{ employee.phone ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt class="eyebrow mb-1">Device</dt>
-              <dd class="truncate text-ink">
-                {{ employee.device ? (employee.device.device_name ?? employee.device.device_identifier) : '—' }}
-              </dd>
-            </div>
-            <div class="col-span-2">
-              <dt class="eyebrow mb-1">Shifts</dt>
-              <dd>
-                <ShiftsPopover v-if="employee.shifts.length" :shifts="employee.shifts" />
-                <span v-else class="text-ink-faint">No shifts</span>
-              </dd>
-            </div>
-          </dl>
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            <Table
+              embedded
+              :headers="['Employee', 'Contact', 'Shifts', 'Status', 'Device', '']"
+              :loading="loading"
+              :error="error"
+              :is-empty="employees.length === 0"
+              :empty-message="isFiltered ? 'No employee matches these filters.' : 'No employees yet — add one to get started.'"
+            >
+              <template #cards>
+                <div v-for="employee in employees" :key="employee.id" class="surface-flat space-y-3 p-4">
+                  <div class="flex items-start gap-3">
+                    <Avatar :name="employee.name" size="sm" :muted="!employee.is_active" />
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-[14px] font-medium text-ink">{{ employee.name }}</p>
+                      <p class="truncate text-[12px] text-ink-faint">{{ employee.email ?? 'No email' }}</p>
+                    </div>
+                    <Badge :variant="employee.is_active ? 'success' : 'neutral'">
+                      {{ employee.is_active ? 'Active' : 'Inactive' }}
+                    </Badge>
+                  </div>
 
-          <div class="flex flex-wrap items-center gap-1 border-t border-hairline pt-2.5">
-            <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
-              Schedule
-            </NuxtLink>
-            <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
-              Histories
-            </NuxtLink>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openEdit(employee)">
-              Edit
-            </button>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openChangePassword(employee)">
-              Change password
-            </button>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="toggleActive(employee)">
-              {{ employee.is_active ? 'Deactivate' : 'Activate' }}
-            </button>
-            <button v-if="employee.device" type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="revokeDevice(employee)">
-              Revoke device
-            </button>
-            <button type="button" class="ml-auto rounded-sm p-2 text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" title="Delete employee" aria-label="Delete employee" @click="removeEmployee(employee)">
-              <Icon name="trash" class="h-3.5 w-3.5" />
-            </button>
+                  <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
+                    <div>
+                      <dt class="eyebrow mb-1">Phone</dt>
+                      <dd class="tabular text-ink">{{ employee.phone ?? '—' }}</dd>
+                    </div>
+                    <div>
+                      <dt class="eyebrow mb-1">Device</dt>
+                      <dd class="truncate text-ink">{{ deviceLabel(employee) }}</dd>
+                    </div>
+                    <div class="col-span-2">
+                      <dt class="eyebrow mb-1">Shifts</dt>
+                      <dd>
+                        <ShiftsPopover v-if="employee.shifts.length" :shifts="employee.shifts" />
+                        <Badge v-else variant="warning">No shift assigned</Badge>
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
+                    <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                      Schedule
+                    </NuxtLink>
+                    <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                      Histories
+                    </NuxtLink>
+                    <Popover class="ml-auto" :width="228" label="More actions">
+                      <template #default="{ close }">
+                        <MenuItem icon="pencil" @click="close(); openEdit(employee)">Edit details</MenuItem>
+                        <MenuItem icon="key" @click="close(); openChangePassword(employee)">Change password</MenuItem>
+                        <MenuItem icon="power" :tone="employee.is_active ? 'danger' : 'default'" @click="close(); toggleActive(employee)">
+                          {{ employee.is_active ? 'Deactivate' : 'Activate' }}
+                        </MenuItem>
+                        <MenuItem v-if="employee.device" icon="smartphone" tone="danger" @click="close(); revokeDevice(employee)">
+                          Revoke device
+                        </MenuItem>
+                        <MenuItem icon="trash" tone="danger" @click="close(); removeEmployee(employee)">Delete employee</MenuItem>
+                      </template>
+                    </Popover>
+                  </div>
+                </div>
+              </template>
+
+              <tr v-for="employee in employees" :key="employee.id" class="group row-h text-ink transition-colors hover:bg-surface-sunken/60">
+                <td class="px-4 sm:px-5">
+                  <div class="flex items-center gap-3">
+                    <Avatar :name="employee.name" size="sm" :muted="!employee.is_active" />
+                    <div class="min-w-0">
+                      <div class="truncate text-[14px] font-medium">{{ employee.name }}</div>
+                      <div class="truncate text-[12px] text-ink-faint">{{ employee.email ?? 'No email' }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 text-[14px] tabular sm:px-5">{{ employee.phone ?? '—' }}</td>
+                <td class="px-4 sm:px-5">
+                  <ShiftsPopover v-if="employee.shifts.length" :shifts="employee.shifts" />
+                  <Badge v-else variant="warning">No shift</Badge>
+                </td>
+                <td class="px-4 sm:px-5">
+                  <Badge :variant="employee.is_active ? 'success' : 'neutral'">
+                    {{ employee.is_active ? 'Active' : 'Inactive' }}
+                  </Badge>
+                </td>
+                <td class="px-4 sm:px-5">
+                  <div class="truncate text-[14px]" :class="employee.device ? 'text-ink' : 'text-ink-faint'">
+                    {{ deviceLabel(employee) }}
+                  </div>
+                  <div class="text-[12px] tabular text-ink-faint">{{ lastSeenLabel(employee) }}</div>
+                </td>
+                <td class="px-4 sm:px-5">
+                  <div class="flex items-center justify-end gap-1 whitespace-nowrap">
+                    <NuxtLink
+                      :to="`/employees/${employee.id}`"
+                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong opacity-0 transition-opacity hover:bg-surface-sunken group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      Schedule
+                    </NuxtLink>
+                    <NuxtLink
+                      :to="`/employees/${employee.id}/histories`"
+                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong opacity-0 transition-opacity hover:bg-surface-sunken group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      Histories
+                    </NuxtLink>
+                    <Popover :width="228" label="More actions">
+                      <template #default="{ close }">
+                        <MenuItem icon="pencil" @click="close(); openEdit(employee)">Edit details</MenuItem>
+                        <MenuItem icon="key" @click="close(); openChangePassword(employee)">Change password</MenuItem>
+                        <MenuItem icon="power" :tone="employee.is_active ? 'danger' : 'default'" @click="close(); toggleActive(employee)">
+                          {{ employee.is_active ? 'Deactivate' : 'Activate' }}
+                        </MenuItem>
+                        <MenuItem v-if="employee.device" icon="smartphone" tone="danger" @click="close(); revokeDevice(employee)">
+                          Revoke device
+                        </MenuItem>
+                        <MenuItem icon="trash" tone="danger" @click="close(); removeEmployee(employee)">Delete employee</MenuItem>
+                      </template>
+                    </Popover>
+                  </div>
+                </td>
+              </tr>
+            </Table>
           </div>
         </div>
-      </template>
-
-      <tr v-for="employee in employees" :key="employee.id" class="row-h text-ink hover:bg-surface-sunken/60">
-        <td class="px-5">
-          <div class="text-[14px] font-medium">{{ employee.name }}</div>
-          <div class="text-[12px] text-ink-faint">{{ employee.email ?? '—' }}</div>
-        </td>
-        <td class="px-5 text-[14px] tabular">{{ employee.phone ?? '—' }}</td>
-        <td class="px-5">
-          <ShiftsPopover v-if="employee.shifts.length" :shifts="employee.shifts" />
-          <span v-else class="text-[13px] text-ink-faint">No shifts</span>
-        </td>
-        <td class="px-5">
-          <Badge :variant="employee.is_active ? 'success' : 'neutral'">
-            {{ employee.is_active ? 'Active' : 'Inactive' }}
-          </Badge>
-        </td>
-        <td class="px-5">
-          <template v-if="employee.device">
-            <div class="truncate text-[14px]">{{ employee.device.device_name ?? employee.device.device_identifier }}</div>
-            <div class="text-[12px] text-ink-faint">
-              {{ employee.device.last_seen_at ? new Date(employee.device.last_seen_at).toLocaleDateString() : 'never seen' }}
-            </div>
-          </template>
-          <span v-else class="text-[13px] text-ink-faint">—</span>
-        </td>
-        <td class="px-5">
-          <div class="flex items-center justify-end gap-1 whitespace-nowrap">
-            <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
-              Schedule
-            </NuxtLink>
-            <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
-              Histories
-            </NuxtLink>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openEdit(employee)">
-              Edit
-            </button>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink" @click="openChangePassword(employee)">
-              Change password
-            </button>
-            <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="toggleActive(employee)">
-              {{ employee.is_active ? 'Deactivate' : 'Activate' }}
-            </button>
-            <button v-if="employee.device" type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="revokeDevice(employee)">
-              Revoke device
-            </button>
-            <button type="button" class="rounded-sm p-2 text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" title="Delete employee" aria-label="Delete employee" @click="removeEmployee(employee)">
-              <Icon name="trash" class="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    </Table>
+      </Card>
+    </div>
 
     <Modal v-model="editModalOpen" title="Edit employee">
       <form class="space-y-3.5" @submit.prevent="submitEdit">
         <InlineAlert v-if="editError">{{ editError }}</InlineAlert>
 
-        <TextInput v-model="editForm.name" label="Name" required />
-        <TextInput v-model="editForm.phone" label="Phone" required hint="Used to log in on the mobile app." />
-        <TextInput v-model="editForm.email" type="email" label="Email" required hint="Used to log in, and to receive account emails." />
+        <TextInput v-model="editForm.name" label="Name" placeholder="Full name as it appears on the roster" required />
+        <TextInput v-model="editForm.phone" label="Phone" placeholder="e.g. 92000001" required hint="Used to log in on the mobile app." />
+        <TextInput v-model="editForm.email" type="email" label="Email" placeholder="name@example.com" required hint="Used to log in, and to receive account emails." />
       </form>
 
       <template #footer>
@@ -292,8 +405,8 @@ onMounted(load)
 
         <InlineAlert v-if="passwordError">{{ passwordError }}</InlineAlert>
 
-        <TextInput v-model="newPassword" type="password" label="New password" required :minlength="8" autocomplete="new-password" />
-        <TextInput v-model="confirmPassword" type="password" label="Confirm new password" required :minlength="8" autocomplete="new-password" />
+        <TextInput v-model="newPassword" type="password" label="New password" placeholder="At least 8 characters" required :minlength="8" autocomplete="new-password" />
+        <TextInput v-model="confirmPassword" type="password" label="Confirm new password" placeholder="Repeat the new password" required :minlength="8" autocomplete="new-password" />
       </form>
 
       <template #footer>

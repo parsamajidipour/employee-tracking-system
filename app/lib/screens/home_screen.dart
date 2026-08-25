@@ -11,16 +11,19 @@ import '../services/app_update_service.dart';
 import '../services/auth_storage.dart';
 import '../services/location_queue_repository.dart';
 import '../services/permission_service.dart';
+import '../services/realtime_client.dart';
 import '../services/tracking_service_controller.dart';
 import '../state/auth_controller.dart';
+import '../state/live_refresh.dart';
+import '../state/live_updates.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/app_card.dart';
 import '../widgets/fade_slide_in.dart';
+import '../widgets/live_dot.dart';
 import '../widgets/status_pill.dart';
-import '../widgets/tracking_status_banner.dart';
 import '../widgets/update_dialog.dart';
-import 'cases_screen.dart';
+import 'case_detail_screen.dart';
 import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,13 +36,14 @@ class HomeScreen extends StatefulWidget {
 
   final AuthController authController;
   final TrackingServiceController trackingServiceController;
-  final VoidCallback? onOpenCases;
+  final void Function(String? statusFilter)? onOpenCases;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver, LiveRefresh<HomeScreen> {
   final LocationQueueRepository _queueRepository = LocationQueueRepository();
   final AuthStorage _authStorage = AuthStorage();
   final PermissionService _permissionService = PermissionService();
@@ -50,44 +54,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _error;
   bool _loading = false;
   Timer? _ticker;
-  Timer? _unseenCountTicker;
 
   bool? _serviceRunning;
   int? _queueDepth;
   DateTime? _lastUploadAt;
   PermissionSnapshot? _permissionSnapshot;
-  CaseUnseenCount? _unseenCount;
+  List<InspectionCase> _cases = const [];
+  String _displayName = '';
+
+  @override
+  LiveUpdates get liveUpdates => widget.authController.liveUpdates;
+
+  @override
+  void onLiveUpdate() {
+    _fetchCases();
+    _fetchWindow();
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    startLiveRefresh();
 
     _ticker = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted) {
-        setState(() {});
-      }
-      _fetch();
+      if (mounted) setState(() {});
+      _fetchWindow();
       _refreshServiceDerivedState();
     });
-    _unseenCountTicker = Timer.periodic(
-      const Duration(hours: 4),
-      (_) => _fetchUnseenCount(),
-    );
-    _fetch();
+
+    _fetchWindow();
     _refreshServiceDerivedState();
-    _fetchUnseenCount();
+    _fetchCases();
+    _fetchIdentity();
     _checkForUpdate();
   }
 
-  Future<void> _fetchUnseenCount() async {
-    try {
-      final unseenCount =
-          await widget.authController.caseRepository.fetchUnseenCount();
-      if (!mounted) return;
-      setState(() => _unseenCount = unseenCount);
-    } catch (_) {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    stopLiveRefresh();
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchWindow();
+      _refreshServiceDerivedState();
+      _fetchCases();
     }
+  }
+
+  Future<void> _fetchIdentity() async {
+    final identity = await widget.authController.meRepository.fetchIdentity();
+    if (!mounted || identity == null) return;
+    setState(() => _displayName = identity.name);
   }
 
   Future<void> _checkForUpdate() async {
@@ -97,39 +120,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await showUpdateDialog(context, info: info, updateService: _updateService);
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _ticker?.cancel();
-    _unseenCountTicker?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _fetch();
-      _refreshServiceDerivedState();
-      _fetchUnseenCount();
+  Future<void> _fetchCases() async {
+    try {
+      final cases = await widget.authController.caseRepository.fetchCases();
+      if (!mounted) return;
+      setState(() => _cases = cases);
+    } catch (_) {
     }
-  }
-
-  Future<void> _openCases() async {
-    if (widget.onOpenCases != null) {
-      widget.onOpenCases!();
-      return;
-    }
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CasesScreen(authController: widget.authController),
-    ));
-    _fetchUnseenCount();
-  }
-
-  Future<void> _openNotifications() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => NotificationsScreen(authController: widget.authController),
-    ));
-    _fetchUnseenCount();
   }
 
   Future<void> _refreshServiceDerivedState() async {
@@ -138,9 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final lastUploadAt = await _authStorage.lastUploadAt();
     final permissionSnapshot = await _permissionService.currentSnapshot();
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _serviceRunning = running;
@@ -150,15 +145,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  Future<void> _fetch() async {
+  Future<void> _fetchWindow() async {
     setState(() => _loading = true);
 
     try {
       final snapshot = await widget.authController.meRepository.fetchWindow();
-
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _snapshot = snapshot;
@@ -171,9 +163,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             .applyWindowDecision(snapshot.response.current);
       }
     } on ApiException catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       if (e.isUnauthorized) {
         setState(() => _loading = false);
         return;
@@ -183,9 +173,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _error =
             'Could not reach the server, and no previous data is cached yet.';
@@ -194,26 +182,53 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _refreshAll() => Future.wait([
+        _fetchWindow(),
+        _refreshServiceDerivedState(),
+        _fetchCases(),
+      ]);
+
+  void _openCases([String? statusFilter]) =>
+      widget.onOpenCases?.call(statusFilter);
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => NotificationsScreen(authController: widget.authController),
+    ));
+  }
+
+  Future<void> _openCase(int id) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => CaseDetailScreen(
+        authController: widget.authController,
+        caseId: id,
+      ),
+    ));
+    _fetchCases();
+  }
+
+  int _countWhere(bool Function(InspectionCase) test) =>
+      _cases.where(test).length;
+
+  InspectionCase? get _nextVisit {
+    final upcoming = _cases
+        .where((c) => c.status == 'accepted' || c.status == 'in_progress')
+        .toList()
+      ..sort((a, b) {
+        final aAt = a.plannedAt;
+        final bAt = b.plannedAt;
+        if (aAt == null && bAt == null) return 0;
+        if (aAt == null) return 1;
+        if (bAt == null) return -1;
+        return aAt.compareTo(bAt);
+      });
+
+    return upcoming.isEmpty ? null : upcoming.first;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final unread = _unseenCount?.unreadNotifications ?? 0;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        actions: [
-          IconButton(
-            onPressed: _openNotifications,
-            tooltip: 'Notifications',
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: const Icon(Icons.notifications_outlined),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-        ],
-      ),
       body: SafeArea(child: _buildBody()),
     );
   }
@@ -226,64 +241,94 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     if (snapshot == null) {
-      return _EmptyState(message: _error, onRetry: _fetch);
+      return _EmptyState(message: _error, onRetry: _fetchWindow);
     }
-
-    final trackingState = switch (_serviceRunning) {
-      null => TrackingDisplayState.unknownOffline,
-      true => TrackingDisplayState.active,
-      false => TrackingDisplayState.off,
-    };
 
     final permissions = _permissionSnapshot;
     final needsAttention = permissions != null && !permissions.allGranted;
+    final nextVisit = _nextVisit;
+
+    var index = 0;
+    int step() => index++;
 
     return RefreshIndicator(
-      onRefresh: () => Future.wait([_fetch(), _refreshServiceDerivedState()]),
+      onRefresh: _refreshAll,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.screen,
-          AppSpacing.lg,
+          AppSpacing.md,
           AppSpacing.screen,
           AppSpacing.huge,
         ),
         children: [
           FadeSlideIn(
-            child: _Greeting(snapshot: snapshot),
+            index: step(),
+            child: _HomeHeader(
+              name: _displayName,
+              connectionState: liveUpdates.connectionState,
+              unread: liveUpdates.unreadCount,
+              onOpenNotifications: _openNotifications,
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
           FadeSlideIn(
-            index: 1,
-            child: TrackingStatusBanner(state: trackingState),
-          ),
-          const SizedBox(height: AppSpacing.cardGap),
-          FadeSlideIn(
-            index: 2,
-            child: _TodayCard(
+            index: step(),
+            child: _ShiftHero(
               current: snapshot.response.current,
               next: snapshot.response.next,
+              serviceRunning: _serviceRunning,
             ),
           ),
-          const SizedBox(height: AppSpacing.cardGap),
+          const SizedBox(height: AppSpacing.xxl),
           FadeSlideIn(
-            index: 3,
-            child: _CasesCard(
-              unseenCount: _unseenCount,
-              onTap: _openCases,
+            index: step(),
+            child: const SectionHeader(
+              overline: 'Workload',
+              title: 'Your cases today',
             ),
           ),
-          const SizedBox(height: AppSpacing.cardGap),
+          const SizedBox(height: AppSpacing.md),
           FadeSlideIn(
-            index: 4,
+            index: step(),
+            child: _WorkloadTiles(
+              pending: _countWhere((c) => c.status == 'pending'),
+              scheduled: _countWhere((c) => c.status == 'accepted'),
+              inProgress: _countWhere((c) => c.status == 'in_progress'),
+              onOpen: _openCases,
+            ),
+          ),
+          if (nextVisit != null) ...[
+            const SizedBox(height: AppSpacing.cardGap),
+            FadeSlideIn(
+              index: step(),
+              child: _NextVisitCard(
+                inspectionCase: nextVisit,
+                onTap: () => _openCase(nextVisit.id),
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xxl),
+          FadeSlideIn(
+            index: step(),
+            child: const SectionHeader(
+              overline: 'Device',
+              title: 'Connection & sync',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FadeSlideIn(
+            index: step(),
             child: _SyncCard(
               queueDepth: _queueDepth,
               lastUploadAt: _lastUploadAt,
+              snapshot: snapshot,
+              connectionState: liveUpdates.connectionState,
             ),
           ),
           if (needsAttention) ...[
             const SizedBox(height: AppSpacing.cardGap),
             FadeSlideIn(
-              index: 5,
+              index: step(),
               child: _PermissionCard(
                 snapshot: permissions,
                 permissionService: _permissionService,
@@ -291,65 +336,234 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ],
-          const SizedBox(height: AppSpacing.xl),
-          FadeSlideIn(index: 6, child: _LastSyncedRow(snapshot: snapshot)),
         ],
       ),
     );
   }
 }
 
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.snapshot});
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.name,
+    required this.connectionState,
+    required this.unread,
+    required this.onOpenNotifications,
+  });
 
-  final WindowSnapshot snapshot;
+  final String name;
+  final RealtimeConnectionState connectionState;
+  final int unread;
+  final VoidCallback onOpenNotifications;
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final onShift = snapshot.response.current != null;
     final colors = context.colors;
+    final firstName = name.isEmpty ? '' : name.split(' ').first;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'TODAY',
-                style: context.text.labelSmall?.copyWith(
-                  color: colors.primaryStrong,
-                ),
+              Row(
+                children: [
+                  Text(
+                    _greeting().toUpperCase(),
+                    style: context.text.labelSmall?.copyWith(
+                      color: colors.primaryStrong,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  LiveDot(state: connectionState),
+                ],
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                onShift ? 'On shift' : 'Off shift',
-                style: context.text.titleLarge,
+                firstName.isEmpty ? 'Field surveyor' : firstName,
+                style: context.text.headlineSmall ?? context.text.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
-        StatusPill(
-          label: onShift ? 'In window' : 'Outside hours',
-          tone: onShift ? StatusTone.active : StatusTone.idle,
+        IconButton(
+          onPressed: onOpenNotifications,
+          tooltip: 'Notifications',
+          iconSize: 26,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          icon: Badge(
+            isLabelVisible: unread > 0,
+            label: Text('$unread'),
+            child: const Icon(Icons.notifications_outlined),
+          ),
         ),
       ],
     );
   }
 }
 
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.current, required this.next});
+class _ShiftHero extends StatelessWidget {
+  const _ShiftHero({
+    required this.current,
+    required this.next,
+    required this.serviceRunning,
+  });
 
   final ShiftWindow? current;
+  final ShiftWindow? next;
+  final bool? serviceRunning;
+
+  @override
+  Widget build(BuildContext context) {
+    final onShift = current != null;
+
+    return onShift
+        ? _OnShiftHero(window: current!, serviceRunning: serviceRunning)
+        : _OffShiftHero(next: next);
+  }
+}
+
+class _OnShiftHero extends StatelessWidget {
+  const _OnShiftHero({required this.window, required this.serviceRunning});
+
+  final ShiftWindow window;
+  final bool? serviceRunning;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = window.end.difference(window.start).inSeconds;
+    final elapsed = DateTime.now().toUtc().difference(window.start).inSeconds;
+    final progress =
+        total <= 0 ? 0.0 : (elapsed / total).clamp(0.0, 1.0).toDouble();
+    final remaining = window.end.difference(DateTime.now().toUtc());
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: const BoxDecoration(
+        gradient: AppColors.brandGradient,
+        borderRadius: AppRadii.cardRadius,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'On shift',
+                  style: context.text.titleLarge?.copyWith(color: Colors.white),
+                ),
+              ),
+              _HeroBadge(
+                label: serviceRunning == true ? 'Recording' : 'Starting…',
+                icon: serviceRunning == true
+                    ? Icons.fiber_manual_record
+                    : Icons.hourglass_top,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '${formatTime(window.start)} – ${formatTime(window.end)}',
+            style: context.text.bodyLarge?.copyWith(
+              color: Colors.white.withValues(alpha: 0.86),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ClipRRect(
+            borderRadius: AppRadii.pillRadius,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: context.motion(AppDurations.slow),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: Colors.white.withValues(alpha: 0.24),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Icon(
+                Icons.shield_outlined,
+                size: 16,
+                color: Colors.white.withValues(alpha: 0.86),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  remaining.isNegative
+                      ? 'Window closing.'
+                      : 'Location recorded for another ${formatDuration(remaining)}.',
+                  style: context.text.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.86),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroBadge extends StatelessWidget {
+  const _HeroBadge({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: AppRadii.pillRadius,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white),
+          const SizedBox(width: AppSpacing.xs + 2),
+          Text(
+            label,
+            style: context.text.labelMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OffShiftHero extends StatelessWidget {
+  const _OffShiftHero({required this.next});
+
   final ShiftWindow? next;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final window = current ?? next;
-    final isCurrent = current != null;
 
     return AppCard(
       child: Column(
@@ -358,47 +572,40 @@ class _TodayCard extends StatelessWidget {
           Row(
             children: [
               IconTile(
-                icon: isCurrent
-                    ? Icons.play_circle_outline
-                    : Icons.schedule_outlined,
+                icon: Icons.location_off_outlined,
+                color: colors.textSecondary,
+                background: colors.surfaceMuted,
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isCurrent ? 'Current window' : 'Next window',
-                      style: context.text.labelMedium,
-                    ),
+                    Text('Off shift', style: context.text.titleLarge),
                     const SizedBox(height: 2),
                     Text(
-                      window == null
-                          ? 'Nothing scheduled'
-                          : '${formatTime(window.start)} – ${formatTime(window.end)}',
-                      style: context.text.titleMedium,
+                      next == null
+                          ? 'Nothing scheduled yet'
+                          : 'Next ${formatTime(next!.start)} – ${formatTime(next!.end)}',
+                      style: context.text.bodyMedium,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          if (window != null) ...[
-            const SizedBox(height: AppSpacing.lg),
-            _WindowProgress(window: window, active: isCurrent),
-          ],
           const SizedBox(height: AppSpacing.lg),
           Divider(color: colors.border, height: 1),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Icon(Icons.shield_outlined, size: 18, color: colors.textSecondary),
+              Icon(Icons.shield_outlined, size: 16, color: colors.textSecondary),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  isCurrent
-                      ? 'Your location is recorded until the window ends.'
-                      : 'No location is recorded outside your window.',
+                  next == null
+                      ? 'No location is recorded outside a working window.'
+                      : 'No location is recorded until then. Starts ${formatCountdown(next!.start)}.',
                   style: context.text.bodySmall,
                 ),
               ),
@@ -410,85 +617,171 @@ class _TodayCard extends StatelessWidget {
   }
 }
 
-class _WindowProgress extends StatelessWidget {
-  const _WindowProgress({required this.window, required this.active});
+class _WorkloadTiles extends StatelessWidget {
+  const _WorkloadTiles({
+    required this.pending,
+    required this.scheduled,
+    required this.inProgress,
+    required this.onOpen,
+  });
 
-  final ShiftWindow window;
-  final bool active;
+  final int pending;
+  final int scheduled;
+  final int inProgress;
+  final void Function(String? statusFilter) onOpen;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final total = window.end.difference(window.start).inSeconds;
-    final elapsed = DateTime.now().toUtc().difference(window.start).inSeconds;
-    final progress =
-        total <= 0 ? 0.0 : (elapsed / total).clamp(0.0, 1.0).toDouble();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        ClipRRect(
-          borderRadius: AppRadii.pillRadius,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: active ? progress : 0),
-            duration: context.motion(AppDurations.slow),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, _) => LinearProgressIndicator(
-              value: value,
-              minHeight: 8,
-              backgroundColor: colors.surfaceMuted,
-              valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
-            ),
+        Expanded(
+          child: _WorkloadTile(
+            value: pending,
+            label: 'Awaiting\nresponse',
+            tint: colors.warning,
+            icon: Icons.mark_email_unread_outlined,
+            onTap: () => onOpen('pending'),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          active
-              ? '${(progress * 100).round()}% of today\'s window elapsed'
-              : 'Starts ${formatRelative(window.start)}',
-          style: context.text.bodySmall,
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _WorkloadTile(
+            value: scheduled,
+            label: 'Scheduled\nvisits',
+            tint: colors.primaryStrong,
+            icon: Icons.event_available_outlined,
+            onTap: () => onOpen('accepted'),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _WorkloadTile(
+            value: inProgress,
+            label: 'In\nprogress',
+            tint: colors.success,
+            icon: Icons.directions_walk,
+            onTap: () => onOpen('in_progress'),
+          ),
         ),
       ],
     );
   }
 }
 
-class _CasesCard extends StatelessWidget {
-  const _CasesCard({required this.unseenCount, required this.onTap});
+class _WorkloadTile extends StatelessWidget {
+  const _WorkloadTile({
+    required this.value,
+    required this.label,
+    required this.tint,
+    required this.icon,
+    required this.onTap,
+  });
 
-  final CaseUnseenCount? unseenCount;
+  final int value;
+  final String label;
+  final Color tint;
+  final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final pending = unseenCount?.pending ?? 0;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: AppRadii.controlRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadii.controlRadius,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 116),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: AppRadii.controlRadius,
+            border: Border.all(
+              color: value > 0 ? tint.withValues(alpha: 0.4) : colors.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 18, color: tint),
+              const SizedBox(height: AppSpacing.xl),
+              Text(
+                '$value',
+                style: context.text.headlineSmall?.copyWith(
+                  color: value > 0 ? colors.textPrimary : colors.textTertiary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: context.text.labelMedium,
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NextVisitCard extends StatelessWidget {
+  const _NextVisitCard({required this.inspectionCase, required this.onTap});
+
+  final InspectionCase inspectionCase;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final plannedAt = inspectionCase.plannedAt;
 
     return AppCard(
       onTap: onTap,
       child: Row(
         children: [
-          IconTile(icon: Icons.assignment_outlined),
+          IconTile(
+            icon: inspectionCase.status == 'in_progress'
+                ? Icons.play_circle_outline
+                : Icons.navigation_outlined,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Cases', style: context.text.titleMedium),
+                Text(
+                  inspectionCase.status == 'in_progress'
+                      ? 'ON THE JOB'
+                      : 'NEXT VISIT',
+                  style: context.text.labelSmall?.copyWith(
+                    color: colors.primaryStrong,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
-                  pending > 0
-                      ? '$pending pending your response'
-                      : 'View your assigned cases',
+                  inspectionCase.title,
+                  style: context.text.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  plannedAt == null
+                      ? inspectionCase.propertyAddress
+                      : '${formatDateTime(plannedAt)} · ${inspectionCase.propertyAddress}',
                   style: context.text.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          if (pending > 0) ...[
-            StatusPill(label: '$pending', tone: StatusTone.warning),
-            const SizedBox(width: AppSpacing.sm),
-          ],
           Icon(Icons.chevron_right, color: colors.textTertiary),
         ],
       ),
@@ -497,13 +790,21 @@ class _CasesCard extends StatelessWidget {
 }
 
 class _SyncCard extends StatelessWidget {
-  const _SyncCard({required this.queueDepth, required this.lastUploadAt});
+  const _SyncCard({
+    required this.queueDepth,
+    required this.lastUploadAt,
+    required this.snapshot,
+    required this.connectionState,
+  });
 
   final int? queueDepth;
   final DateTime? lastUploadAt;
+  final WindowSnapshot snapshot;
+  final RealtimeConnectionState connectionState;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final depth = queueDepth;
     final backingUp = depth != null && depth > 50;
 
@@ -514,7 +815,7 @@ class _SyncCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Sync', style: context.text.titleMedium),
+                child: Text('Upload queue', style: context.text.titleMedium),
               ),
               StatusPill(
                 label: backingUp ? 'Backing up' : 'Healthy',
@@ -540,6 +841,45 @@ class _SyncCard extends StatelessWidget {
                       : formatRelative(lastUploadAt!),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(color: colors.border, height: 1),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              LiveDot(state: connectionState, compact: true),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  switch (connectionState) {
+                    RealtimeConnectionState.connected =>
+                      'Live updates on. New assignments arrive instantly.',
+                    RealtimeConnectionState.connecting =>
+                      'Reconnecting to live updates…',
+                    RealtimeConnectionState.disconnected =>
+                      'Live updates offline. Checking every 45s instead.',
+                  },
+                  style: context.text.bodySmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Icon(Icons.sync, size: 14, color: colors.textTertiary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Schedule synced ${formatRelative(snapshot.syncedAt)}',
+                  style: context.text.bodySmall
+                      ?.copyWith(color: colors.textTertiary),
+                ),
+              ),
+              if (snapshot.stale)
+                const StatusPill(
+                    label: 'May be stale', tone: StatusTone.warning),
             ],
           ),
         ],
@@ -581,35 +921,6 @@ class _Metric extends StatelessWidget {
   }
 }
 
-class _LastSyncedRow extends StatelessWidget {
-  const _LastSyncedRow({required this.snapshot});
-
-  final WindowSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.sync, size: 14, color: colors.textTertiary),
-        const SizedBox(width: AppSpacing.sm),
-        Flexible(
-          child: Text(
-            'Last synced ${formatRelative(snapshot.syncedAt)}',
-            style: context.text.bodySmall?.copyWith(color: colors.textTertiary),
-          ),
-        ),
-        if (snapshot.stale) ...[
-          const SizedBox(width: AppSpacing.sm),
-          const StatusPill(label: 'May be stale', tone: StatusTone.warning),
-        ],
-      ],
-    );
-  }
-}
-
 class _PermissionCard extends StatelessWidget {
   const _PermissionCard({
     required this.snapshot,
@@ -641,7 +952,7 @@ class _PermissionCard extends StatelessWidget {
       if (!snapshot.notificationsGranted)
         (
           'Notifications',
-          'Shows the badge while tracking is on.',
+          'Shows new assignments the moment they arrive.',
           permissionService.requestNotifications
         ),
       if (!snapshot.batteryOptimizationExempt)

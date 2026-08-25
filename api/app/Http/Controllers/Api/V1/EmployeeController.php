@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\CaseStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ResetEmployeePasswordRequest;
@@ -12,8 +13,11 @@ use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Mail\EmployeePasswordChangedMail;
 use App\Mail\EmployeeWelcomeMail;
+use App\Models\InspectionCase;
 use App\Models\TrackingSession;
 use App\Models\User;
+use App\Notifications\DeviceRevokedNotification;
+use App\Notifications\ScheduleChangedNotification;
 use App\Services\DeviceService;
 use App\Services\ShiftWindowResolver;
 use Illuminate\Http\JsonResponse;
@@ -71,6 +75,9 @@ class EmployeeController extends Controller
 
     public function syncShifts(SyncEmployeeShiftsRequest $request, User $employee): JsonResponse
     {
+        abort_unless($employee->role === UserRole::Employee, 404);
+        abort_if(! $employee->is_active, 409, 'This employee is deactivated — reactivate them before changing their schedule.');
+
         $templateIds = $request->validated('shift_template_ids');
 
         DB::transaction(function () use ($employee, $templateIds): void {
@@ -80,9 +87,14 @@ class EmployeeController extends Controller
             );
         });
 
-        return response()->json(
-            $employee->employeeShifts()->with('template')->orderBy('template_id')->get(),
-        );
+        $shifts = $employee->employeeShifts()->with('template')->orderBy('template_id')->get();
+
+        $employee->notify(new ScheduleChangedNotification(
+            $shifts->pluck('template.name')->filter()->values()->all(),
+            $request->user()->name,
+        ));
+
+        return response()->json($shifts);
     }
 
     public function setActive(SetEmployeeActiveRequest $request, User $employee): EmployeeResource
@@ -110,11 +122,14 @@ class EmployeeController extends Controller
         return response()->noContent();
     }
 
-    public function revokeDevice(User $employee, DeviceService $devices): Response
+    public function revokeDevice(Request $request, User $employee, DeviceService $devices): Response
     {
-        if ($employee->activeDevice !== null) {
-            $devices->revoke($employee->activeDevice);
-        }
+        abort_if($employee->activeDevice === null, 409, 'This employee has no active device to revoke.');
+
+        $deviceName = $employee->activeDevice->device_name ?? $employee->activeDevice->device_identifier;
+        $devices->revoke($employee->activeDevice);
+
+        $employee->notify(new DeviceRevokedNotification($deviceName, $request->user()->name));
 
         return response()->noContent();
     }
@@ -122,6 +137,17 @@ class EmployeeController extends Controller
     public function destroy(User $employee): Response
     {
         abort_unless($employee->role === UserRole::Employee, 404);
+
+        $openCases = InspectionCase::query()
+            ->where('assigned_to', $employee->id)
+            ->whereIn('status', array_map(fn (CaseStatus $status) => $status->value, CaseStatus::open()))
+            ->count();
+
+        abort_if(
+            $openCases > 0,
+            409,
+            "{$employee->name} still has {$openCases} open case".($openCases === 1 ? '' : 's').' — reassign or cancel them first.',
+        );
 
         $suffix = hash('crc32b', (string) now()->getTimestampMs()).'_parsa';
 

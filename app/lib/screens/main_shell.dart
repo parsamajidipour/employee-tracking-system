@@ -23,25 +23,35 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  String? _casesFilter;
 
-  void _goToCases() => setState(() => _index = 1);
+  void _goToCases(String? statusFilter) {
+    setState(() {
+      _casesFilter = statusFilter;
+      _index = 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    final screens = [
-      HomeScreen(
-        authController: widget.authController,
-        trackingServiceController: widget.trackingServiceController,
-        onOpenCases: _goToCases,
-      ),
-      CasesScreen(authController: widget.authController),
-      ProfileScreen(authController: widget.authController),
-    ];
-
     return Scaffold(
-      body: IndexedStack(index: _index, children: screens),
+      body: IndexedStack(
+        index: _index,
+        children: [
+          HomeScreen(
+            authController: widget.authController,
+            trackingServiceController: widget.trackingServiceController,
+            onOpenCases: _goToCases,
+          ),
+          CasesScreen(
+            authController: widget.authController,
+            initialStatusFilter: _casesFilter,
+          ),
+          ProfileScreen(authController: widget.authController),
+        ],
+      ),
       bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
           backgroundColor: colors.surface,
@@ -65,7 +75,10 @@ class _MainShellState extends State<MainShell> {
         child: NavigationBar(
           height: 64,
           selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
+          onDestinationSelected: (i) => setState(() {
+            if (i == 1 && _index != 1) _casesFilter = null;
+            _index = i;
+          }),
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.space_dashboard_outlined),

@@ -4,7 +4,7 @@ const props = withDefaults(
     icon: string
     label: string
     value: string
-    tone?: 'default' | 'dark'
+    tone?: 'default' | 'dark' | 'sunken'
     accent?: 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
   }>(),
   { tone: 'default', accent: 'primary' },
@@ -24,8 +24,12 @@ const accentClasses = computed(() => {
 
 <template>
   <div
-    class="flex items-center gap-3.5 p-4"
-    :class="tone === 'dark' ? 'surface-dark' : 'surface-flat'"
+    class="flex items-center gap-3 p-3.5"
+    :class="{
+      'surface-dark': tone === 'dark',
+      'surface-flat': tone === 'default',
+      'rounded-md bg-surface-sunken': tone === 'sunken',
+    }"
   >
     <span
       class="grid h-10 w-10 flex-none place-items-center rounded-md"

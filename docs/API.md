@@ -37,6 +37,32 @@ is missing on disk.
 
 ### WebSocket channel `positions`
 
+### WebSocket channel `cases`
+
+Private channel, authorised by `capability:view-cases`. Carries
+`case.changed` (`App\Events\CaseChanged`, `ShouldBroadcastNow`) with
+`{action, case_id, case}` — `action` is one of `created`, `assigned`,
+`accepted`, `rejected`, `started`, `completed`, `cancelled`, `deleted`, and
+`case` is a full `CaseResource` snapshot (`null` for `deleted`). Every write
+path in `CaseLifecycleService` plus `CaseController::destroy` emits it, so the
+panel's case list, case detail and workload pages stay current without
+polling or a manual refresh.
+
+### GET /api/v1/notifications
+
+Any authenticated user. `{data: [...], unread_count}` — the 50 most recent
+database notifications for the caller, each `{id, type, message, case_id,
+reference_no, read_at, created_at}`. `type` is the broadcast type
+(`case.created`, `case.assigned`, `case.status-changed`, `schedule.changed`,
+`device.revoked`, `app-release.published`), and `message` is a
+ready-to-display sentence built server-side so the panel and the phone show
+identical wording.
+
+`POST /api/v1/notifications/{id}/read` and
+`POST /api/v1/notifications/read-all` mark them read; both return `204`. The
+same notifications also arrive live on the existing per-user private channel
+`App.Models.User.{id}`.
+
 ### GET /api/v1/employees/{id}/trail
 
 Reads `location_points` for the given calendar day directly — never
@@ -92,10 +118,18 @@ valid, the case's current state just doesn't allow it.
   (database + Reverb broadcast, `CaseCreatedNotification`, event
   `case.created`) regardless of whether it was assigned at creation.
 - `POST /api/v1/cases/{case}/assign` (`manage-cases`) — `{employee_id}`.
-  `409` if the case is not `pending` (already accepted cases cannot be
-  silently reassigned).
+  `422` if the employee is deactivated, soft-deleted, or not an employee —
+  an inactive account is never assignable, and the message says so. `409` if
+  the case is neither `pending` nor `rejected` (an accepted case cannot be
+  silently reassigned; a rejected one is explicitly reassignable, which is
+  what the panel's "Reassign" action does).
 - `POST /api/v1/cases/{case}/cancel` (`manage-cases`) — `{note?}`.
 - `DELETE /api/v1/cases/{case}` (`manage-cases`) — only while still `pending`.
+- `DELETE /api/v1/employees/{employee}` — `409` if the employee still has an
+  open (`pending`/`accepted`/`in_progress`) case assigned; those must be
+  reassigned or cancelled first rather than left pointing at a deleted user.
+- `DELETE /api/v1/employees/{employee}/device` — `409` with a message when
+  there is no active device, instead of the previous silent `204` no-op.
 - `GET /api/v1/workload` — every active employee's case summary
   (active/pending/scheduled/overdue/completed counts) plus today's
   travel/inspection/idle-minute split.

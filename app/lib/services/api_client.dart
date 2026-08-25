@@ -47,6 +47,37 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<String?> authorizeChannel(String socketId, String channelName) async {
+    try {
+      final headers = <String, String>{
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      final token = await storage.token();
+      if (token != null) headers['Authorization'] = 'Bearer $token';
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/broadcasting/auth'),
+            headers: headers,
+            body: jsonEncode({
+              'socket_id': socketId,
+              'channel_name': channelName,
+            }),
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+
+      final decoded = jsonDecode(response.body);
+      return decoded is Map && decoded['auth'] is String
+          ? decoded['auth'] as String
+          : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>> postMultipart(
     String path,
     Map<String, String> fields, {

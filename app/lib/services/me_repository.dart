@@ -13,6 +13,19 @@ class MeRepository {
 
   MeRepository({required this.apiClient, required this.storage});
 
+  Future<({int id, String name})?> fetchIdentity() async {
+    try {
+      final json = await apiClient.getJson('/api/user');
+      final id = (json['id'] as num?)?.toInt();
+      if (id == null) return null;
+      return (id: id, name: (json['name'] as String?) ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<int?> fetchUserId() async => (await fetchIdentity())?.id;
+
   Future<WindowSnapshot> fetchWindow() async {
     try {
       final json = await apiClient.getJson('/api/v1/me/window?date=${formatDateParam(DateTime.now())}');

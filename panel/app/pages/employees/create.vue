@@ -1,11 +1,5 @@
 <script setup lang="ts">
-interface ShiftTemplate {
-  id: number
-  name: string
-  start_time: string
-  end_time: string
-  days_of_week: number[]
-}
+import type { ShiftTemplate } from '~/composables/useShiftTemplates'
 
 const form = reactive({
   name: '',
@@ -16,24 +10,26 @@ const form = reactive({
   shift_template_ids: [] as number[],
 })
 
-const templates = ref<ShiftTemplate[]>([])
-const loadingShifts = ref(true)
+const { data: templatesData, loading: loadingShifts, load: loadTemplates } = useShiftTemplates()
+const templates = computed<ShiftTemplate[]>(() => templatesData.value ?? [])
+
 const error = ref<string | null>(null)
 const submitting = ref(false)
 const toast = useToast()
 const { refresh: refreshEmployees } = useEmployees()
 
-onMounted(async () => {
-  try {
-    templates.value = await apiFetch<ShiftTemplate[]>('/api/v1/shift-templates')
-  } catch {
-    error.value = 'Could not load shifts.'
-  } finally {
-    loadingShifts.value = false
-  }
-})
+const canSubmit = computed(
+  () => form.name.trim() !== '' && form.phone.trim() !== '' && form.email.trim() !== '' && form.password.length >= 8,
+)
+
+onMounted(loadTemplates)
 
 async function submit() {
+  if (!canSubmit.value) {
+    error.value = 'Name, phone, email and a password of at least 8 characters are required.'
+    return
+  }
+
   error.value = null
   submitting.value = true
   try {
@@ -53,6 +49,7 @@ async function submit() {
     await navigateTo('/employees')
   } catch (err) {
     error.value = apiErrorMessage(err, 'Save failed — check the fields (phone and email must be unique, password at least 8 characters).')
+    toast.error(error.value)
   } finally {
     submitting.value = false
   }
@@ -60,32 +57,67 @@ async function submit() {
 </script>
 
 <template>
-  <AppShell title="Add employee" back-to="/employees">
-    <form @submit.prevent="submit" class="surface-flat max-w-2xl space-y-4 p-5">
-      <InlineAlert v-if="error">{{ error }}</InlineAlert>
+  <AppShell title="Add employee" subtitle="Create an account and give it a working schedule" back-to="/employees" full-bleed>
+    <template #actions>
+      <Button variant="secondary" size="sm" to="/employees">Cancel</Button>
+      <Button size="sm" :loading="submitting" @click="submit">
+        {{ submitting ? 'Creating…' : 'Create employee' }}
+      </Button>
+    </template>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <TextInput v-model="form.name" label="Name" required />
-        <TextInput v-model="form.phone" label="Phone" required hint="Used to log in on the mobile app." />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <TextInput v-model="form.email" type="email" label="Email" required hint="Used to log in, and to send the welcome email." />
-        <TextInput v-model="form.password" type="password" label="Password" required :minlength="8" />
-      </div>
+    <form class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5" @submit.prevent="submit">
+      <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 
-      <fieldset class="space-y-2">
-        <legend class="mb-2 text-[13px] font-medium text-ink">Shifts</legend>
-        <ShiftPicker v-model="form.shift_template_ids" :shifts="templates" :loading="loadingShifts" />
-      </fieldset>
+      <div class="grid flex-none grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
+        <Card icon="user-circle" title="Account details" subtitle="How this person signs in on the mobile app">
+          <div class="space-y-3.5">
+            <TextInput v-model="form.name" label="Name" placeholder="e.g. Ahmed Al Saadi" required />
+            <TextInput
+              v-model="form.phone"
+              label="Phone"
+              placeholder="e.g. 92000001"
+              required
+              hint="Used to log in on the mobile app — must be unique."
+            />
+            <TextInput
+              v-model="form.email"
+              type="email"
+              label="Email"
+              placeholder="name@example.com"
+              required
+              hint="Used to log in, and to send the welcome email."
+            />
+            <TextInput
+              v-model="form.password"
+              type="password"
+              label="Password"
+              placeholder="At least 8 characters"
+              required
+              :minlength="8"
+              autocomplete="new-password"
+            />
 
-      <label class="flex w-fit items-center gap-3 text-[13px] font-medium text-ink">
-        <Toggle v-model="form.is_active" />
-        Active
-      </label>
+            <div class="flex items-center justify-between gap-3 rounded-md bg-surface-sunken px-3.5 py-3">
+              <div class="min-w-0">
+                <p class="text-[13px] font-medium text-ink">Active</p>
+                <p class="text-[12px] text-ink-faint">Inactive accounts cannot sign in or be assigned a case.</p>
+              </div>
+              <Toggle v-model="form.is_active" />
+            </div>
+          </div>
+        </Card>
 
-      <div class="flex items-center gap-2 pt-2">
-        <Button type="submit" :loading="submitting">{{ submitting ? 'Creating…' : 'Create employee' }}</Button>
-        <Button variant="secondary" to="/employees">Cancel</Button>
+        <Card
+          icon="calendar"
+          title="Shift assignment"
+          :subtitle="form.shift_template_ids.length ? `${form.shift_template_ids.length} selected` : 'Optional — can be set later'"
+        >
+          <p class="mb-3.5 text-[12.5px] text-ink-soft">
+            Location is only ever recorded inside a selected shift window. Leave every shift unselected and this
+            employee is simply never tracked.
+          </p>
+          <ShiftPicker v-model="form.shift_template_ids" :shifts="templates" :loading="loadingShifts" />
+        </Card>
       </div>
     </form>
   </AppShell>

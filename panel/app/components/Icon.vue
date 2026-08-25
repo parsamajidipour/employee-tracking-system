@@ -31,6 +31,15 @@ const ICONS: Record<string, string> = {
   'chart-bar': 'M4 20V10M10 20V4M16 20v-7M4 20h16',
   camera: 'M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm8 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
   navigation: 'M3 11l18-8-8 18-2.5-7.5L3 11Z',
+  bell: 'M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7M13.7 20a2 2 0 0 1-3.4 0',
+  filter: 'M3 5h18l-7 8v5l-4 2v-7L3 5Z',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13.5V12l3 2',
+  pencil: 'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z',
+  power: 'M12 4v8M7.8 6.8a7 7 0 1 0 8.4 0',
+  check: 'M4.5 12.5 9 17l10.5-10.5',
+  history: 'M3.5 9A9 9 0 1 1 3 12M3.5 4.5V9H8M12 7.5V12l3 2',
+  sparkle: 'M12 3.5 13.8 9l5.7 1.8-5.7 1.8L12 20.5l-1.8-5.9L4.5 12.8 10.2 11 12 3.5Z',
+  x_circle: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 9l6 6M15 9l-6 6',
 }
 
 withDefaults(defineProps<{ name: keyof typeof ICONS | string; spin?: boolean }>(), { spin: false })

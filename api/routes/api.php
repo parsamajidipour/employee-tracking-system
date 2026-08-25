@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\EmployeeHistoryController;
 use App\Http\Controllers\Api\V1\EmployeeShiftController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MyCaseController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PositionController;
 use App\Http\Controllers\Api\V1\ShiftExceptionController;
 use App\Http\Controllers\Api\V1\ShiftTemplateController;
@@ -38,6 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me/window', [MeController::class, 'window']);
         Route::post('/tracking-interruptions/start', [TrackingInterruptionController::class, 'start']);
         Route::post('/tracking-interruptions/stop', [TrackingInterruptionController::class, 'stop']);
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
         Route::get('/me/cases', [MyCaseController::class, 'index']);
         Route::get('/me/cases/unseen-count', [MyCaseController::class, 'unseenCount']);

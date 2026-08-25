@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import '../models/inspection_case.dart';
 import '../services/api_exception.dart';
 import '../state/auth_controller.dart';
+import '../state/live_refresh.dart';
+import '../state/live_updates.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/app_card.dart';
@@ -28,7 +30,8 @@ class CaseDetailScreen extends StatefulWidget {
   State<CaseDetailScreen> createState() => _CaseDetailScreenState();
 }
 
-class _CaseDetailScreenState extends State<CaseDetailScreen> {
+class _CaseDetailScreenState extends State<CaseDetailScreen>
+    with LiveRefresh<CaseDetailScreen> {
   InspectionCase? _inspectionCase;
   String? _error;
   bool _loading = false;
@@ -36,9 +39,24 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
+  LiveUpdates get liveUpdates => widget.authController.liveUpdates;
+
+  @override
+  void onLiveUpdate() {
+    _fetch();
+  }
+
+  @override
   void initState() {
     super.initState();
+    startLiveRefresh();
     _fetch();
+  }
+
+  @override
+  void dispose() {
+    stopLiveRefresh();
+    super.dispose();
   }
 
   Future<void> _fetch() async {
@@ -68,10 +86,32 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     }
   }
 
-  void _showSnack(String message) {
+  void _showSnack(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+    final colors = context.colors;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? colors.danger : null,
+        duration: Duration(seconds: isError ? 6 : 3),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              size: 18,
+              color: Colors.white,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ));
   }
+
+  void _showError(String message) => _showSnack(message, isError: true);
 
   Future<void> _accept() async {
     final date = await showDatePicker(
@@ -109,11 +149,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack(e.message);
+      _showError(e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack('Could not reach the server.');
+      _showError('Could not reach the server. Your change was not saved.');
     }
   }
 
@@ -136,11 +176,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack(e.message);
+      _showError(e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack('Could not reach the server.');
+      _showError('Could not reach the server. Your change was not saved.');
     }
   }
 
@@ -157,11 +197,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack(e.message);
+      _showError(e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack('Could not reach the server.');
+      _showError('Could not reach the server. Your change was not saved.');
     }
   }
 
@@ -184,11 +224,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack(e.message);
+      _showError(e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack('Could not reach the server.');
+      _showError('Could not reach the server. Your change was not saved.');
     }
   }
 
@@ -221,13 +261,28 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   }
 
   Future<void> _capturePhoto() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      _showError('Turn location on before taking a photo — it must be stamped with GPS.');
+      return;
+    }
+
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      _showError('Location permission is required before a photo can be uploaded.');
+      return;
+    }
+
     final photo = await _imagePicker.pickImage(source: ImageSource.camera);
     if (photo == null || !mounted) return;
 
     setState(() => _busy = true);
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
       );
 
       final uploaded = await widget.authController.caseRepository.uploadPhoto(
@@ -248,11 +303,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack(e.message);
+      _showError(e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack('Could not capture the photo. Check location permissions.');
+      _showError('No GPS lock. Turn on location and try again outdoors — the photo was not uploaded.');
     }
   }
 

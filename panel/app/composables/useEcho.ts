@@ -31,3 +31,17 @@ export function createEcho(): Echo<'reverb'> {
     },
   })
 }
+
+let shared: Echo<'reverb'> | null = null
+
+export function sharedEcho(): Echo<'reverb'> | null {
+  if (shared) return shared
+
+  try {
+    shared = createEcho()
+  } catch {
+    shared = null
+  }
+
+  return shared
+}

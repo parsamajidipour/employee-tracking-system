@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
+use App\Notifications\CaseAssignedNotification;
 use App\Services\CaseLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -64,7 +65,10 @@ class CaseControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('assigned_to', $employee->id);
         $this->assertDatabaseHas('case_status_events', ['inspection_case_id' => $case->id]);
-        $this->assertDatabaseCount('notifications', 1);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $employee->id,
+            'type' => CaseAssignedNotification::class,
+        ]);
     }
 
     public function test_reassigning_a_still_pending_case_logs_a_reassignment_note_without_a_fake_status_transition(): void
@@ -189,5 +193,52 @@ class CaseControllerTest extends TestCase
 
         $response->assertStatus(409);
         $this->assertDatabaseHas('inspection_cases', ['id' => $case->id]);
+    }
+
+    public function test_assigning_to_a_deactivated_employee_is_refused_with_a_message(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create(['is_active' => false]);
+
+        $case = app(CaseLifecycleService::class)->create([
+            'reference_no' => 'INS-105',
+            'title' => 'Warehouse valuation',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+
+        $this->actingAs($admin);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employee->id]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('employee_id');
+    }
+
+    public function test_a_rejected_case_can_be_reassigned(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employeeA = User::factory()->create();
+        $employeeB = User::factory()->create();
+
+        $lifecycle = app(CaseLifecycleService::class);
+        $case = $lifecycle->create([
+            'reference_no' => 'INS-106',
+            'title' => 'Office valuation',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+        $case = $lifecycle->assign($case, $employeeA, $admin);
+        $lifecycle->reject($case, $employeeA, 'Too far.');
+
+        $this->actingAs($admin);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employeeB->id]);
+
+        $response->assertOk();
+        $response->assertJsonPath('status', 'pending');
+        $response->assertJsonPath('assigned_to', $employeeB->id);
     }
 }

@@ -21,6 +21,26 @@ String formatDateTime(DateTime dateTime) {
   return '$dd/$mo ${formatTime(local)}';
 }
 
+String formatDuration(Duration duration) {
+  if (duration.isNegative || duration.inMinutes < 1) return 'less than a minute';
+  if (duration.inMinutes < 60) return '${duration.inMinutes} min';
+
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes % 60;
+  if (hours < 24) {
+    return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
+  }
+
+  return '${duration.inDays}d';
+}
+
+String formatCountdown(DateTime dateTime, {DateTime? now}) {
+  final reference = now ?? DateTime.now();
+  final diff = dateTime.difference(reference);
+  if (diff.isNegative) return 'now';
+  return 'in ${formatDuration(diff)}';
+}
+
 String formatRelative(DateTime dateTime, {DateTime? now}) {
   final reference = now ?? DateTime.now();
   final diff = reference.difference(dateTime);

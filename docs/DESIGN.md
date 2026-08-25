@@ -180,6 +180,25 @@ in `tokens.css`).
   instead of the standard `lg` tablet/desktop line above.
 - Every loading state is a `Skeleton`, never a bare "Loading…" string. Every empty
   state is an `EmptyState` (icon + message), never a bare paragraph.
+- Every text input carries a `placeholder` showing a realistic example value, not
+  a restatement of its label.
+- A page fills the viewport. `AppShell`'s `full-bleed` plus an inner
+  `flex h-full min-h-0 flex-col` is the default: fixed toolbars and stat rows at
+  the top, and the list/table region scrolls inside its own card. A short block
+  of content floating in a sea of background is a layout bug, not a small page.
+- Every card or section has a header. `Card.vue` is the one component for this —
+  `icon` + `title` + `subtitle` on a hairline-separated header row, optional
+  `#actions` and `#footer`, `flush` when the body is a table that should reach
+  the card's edges. It nests nothing: a `Card` never goes inside another `Card`
+  or inside a `.surface` drawer (§8 rule 7) — group with `surfaceSunken` or a
+  hairline rule there instead. `StatCard`'s `tone="sunken"` exists for exactly
+  that case.
+- Row actions beyond the one or two primary links collapse into a `Popover` +
+  `MenuItem` kebab menu rather than a row of six text buttons.
+- Floating panels — row menus, the notification inbox, the shifts popover — all
+  use `Popover.vue`: teleported to `body`, flipped when it would overflow the
+  viewport, dismissed on outside click, Escape, resize or scroll. Do not
+  hand-roll a second one.
 
 ## 8. Harmony rules
 

@@ -27,8 +27,11 @@ JDK_DOS='E:\Android\jdk-17.0.20+8'
 SDK_DOS='E:\Android\sdk'
 
 API_BASE="${API_SCHEME}://${API_HOST}:${API_PORT}"
+REVERB_KEY="$(read_env REVERB_APP_KEY)"
+REVERB_PUBLIC_PORT="$(read_env REVERB_PORT)"
 
 echo "==> API base baked into the APK: $API_BASE"
+echo "==> Reverb websocket baked into the APK: ${API_HOST}:${REVERB_PUBLIC_PORT}"
 
 python3 - "$APP" "$API_HOST" <<'PY'
 import sys, pathlib
@@ -71,7 +74,7 @@ set ANDROID_SDK_ROOT=$SDK_DOS
 set JAVA_HOME=$JDK_DOS
 cd /d $WIN_COPY_DOS
 call $FLUTTER_DOS pub get
-call $FLUTTER_DOS build apk --release --dart-define=API_BASE_URL=$API_BASE --target-platform android-arm,android-arm64
+call $FLUTTER_DOS build apk --release --dart-define=API_BASE_URL=$API_BASE --dart-define=REVERB_APP_KEY=$REVERB_KEY --dart-define=REVERB_PORT=$REVERB_PUBLIC_PORT --target-platform android-arm,android-arm64
 echo BUILD_EXIT=%ERRORLEVEL%
 EOF
 

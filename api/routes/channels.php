@@ -11,3 +11,7 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('positions', function ($user) {
     return EnsureCapability::passes($user, Capability::ViewLocations);
 });
+
+Broadcast::channel('cases', function ($user) {
+    return EnsureCapability::passes($user, Capability::ViewCases);
+});

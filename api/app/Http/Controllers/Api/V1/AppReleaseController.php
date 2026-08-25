@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAppReleaseRequest;
 use App\Http\Resources\AppReleaseResource;
 use App\Models\AppRelease;
+use App\Notifications\AppReleasePublishedNotification;
+use App\Services\NotificationAudience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -39,7 +42,7 @@ class AppReleaseController extends Controller
         return AppReleaseResource::make($release)->response();
     }
 
-    public function store(StoreAppReleaseRequest $request): JsonResponse
+    public function store(StoreAppReleaseRequest $request, NotificationAudience $audience): JsonResponse
     {
         $apk = $request->file('apk');
         $path = $apk->storeAs('releases', "app-v{$request->validated('version_code')}.apk", 'local');
@@ -54,6 +57,12 @@ class AppReleaseController extends Controller
         ]);
 
         Cache::forget(self::LATEST_CACHE_KEY);
+
+        $employees = $audience->activeEmployees();
+
+        if ($employees->isNotEmpty()) {
+            Notification::send($employees, new AppReleasePublishedNotification($release));
+        }
 
         return AppReleaseResource::make($release)->response()->setStatusCode(201);
     }

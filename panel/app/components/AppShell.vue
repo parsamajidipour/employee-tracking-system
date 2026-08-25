@@ -33,8 +33,10 @@ const { open } = useSidebar()
         <p v-if="subtitle" class="muted truncate text-[11px] sm:text-[12.5px]">{{ subtitle }}</p>
       </div>
     </div>
-    <div v-if="$slots.actions" class="flex flex-none items-center gap-1.5 sm:gap-2.5">
+    <div class="flex flex-none items-center gap-1.5 sm:gap-2.5">
       <slot name="actions" />
+      <span class="mx-0.5 hidden h-6 w-px bg-hairline sm:block" />
+      <NotificationBell />
     </div>
   </header>
 

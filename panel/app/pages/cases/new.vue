@@ -17,6 +17,10 @@ const form = reactive({
   notes: '',
 })
 
+const hasLocation = computed(() => form.lat !== null && form.lng !== null)
+
+const canSubmit = computed(() => form.reference_no.trim() !== '' && form.title.trim() !== '' && hasLocation.value)
+
 function setLat(value: number) {
   form.lat = value
 }
@@ -26,7 +30,7 @@ function setLng(value: number) {
 }
 
 async function submit() {
-  if (!form.reference_no || !form.title || form.lat === null || form.lng === null) {
+  if (!canSubmit.value) {
     formError.value = 'Reference, title, and a property location on the map are required.'
     return
   }
@@ -38,8 +42,8 @@ async function submit() {
       reference_no: form.reference_no,
       title: form.title,
       property_address: form.property_address || undefined,
-      lat: form.lat,
-      lng: form.lng,
+      lat: form.lat as number,
+      lng: form.lng as number,
       priority: form.priority,
       notes: form.notes || undefined,
     }
@@ -48,6 +52,7 @@ async function submit() {
     await navigateTo(`/cases/${created.id}`)
   } catch (err) {
     formError.value = apiErrorMessage(err, 'Could not create case — check the fields.')
+    toast.error(formError.value)
   } finally {
     submitting.value = false
   }
@@ -57,53 +62,69 @@ async function submit() {
 <template>
   <AppShell title="New case" subtitle="Create an inspection case" back-to="/cases" full-bleed>
     <template #actions>
-      <Button variant="secondary" @click="navigateTo('/cases')">Cancel</Button>
-      <Button :loading="submitting" @click="submit">{{ submitting ? 'Creating…' : 'Create case' }}</Button>
+      <Button variant="secondary" size="sm" to="/cases">Cancel</Button>
+      <Button size="sm" :loading="submitting" @click="submit">
+        {{ submitting ? 'Creating…' : 'Create case' }}
+      </Button>
     </template>
 
-    <div class="grid h-full grid-cols-1 gap-5 overflow-y-auto p-6 sm:p-7 lg:grid-cols-[minmax(0,420px)_1fr] lg:overflow-hidden">
+    <div class="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
       <div class="flex min-h-0 flex-col gap-4 lg:overflow-y-auto lg:pr-1">
-        <InlineAlert v-if="formError">{{ formError }}</InlineAlert>
+        <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>
 
-        <section class="surface-flat p-5">
-          <header class="mb-3.5 flex items-center justify-between">
-            <h2>Case details</h2>
-          </header>
+        <Card class="flex-none" icon="briefcase" title="Case details" subtitle="What is being inspected, and how urgently">
           <form class="space-y-3.5" @submit.prevent="submit">
             <TextInput v-model="form.reference_no" label="Reference no." placeholder="e.g. INS-1042" required />
             <TextInput v-model="form.title" label="Title" placeholder="e.g. Villa valuation" required />
             <TextInput v-model="form.property_address" label="Property address" placeholder="e.g. Al Seeb, Muscat" />
 
             <Select v-model="form.priority" label="Priority">
-              <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">{{ casePriorityLabel(priority) }}</option>
+              <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">
+                {{ casePriorityLabel(priority) }}
+              </option>
             </Select>
 
             <div>
-              <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">Notes</label>
+              <label for="case-notes" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Notes</label>
               <textarea
+                id="case-notes"
                 v-model="form.notes"
                 rows="4"
                 placeholder="Anything a surveyor should know before accepting this case"
-                class="field h-auto py-2.5"
+                class="field h-auto resize-none py-2.5"
               />
             </div>
           </form>
-        </section>
+        </Card>
 
-        <section class="surface-flat flex items-start gap-3 p-4">
-          <span class="grid h-9 w-9 flex-none place-items-center rounded-md bg-primary-soft text-primary-strong">
-            <Icon name="user-circle" class="h-4.5 w-4.5" />
-          </span>
-          <p class="text-[12.5px] text-ink-soft">
-            Assigning to a surveyor happens on the case page after it's created — it's not part of this step.
-            Every active employee is notified this case exists as soon as it's created.
-          </p>
-        </section>
+        <Card class="flex-none" icon="user-circle" title="What happens next">
+          <ol class="space-y-2.5 text-[12.5px] text-ink-soft">
+            <li class="flex gap-2.5">
+              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">1</span>
+              Every active employee is notified that this case exists as soon as it is created.
+            </li>
+            <li class="flex gap-2.5">
+              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">2</span>
+              You assign it to a surveyor on the case page — nearest on-shift surveyors are ranked for you there.
+            </li>
+            <li class="flex gap-2.5">
+              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">3</span>
+              The surveyor accepts and schedules it, and the case page updates here live.
+            </li>
+          </ol>
+        </Card>
       </div>
 
-      <div class="min-h-[420px] lg:h-full">
-        <LocationPicker :lat="form.lat" :lng="form.lng" @update:lat="setLat" @update:lng="setLng" />
-      </div>
+      <Card icon="map-pin" title="Property location" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
+        <template #actions>
+          <Badge :variant="hasLocation ? 'success' : 'warning'">
+            {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : 'Not set' }}
+          </Badge>
+        </template>
+        <div class="h-full min-h-[420px]">
+          <LocationPicker :lat="form.lat" :lng="form.lng" @update:lat="setLat" @update:lng="setLng" />
+        </div>
+      </Card>
     </div>
   </AppShell>
 </template>

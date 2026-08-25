@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\CaseStatus;
+use App\Events\CaseChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssignCaseRequest;
 use App\Http\Requests\CaseNoteRequest;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Notifications\CaseCreatedNotification;
 use App\Services\CaseAssignmentService;
 use App\Services\CaseLifecycleService;
+use App\Services\NotificationAudience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -47,15 +49,19 @@ class CaseController extends Controller
         );
     }
 
-    public function store(StoreCaseRequest $request, CaseLifecycleService $lifecycle): JsonResponse
+    public function store(StoreCaseRequest $request, CaseLifecycleService $lifecycle, NotificationAudience $audience): JsonResponse
     {
         $case = $lifecycle->create($request->validated(), $request->user());
 
         if ($request->filled('assigned_to')) {
-            $lifecycle->assign($case, User::findOrFail($request->integer('assigned_to')), $request->user());
+            try {
+                $lifecycle->assign($case, User::findOrFail($request->integer('assigned_to')), $request->user());
+            } catch (LogicException $e) {
+                return response()->json(['message' => $e->getMessage()], 409);
+            }
         }
 
-        $employees = User::query()->employees()->active()->get();
+        $employees = $audience->activeEmployees();
 
         if ($employees->isNotEmpty()) {
             Notification::send($employees, new CaseCreatedNotification($case));
@@ -73,12 +79,13 @@ class CaseController extends Controller
 
     public function assign(AssignCaseRequest $request, InspectionCase $case, CaseLifecycleService $lifecycle): CaseResource|JsonResponse
     {
-        if ($case->status !== CaseStatus::Pending) {
-            return response()->json(['message' => 'Only a pending, unaccepted case can be assigned or reassigned.'], 409);
-        }
-
         $employee = User::query()->employees()->findOrFail($request->validated('employee_id'));
-        $case = $lifecycle->assign($case, $employee, $request->user());
+
+        try {
+            $case = $lifecycle->assign($case, $employee, $request->user());
+        } catch (LogicException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
 
         return CaseResource::make(InspectionCase::query()->withLatLng()->with('assignee')->findOrFail($case->id));
     }
@@ -98,7 +105,10 @@ class CaseController extends Controller
     {
         abort_if($case->status !== CaseStatus::Pending, 409, 'Only unaccepted, unassigned cases can be deleted.');
 
+        $caseId = $case->id;
         $case->delete();
+
+        event(CaseChanged::deleted($caseId));
 
         return response()->noContent();
     }

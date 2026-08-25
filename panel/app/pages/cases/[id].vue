@@ -137,6 +137,19 @@ function clockLabel(value: string | null): string {
   return value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
 }
 
+useCaseStream((payload) => {
+  if (payload.case_id !== caseId) return
+
+  if (payload.action === 'deleted') {
+    toast.error('This case was deleted by someone else.')
+    navigateTo('/cases')
+    return
+  }
+
+  load()
+  loadNearest()
+})
+
 onMounted(() => {
   loadEmployees()
   loadWorkload()
@@ -162,20 +175,13 @@ onMounted(() => {
     <InlineAlert v-else-if="error" class="m-6">{{ error }}</InlineAlert>
 
     <div v-else-if="item" class="flex h-full flex-col overflow-hidden">
-      <div class="grid flex-none grid-cols-2 gap-3 border-b border-hairline p-4 sm:grid-cols-4 sm:gap-3.5 sm:p-5">
-        <StatCard icon="user-circle" label="Assignee" :value="item.assignee_name ?? 'Unassigned'" accent="primary" />
-        <StatCard icon="calendar" label="Assigned" :value="timeLabel(item.assigned_at)" accent="neutral" />
-        <StatCard icon="check-circle" label="Accepted" :value="timeLabel(item.accepted_at)" accent="success" />
-        <StatCard icon="briefcase" label="Completed" :value="timeLabel(item.completed_at)" accent="neutral" />
-      </div>
-
       <div class="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-hidden p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div class="flex min-h-0 flex-col gap-5 overflow-y-auto pr-0.5 lg:pr-1">
           <section class="surface-flat p-5">
             <header class="mb-3.5 flex items-center justify-between gap-2">
               <h2>Overview</h2>
               <div class="flex items-center gap-2">
-                <Badge :variant="caseStatusVariant(item.status)">{{ caseStatusLabel(item.status) }}</Badge>
+                <Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge>
                 <Badge :variant="casePriorityVariant(item.priority)">{{ casePriorityLabel(item.priority) }} priority</Badge>
               </div>
             </header>
@@ -195,7 +201,7 @@ onMounted(() => {
               <Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge>
             </header>
 
-            <dl v-if="!hasAccepted" class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
+            <dl v-if="!hasAccepted" class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-3">
               <div>
                 <dt class="eyebrow mb-1">Assigned Surveyor</dt>
                 <dd class="text-ink">{{ item.assignee_name ?? '—' }}</dd>
@@ -205,23 +211,15 @@ onMounted(() => {
                 <dd class="tabular text-ink-soft">{{ timeLabel(item.assigned_at) }}</dd>
               </div>
               <div>
-                <dt class="eyebrow mb-1">Assignment Status</dt>
-                <dd><Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge></dd>
-              </div>
-              <div>
                 <dt class="eyebrow mb-1">Planned Inspection</dt>
                 <dd class="text-ink-soft">Not set yet</dd>
               </div>
             </dl>
 
-            <dl v-else class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
+            <dl v-else class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-3">
               <div>
                 <dt class="eyebrow mb-1">Assigned Surveyor</dt>
                 <dd class="text-ink">{{ item.assignee_name ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">Assignment Status</dt>
-                <dd><Badge :variant="assignment!.variant">{{ assignment!.label }}</Badge></dd>
               </div>
               <div>
                 <dt class="eyebrow mb-1">Inspection Date</dt>
@@ -230,10 +228,6 @@ onMounted(() => {
               <div>
                 <dt class="eyebrow mb-1">Inspection Time</dt>
                 <dd class="tabular text-ink-soft">{{ clockLabel(item.planned_at) }}</dd>
-              </div>
-              <div class="col-span-2 sm:col-span-4">
-                <dt class="eyebrow mb-1">Case Status</dt>
-                <dd><Badge :variant="caseStatusVariant(item.status)">{{ caseStatusLabel(item.status) }}</Badge></dd>
               </div>
             </dl>
           </section>
@@ -245,23 +239,18 @@ onMounted(() => {
               <li v-for="event in item.status_events" :key="event.id" class="flex items-start gap-3 border-b border-hairline pb-3.5 last:border-0 last:pb-0">
                 <span class="mt-1 h-2 w-2 flex-none rounded-full bg-primary"></span>
                 <div class="min-w-0">
-                  <p class="text-[13.5px] text-ink">
+                  <p v-if="event.from_status && event.from_status !== event.to_status" class="text-[13.5px] text-ink">
                     <span class="font-medium">{{ event.actor_name ?? 'System' }}</span>
-                    <template v-if="event.from_status && event.from_status !== event.to_status">
-                      moved this from
-                      <Badge :variant="caseStatusVariant(event.from_status)">{{ caseStatusLabel(event.from_status) }}</Badge>
-                      to
-                      <Badge :variant="caseStatusVariant(event.to_status)">{{ caseStatusLabel(event.to_status) }}</Badge>
-                    </template>
-                    <template v-else-if="!event.from_status">
-                      set this to
-                      <Badge :variant="caseStatusVariant(event.to_status)">{{ caseStatusLabel(event.to_status) }}</Badge>
-                    </template>
-                    <template v-else>
-                      updated this case
-                    </template>
+                    moved this from
+                    <Badge :variant="caseStatusVariant(event.from_status)">{{ caseStatusLabel(event.from_status) }}</Badge>
+                    to
+                    <Badge :variant="caseStatusVariant(event.to_status)">{{ caseStatusLabel(event.to_status) }}</Badge>
                   </p>
-                  <p v-if="event.note" class="mt-1 text-[13px] text-ink-soft">{{ event.note }}</p>
+                  <p v-else class="text-[13.5px] text-ink">
+                    <span class="font-medium">{{ event.actor_name ?? 'System' }}</span>
+                    {{ ' ' }}{{ event.note || 'updated this case' }}
+                  </p>
+                  <p v-if="event.note && event.from_status && event.from_status !== event.to_status" class="mt-1 text-[13px] text-ink-soft">{{ event.note }}</p>
                   <p class="mt-1 text-[12px] tabular text-ink-faint">{{ timeLabel(event.created_at) }}</p>
                 </div>
               </li>
@@ -339,7 +328,7 @@ onMounted(() => {
             <template v-else>
               <EmptyState
                 icon="briefcase"
-                :message="`Case is ${caseStatusLabel(item.status).toLowerCase()} — assignment is only available while pending or just rejected.`"
+                :message="`Case is ${assignment?.label.toLowerCase() ?? caseStatusLabel(item.status).toLowerCase()} — assignment is only available while pending or just rejected.`"
               />
               <dl v-if="item.assignee_name" class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-hairline pt-4 text-[13px]">
                 <div>

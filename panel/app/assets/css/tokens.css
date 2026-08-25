@@ -143,6 +143,7 @@
   .pill {
     display: inline-flex;
     align-items: center;
+    white-space: nowrap;
     gap: 6px;
     padding: 6px 12px;
     border-radius: var(--radius-pill);

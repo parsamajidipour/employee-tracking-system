@@ -292,14 +292,15 @@ class EmployeeControllerTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
-    public function test_revoke_device_is_a_no_op_when_there_is_no_active_device(): void
+    public function test_revoke_device_is_refused_with_a_message_when_there_is_no_active_device(): void
     {
         $this->actingAs(User::factory()->hr()->create());
         $employee = User::factory()->create();
 
         $response = $this->deleteJson("/api/v1/employees/{$employee->id}/device");
 
-        $response->assertNoContent();
+        $response->assertStatus(409);
+        $response->assertJsonPath('message', 'This employee has no active device to revoke.');
     }
 
     public function test_destroy_soft_deletes_the_employee_and_removes_it_from_the_index(): void

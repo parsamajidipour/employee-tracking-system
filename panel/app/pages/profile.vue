@@ -15,6 +15,26 @@ const passwordForm = reactive({
   password_confirmation: '',
 })
 
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Administrator',
+  hr: 'HR',
+  supervisor: 'Supervisor',
+  employee: 'Employee',
+}
+
+const roleLabel = computed(() => (user.value ? ROLE_LABEL[user.value.role] ?? user.value.role : '—'))
+
+const infoDirty = computed(
+  () => !!user.value && (infoForm.name !== user.value.name || infoForm.email !== user.value.email),
+)
+
+const passwordReady = computed(
+  () =>
+    passwordForm.current_password !== '' &&
+    passwordForm.password.length >= 10 &&
+    passwordForm.password === passwordForm.password_confirmation,
+)
+
 watchEffect(() => {
   if (!user.value) return
   infoForm.name = user.value.name
@@ -42,12 +62,18 @@ async function submitInfo() {
     toast.success('Profile updated.')
   } catch (err) {
     infoError.value = apiErrorMessage(err, 'Update failed. Check the email address and try again.')
+    toast.error(infoError.value)
   } finally {
     infoSaving.value = false
   }
 }
 
 async function submitPassword() {
+  if (passwordForm.password !== passwordForm.password_confirmation) {
+    passwordError.value = 'The new password and its confirmation do not match.'
+    return
+  }
+
   passwordSaving.value = true
   passwordError.value = null
   try {
@@ -65,16 +91,25 @@ async function submitPassword() {
     toast.success('Password changed.')
   } catch (err) {
     passwordError.value = apiErrorMessage(err, 'Change failed. Check the current password and password requirements.')
+    toast.error(passwordError.value)
   } finally {
     passwordSaving.value = false
   }
+}
+
+async function signOut() {
+  try {
+    await apiFetch('/api/logout', { method: 'POST' })
+  } catch {
+  }
+  await navigateTo('/login')
 }
 
 onMounted(refreshProfile)
 </script>
 
 <template>
-  <AppShell title="Admin profile">
+  <AppShell title="Admin profile" subtitle="Your account details and sign-in credentials" full-bleed>
     <template #actions>
       <Button variant="secondary" size="sm" :disabled="refreshing" @click="refreshProfile">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="refreshing" />
@@ -82,33 +117,104 @@ onMounted(refreshProfile)
       </Button>
     </template>
 
-    <div class="grid gap-5 lg:grid-cols-2 lg:items-start">
-      <form class="surface-flat space-y-4 p-5" @submit.prevent="submitInfo">
-        <div>
-          <h2 class="text-[15px] font-semibold text-ink">Profile</h2>
-          <p class="mt-0.5 text-[12.5px] text-ink-faint">Your name and email address.</p>
-        </div>
+    <div class="h-full min-h-0 overflow-y-auto p-4 sm:p-5">
+      <div class="mx-auto grid max-w-5xl grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <Card class="lg:col-span-2" icon="user-circle" title="Signed in as" :subtitle="user?.email ?? 'Loading…'">
+          <template #actions>
+            <Button variant="secondary" size="sm" @click="signOut">Sign out</Button>
+          </template>
 
-        <InlineAlert v-if="infoError">{{ infoError }}</InlineAlert>
-        <TextInput v-model="infoForm.name" label="Name" required autocomplete="name" />
-        <TextInput v-model="infoForm.email" type="email" label="Email" required autocomplete="email" />
+          <div class="flex flex-wrap items-center gap-4">
+            <Avatar :name="user?.name ?? '?'" size="lg" />
+            <dl class="grid flex-1 grid-cols-2 gap-x-5 gap-y-3 text-[13px] sm:grid-cols-3">
+              <div>
+                <dt class="eyebrow mb-1">Name</dt>
+                <dd class="truncate text-ink">{{ user?.name ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow mb-1">Email</dt>
+                <dd class="truncate text-ink">{{ user?.email ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow mb-1">Role</dt>
+                <dd><Badge variant="success">{{ roleLabel }}</Badge></dd>
+              </div>
+            </dl>
+          </div>
+        </Card>
 
-        <Button type="submit" :loading="infoSaving">{{ infoSaving ? 'Saving…' : 'Save profile' }}</Button>
-      </form>
+        <Card icon="pencil" title="Profile details" subtitle="Shown across the panel and on audit entries">
+          <form class="space-y-3.5" @submit.prevent="submitInfo">
+            <InlineAlert v-if="infoError" class="!mb-0">{{ infoError }}</InlineAlert>
 
-      <form class="surface-flat space-y-4 p-5" @submit.prevent="submitPassword">
-        <div>
-          <h2 class="text-[15px] font-semibold text-ink">Change password</h2>
-          <p class="mt-0.5 text-[12.5px] text-ink-faint">Choose a new password for your admin account.</p>
-        </div>
+            <TextInput
+              v-model="infoForm.name"
+              label="Name"
+              placeholder="Your full name"
+              required
+              autocomplete="name"
+            />
+            <TextInput
+              v-model="infoForm.email"
+              type="email"
+              label="Email"
+              placeholder="you@example.com"
+              required
+              autocomplete="email"
+              hint="You sign in with this address."
+            />
 
-        <InlineAlert v-if="passwordError">{{ passwordError }}</InlineAlert>
-        <TextInput v-model="passwordForm.current_password" type="password" label="Current password" required autocomplete="current-password" />
-        <TextInput v-model="passwordForm.password" type="password" label="New password" required :minlength="10" autocomplete="new-password" />
-        <TextInput v-model="passwordForm.password_confirmation" type="password" label="Confirm new password" required :minlength="10" autocomplete="new-password" />
+            <div class="flex items-center gap-2 border-t border-hairline pt-3.5">
+              <Button type="submit" :disabled="!infoDirty" :loading="infoSaving">
+                {{ infoSaving ? 'Saving…' : 'Save profile' }}
+              </Button>
+              <span v-if="!infoDirty" class="text-[12px] text-ink-faint">No changes to save.</span>
+            </div>
+          </form>
+        </Card>
 
-        <Button type="submit" :loading="passwordSaving">{{ passwordSaving ? 'Changing…' : 'Change password' }}</Button>
-      </form>
+        <Card icon="lock" title="Change password" subtitle="Signs out every other session using this account">
+          <form class="space-y-3.5" @submit.prevent="submitPassword">
+            <InlineAlert v-if="passwordError" class="!mb-0">{{ passwordError }}</InlineAlert>
+
+            <TextInput
+              v-model="passwordForm.current_password"
+              type="password"
+              label="Current password"
+              placeholder="Your password right now"
+              required
+              autocomplete="current-password"
+            />
+            <TextInput
+              v-model="passwordForm.password"
+              type="password"
+              label="New password"
+              placeholder="At least 10 characters"
+              required
+              :minlength="10"
+              autocomplete="new-password"
+            />
+            <TextInput
+              v-model="passwordForm.password_confirmation"
+              type="password"
+              label="Confirm new password"
+              placeholder="Repeat the new password"
+              required
+              :minlength="10"
+              autocomplete="new-password"
+              :error="passwordForm.password_confirmation !== '' && passwordForm.password !== passwordForm.password_confirmation
+                ? 'These two passwords do not match.'
+                : null"
+            />
+
+            <div class="flex items-center gap-2 border-t border-hairline pt-3.5">
+              <Button type="submit" :disabled="!passwordReady" :loading="passwordSaving">
+                {{ passwordSaving ? 'Changing…' : 'Change password' }}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
     </div>
   </AppShell>
 </template>

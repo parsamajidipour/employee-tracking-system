@@ -781,3 +781,120 @@ here rather than silently accepted as equivalent.
   (Flutter 3.47 wants Gradle ≥8.14, the project pins 8.10.2 for the same
   reason above) — a flag, not a file change, so it leaves nothing pinned
   incorrectly for a build from a properly-matched toolchain.
+- The Flutter app subscribes to Reverb directly over a raw WebSocket rather
+  than through a Pusher client SDK. `app/pubspec.yaml` gained one dependency,
+  `web_socket_channel` (Dart team, pure Dart, no platform channels).
+  `pusher_channels_flutter` was the obvious alternative and was rejected: it
+  drags in the native Android Pusher SDK for a protocol surface this app uses
+  almost none of. Everything the mobile client needs is four frames —
+  `pusher:connection_established`, `pusher:subscribe`,
+  `pusher:ping`/`pusher:pong` — implemented in
+  `app/lib/services/realtime_client.dart` with capped-backoff reconnect and a
+  45s activity timeout. The notifications broadcast on
+  `PrivateChannel('App.Models.User.{id}')`, so the client subscribes to
+  `private-App.Models.User.{id}` and signs it through
+  `POST /broadcasting/auth` with its Sanctum bearer token
+  (`ApiClient.authorizeChannel`) — the same route the panel's Echo client
+  uses, no second auth path.
+- The websocket endpoint is derived, not configured twice: `app/lib/config.dart`
+  takes the host from `API_BASE_URL` and pairs it with `REVERB_APP_KEY` and
+  `REVERB_PORT` dart-defines, which `scripts/build-apk.sh` reads out of the
+  root `.env` alongside the API base it already baked in. The app key has no
+  default in tracked source — with it absent the client simply never connects
+  and the app falls back to its 45s poll, so a build that forgot the flag
+  degrades instead of pointing at a stale hard-coded key.
+- The mobile inbox is the server's, not a local mirror. A websocket frame is
+  treated purely as an invalidation signal: `LiveUpdates` refetches
+  `GET /api/v1/notifications` and re-renders from that, rather than trying to
+  reconstruct a notification from the broadcast payload. Read state therefore
+  lives in one place (`read_at` on the database notification), so opening the
+  notifications screen on the phone clears the same badge the panel shows. A
+  heads-up Android notification is raised only for unread ids the client has
+  not announced before, which keeps the 45s offline poll from re-announcing
+  the same backlog.
+
+## Panel real-time: one `cases` channel, not a notification-shaped one
+
+**Decision.** Panel-visible case state syncs over a dedicated private
+broadcast channel, `cases`, carrying a single `case.changed` event
+(`App\Events\CaseChanged`) with the full `CaseResource` snapshot and an
+`action` verb. Every write path in `CaseLifecycleService` — create, assign,
+accept, reject, start, complete, cancel — plus `CaseController::destroy`
+emits it. The cases list, the case detail page and the workload page all
+subscribe through one composable, `useCaseStream`, and refetch. The 45s
+`setInterval` in the old `useCaseAssignmentAlerts` is gone, and that
+composable with it.
+
+**Why.** Notifications are per-recipient and per-user-channel; "another admin
+just reassigned this case" is not a notification to anybody in particular, it
+is a fact about shared state that every viewer of that screen needs. Trying
+to drive screen sync off `App.Models.User.{id}` notifications meant the only
+admin who saw a change live was the one it was addressed to, which is why a
+poll had to sit behind it. Splitting the two — a broadcast channel for shared
+state, per-user notifications for "you should know about this" — removes the
+poll entirely and gives one obvious place to hook any future live panel view.
+Authorisation reuses the existing `EnsureCapability::passes` helper the
+`positions` channel already uses (`capability:view-cases`), so there is no
+second auth path, and `sharedEcho()` keeps the bell, the case stream and any
+future subscriber on one socket instead of one connection per composable.
+The live map's `usePositions` deliberately still opens its own connection —
+it was left untouched.
+
+## Notification inbox is the server's, and its wording is built server-side
+
+**Decision.** `GET /api/v1/notifications` returns the caller's own database
+notifications with a pre-rendered `message` string, and the panel bell
+(`NotificationBell.vue`) and the Flutter inbox both render that string rather
+than reconstructing a sentence from the payload. New notifications:
+`CaseStatusChangedNotification` (accept/reject/start/complete/cancel, to
+admins and supervisors, and to the assignee when management cancels),
+`ScheduleChangedNotification`, `DeviceRevokedNotification`,
+`AppReleasePublishedNotification`. The two pre-existing case notifications
+were moved onto the same `BroadcastsToInbox` trait and given the same
+`type` + `message` shape.
+
+**Why.** Two clients rendering the same event must not drift in wording, and
+the phone has no business re-deriving "Ahmed Al Saadi accepted INS-1042" from
+a status enum. One sentence, built once, in the notification class. It also
+fixed a live bug: `CaseAssignedNotification::broadcastOn()` returned a public
+`Channel`, so it broadcast to `App.Models.User.{id}` while the panel listened
+on `private-App.Models.User.{id}` — the toast it was supposed to raise never
+fired, and the 45s poll was silently doing all the work. It is a
+`PrivateChannel` now.
+
+## Assignment refuses a deactivated employee instead of accepting it
+
+**Decision.** `AssignCaseRequest` (and `StoreCaseRequest`'s optional
+`assigned_to`) validate the target with
+`Rule::exists(...)->where('role','employee')->where('is_active',true)->whereNull('deleted_at')`
+and a written-out message, so assigning to a deactivated account is a `422`
+naming the reason. `CaseLifecycleService::guardAssignable()` re-checks it and
+the case's own status, so the rule holds for any caller of the service, not
+just that one HTTP route. In the same pass: assigning is now allowed from
+`rejected` as well as `pending` (the panel already offered "Reassign" on a
+rejected case and the backend was 409-ing it), deleting an employee with open
+cases is refused, and revoking a device that does not exist is a `409` with a
+message rather than a silent `204`.
+
+**Why.** Deactivating an account revokes its tokens in the same request — an
+account that cannot sign in cannot accept a case, so assigning one is not a
+minor validation gap, it is work quietly routed into a black hole. The
+general rule this establishes: a write that cannot achieve its stated effect
+must say so, and the panel must surface that message. Every panel write path
+now runs its failure through `apiErrorMessage()` into a toast or an inline
+alert rather than a generic fallback string.
+
+## No new panel dependency for popovers and menus
+
+**Decision.** The row-action menus, the notification inbox and the existing
+shifts popover all run on one hand-rolled `Popover.vue` (teleported, viewport-
+flipped, closes on outside click / Escape / scroll). No headless UI library
+and no `@vueuse/core` was added; `panel/package.json` is unchanged.
+
+**Why.** The only primitive several screens actually needed was
+"positioned floating panel with outside-click dismissal", and
+`ShiftsPopover.vue` already contained a working, accessible implementation of
+exactly that — generalising it cost less than a dependency and keeps the
+"reach for the boring option" rule intact. A library would have been the
+right call if focus trapping, virtualised listboxes or combobox semantics
+were needed; they are not.
