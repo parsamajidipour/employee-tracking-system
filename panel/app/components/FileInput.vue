@@ -75,7 +75,7 @@ function formatSize(bytes: number): string {
       </div>
       <button
         type="button"
-        class="grid h-7 w-7 flex-none place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface hover:text-state-danger"
+        class="grid h-9 w-9 flex-none place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface hover:text-state-danger"
         aria-label="Remove file"
         @click="clear"
       >

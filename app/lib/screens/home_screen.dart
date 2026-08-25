@@ -53,6 +53,8 @@ class _HomeScreenState extends State<HomeScreen>
   WindowSnapshot? _snapshot;
   String? _error;
   bool _loading = false;
+  bool _checkingForUpdate = false;
+  bool _updateDialogVisible = false;
   Timer? _ticker;
 
   bool? _serviceRunning;
@@ -69,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
   void onLiveUpdate() {
     _fetchCases();
     _fetchWindow();
+    _checkForUpdate();
   }
 
   @override
@@ -104,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen>
       _fetchWindow();
       _refreshServiceDerivedState();
       _fetchCases();
+      _checkForUpdate();
     }
   }
 
@@ -114,10 +118,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _checkForUpdate() async {
-    final info = await _updateService.checkForUpdate();
-    if (info == null || !mounted) return;
+    if (_checkingForUpdate || _updateDialogVisible) return;
+    _checkingForUpdate = true;
 
-    await showUpdateDialog(context, info: info, updateService: _updateService);
+    try {
+      final info = await _updateService.checkForUpdate();
+      if (info == null || !mounted) return;
+
+      _updateDialogVisible = true;
+      await showUpdateDialog(context,
+          info: info, updateService: _updateService);
+    } finally {
+      _checkingForUpdate = false;
+      _updateDialogVisible = false;
+    }
   }
 
   Future<void> _fetchCases() async {

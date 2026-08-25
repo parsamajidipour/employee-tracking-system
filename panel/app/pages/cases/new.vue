@@ -68,8 +68,8 @@ async function submit() {
       </Button>
     </template>
 
-    <div class="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="flex min-h-0 flex-col gap-4 lg:overflow-y-auto lg:pr-1">
+    <div class="grid min-h-full grid-cols-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="flex min-h-fit flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>
 
         <Card class="flex-none" icon="briefcase" title="Case details" subtitle="What is being inspected, and how urgently">
@@ -115,13 +115,13 @@ async function submit() {
         </Card>
       </div>
 
-      <Card icon="map-pin" title="Property location" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
+      <Card class="min-h-fit lg:min-h-0" icon="map-pin" title="Property location" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
         <template #actions>
           <Badge :variant="hasLocation ? 'success' : 'warning'">
             {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : 'Not set' }}
           </Badge>
         </template>
-        <div class="h-full min-h-[420px]">
+        <div class="h-[360px] min-h-[360px] sm:h-[420px] sm:min-h-[420px] lg:h-full">
           <LocationPicker :lat="form.lat" :lng="form.lng" @update:lat="setLat" @update:lng="setLng" />
         </div>
       </Card>

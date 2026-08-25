@@ -108,7 +108,7 @@ async function signOut() {
         </span>
         <div v-if="railExpanded" class="min-w-0">
           <p class="truncate text-[13.5px] font-semibold text-ink-dark">{{ user?.name ?? 'Signed in' }}</p>
-          <button type="button" class="text-[12px] font-medium text-ink-dark-soft transition-colors hover:text-state-danger" @click="signOut">
+          <button type="button" class="min-h-10 text-[12px] font-medium text-ink-dark-soft transition-colors hover:text-state-danger" @click="signOut">
             Sign out
           </button>
         </div>

@@ -73,7 +73,7 @@ onMounted(refreshAll)
       </Button>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
+    <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5">
       <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 
       <div v-if="loading" class="flex-none space-y-3">
@@ -91,7 +91,7 @@ onMounted(refreshAll)
 
           <div class="flex flex-wrap items-center gap-4">
             <Avatar :name="employee.name" size="lg" :muted="!employee.is_active" />
-            <dl class="grid flex-1 grid-cols-2 gap-x-5 gap-y-3 text-[13px] sm:grid-cols-4">
+            <dl class="grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-3 text-[13px] min-[360px]:grid-cols-2 sm:grid-cols-4">
               <div>
                 <dt class="eyebrow mb-1">Phone</dt>
                 <dd class="tabular text-ink">{{ employee.phone ?? '—' }}</dd>

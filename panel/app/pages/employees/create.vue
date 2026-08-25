@@ -65,10 +65,10 @@ async function submit() {
       </Button>
     </template>
 
-    <form class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 sm:p-5" @submit.prevent="submit">
+    <form class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5" @submit.prevent="submit">
       <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 
-      <div class="grid flex-none grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
+      <div class="grid flex-none grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
         <Card icon="user-circle" title="Account details" subtitle="How this person signs in on the mobile app">
           <div class="space-y-3.5">
             <TextInput v-model="form.name" label="Name" placeholder="e.g. Ahmed Al Saadi" required />

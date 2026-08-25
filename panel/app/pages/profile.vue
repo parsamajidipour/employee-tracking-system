@@ -117,8 +117,8 @@ onMounted(refreshProfile)
       </Button>
     </template>
 
-    <div class="h-full min-h-0 overflow-y-auto p-4 sm:p-5">
-      <div class="mx-auto grid max-w-5xl grid-cols-1 items-start gap-4 lg:grid-cols-2">
+    <div class="h-full min-h-0 overflow-y-auto p-3 sm:p-5">
+      <div class="mx-auto grid max-w-5xl grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
         <Card class="lg:col-span-2" icon="user-circle" title="Signed in as" :subtitle="user?.email ?? 'Loading…'">
           <template #actions>
             <Button variant="secondary" size="sm" @click="signOut">Sign out</Button>
@@ -126,7 +126,7 @@ onMounted(refreshProfile)
 
           <div class="flex flex-wrap items-center gap-4">
             <Avatar :name="user?.name ?? '?'" size="lg" />
-            <dl class="grid flex-1 grid-cols-2 gap-x-5 gap-y-3 text-[13px] sm:grid-cols-3">
+            <dl class="grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-3 text-[13px] min-[360px]:grid-cols-2 sm:grid-cols-3">
               <div>
                 <dt class="eyebrow mb-1">Name</dt>
                 <dd class="truncate text-ink">{{ user?.name ?? '—' }}</dd>

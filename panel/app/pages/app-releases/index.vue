@@ -121,7 +121,7 @@ onMounted(load)
       </Button>
     </template>
 
-    <div class="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-5 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
+    <div class="grid min-h-full grid-cols-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
       <div class="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <Card icon="upload" title="New release" subtitle="Publishing notifies every active employee">
           <form class="space-y-4" @submit.prevent="upload">
@@ -132,11 +132,11 @@ onMounted(load)
               v-model="apkFile"
               accept=".apk"
               label="APK file"
-              hint="Universal build — arm64-v8a and armeabi-v7a"
+              hint="Universal build — arm64-v8a, armeabi-v7a and x86_64"
               required
             />
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               <TextInput
                 v-model="form.version_code"
                 type="number"
@@ -197,7 +197,7 @@ onMounted(load)
               empty-message="No releases published yet — upload the first build."
             >
               <template #cards>
-                <div v-for="release in releases" :key="release.id" class="surface-flat space-y-3 p-4">
+                <div v-for="release in releases" :key="release.id" class="surface-flat space-y-3 p-3.5 sm:p-4">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                       <p class="tabular text-[14px] font-semibold text-ink">v{{ release.version_name }}</p>
@@ -222,10 +222,10 @@ onMounted(load)
                   </dl>
 
                   <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
-                    <a :href="release.download_url" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                    <a :href="release.download_url" class="inline-flex min-h-10 items-center rounded-sm px-3 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
                       Download
                     </a>
-                    <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(release)">
+                    <button type="button" class="min-h-10 rounded-sm px-3 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(release)">
                       Retract
                     </button>
                   </div>

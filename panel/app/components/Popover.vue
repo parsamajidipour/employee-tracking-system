@@ -89,7 +89,7 @@ defineExpose({ close })
       <slot name="trigger" :open="open" :toggle="toggle">
         <button
           type="button"
-          class="grid h-9 w-9 place-items-center rounded-sm text-ink-soft transition-colors duration-fast ease-soft hover:bg-surface-sunken hover:text-ink"
+          class="grid h-10 w-10 place-items-center rounded-sm text-ink-soft transition-colors duration-fast ease-soft hover:bg-surface-sunken hover:text-ink"
           :class="open ? 'bg-surface-sunken text-ink' : ''"
           :aria-expanded="open"
           :aria-label="label"

@@ -183,8 +183,8 @@ onMounted(() => {
       </Button>
     </template>
 
-    <div class="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-5 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="min-h-0 lg:overflow-y-auto lg:pr-1">
+    <div class="grid min-h-full grid-cols-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="min-h-fit lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <Card
           :icon="editingId === null ? 'plus' : 'pencil'"
           :title="editingId === null ? 'New template' : 'Edit template'"
@@ -197,12 +197,12 @@ onMounted(() => {
 
             <div>
               <span class="mb-1.5 block text-[12px] font-medium text-ink-soft">Days of week</span>
-              <div class="grid grid-cols-7 gap-1.5">
+              <div class="flex gap-1.5 overflow-x-auto pb-1 min-[420px]:grid min-[420px]:grid-cols-7 min-[420px]:overflow-visible min-[420px]:pb-0">
                 <button
                   v-for="(label, day) in DAY_LABELS"
                   :key="day"
                   type="button"
-                  class="h-10 rounded-md border px-0 text-[12.5px] font-medium transition-colors duration-fast ease-soft"
+                  class="h-10 w-10 flex-none rounded-md border px-0 text-[12.5px] font-medium transition-colors duration-fast ease-soft min-[420px]:w-auto"
                   :class="form.days_of_week.includes(Number(day))
                     ? 'border-primary bg-primary-soft text-primary-strong'
                     : 'border-hairline bg-surface text-ink-soft hover:border-primary/50 hover:text-ink'"
@@ -216,7 +216,7 @@ onMounted(() => {
 
             <div class="rounded-md bg-surface-sunken p-3.5">
               <p class="eyebrow mb-2.5">Window</p>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
                 <TextInput v-model="form.start_time" type="time" label="Start" placeholder="07:00" required />
                 <TextInput v-model="form.end_time" type="time" label="End" placeholder="16:00" required />
               </div>
@@ -227,7 +227,7 @@ onMounted(() => {
 
             <div class="rounded-md bg-surface-sunken p-3.5">
               <p class="eyebrow mb-2.5">Grace and cap</p>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
                 <TextInput
                   v-model="form.grace_before_min"
                   type="number"
@@ -255,7 +255,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="flex items-center gap-2 border-t border-hairline pt-4">
+            <div class="flex flex-wrap items-center gap-2 border-t border-hairline pt-4">
               <Button type="submit" :loading="submitting">
                 {{ editingId === null ? 'Add template' : 'Save changes' }}
               </Button>
@@ -268,7 +268,7 @@ onMounted(() => {
       </div>
 
       <Card
-        class="min-h-0"
+        class="min-h-fit lg:min-h-0"
         icon="calendar"
         title="Templates"
         :subtitle="`${templates.length} defined`"
@@ -284,7 +284,7 @@ onMounted(() => {
             empty-message="No shift templates yet — add one with the form."
           >
             <template #cards>
-              <div v-for="template in templates" :key="template.id" class="surface-flat space-y-3 p-4">
+              <div v-for="template in templates" :key="template.id" class="surface-flat space-y-3 p-3.5 sm:p-4">
                 <div class="flex items-start justify-between gap-3">
                   <p class="text-[14px] font-medium text-ink">{{ template.name }}</p>
                   <Badge :variant="assignedNames(template.id).length ? 'success' : 'neutral'">
@@ -308,10 +308,10 @@ onMounted(() => {
                 </dl>
 
                 <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
-                  <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
+                  <button type="button" class="min-h-10 rounded-sm px-3 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
                     Edit
                   </button>
-                  <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
+                  <button type="button" class="min-h-10 rounded-sm px-3 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
                     Delete
                   </button>
                 </div>

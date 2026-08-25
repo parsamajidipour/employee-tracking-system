@@ -69,7 +69,7 @@ onMounted(async () => {
         <button
           v-if="unreadCount > 0"
           type="button"
-          class="rounded-sm px-2 py-1 text-[12px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
+          class="min-h-9 rounded-sm px-2.5 py-1 text-[12px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
           @click="markAllRead"
         >
           Mark all read

@@ -10,6 +10,15 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def buildingRelease = gradle.startParameter.taskNames.any {
+    it.toLowerCase().contains("release")
+}
+if (buildingRelease && !keystorePropertiesFile.exists()) {
+    throw new GradleException(
+        "Release signing requires android/key.properties and the original production keystore."
+    )
+}
+
 android {
     namespace = "ranjbarali.parsamajidipour.smartinspection"
     compileSdk = 36
@@ -55,9 +64,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
-            minifyEnabled = true
-            shrinkResources = true
+            signingConfig = signingConfigs.release
+            minifyEnabled = false
+            shrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

@@ -50,11 +50,11 @@ const workflowSteps = computed(() => {
   const order = ['unassigned', 'awaiting_acceptance', 'scheduled', 'in_progress', 'completed']
   const currentIndex = order.indexOf(current)
   return [
-    { key: 'unassigned', label: 'Received' },
-    { key: 'awaiting_acceptance', label: 'Assigned' },
-    { key: 'scheduled', label: 'Scheduled' },
-    { key: 'in_progress', label: 'Inspection' },
-    { key: 'completed', label: 'Completed' },
+    { key: 'unassigned', label: 'Received', compactLabel: 'New' },
+    { key: 'awaiting_acceptance', label: 'Assigned', compactLabel: 'Assigned' },
+    { key: 'scheduled', label: 'Scheduled', compactLabel: 'Plan' },
+    { key: 'in_progress', label: 'Inspection', compactLabel: 'Inspect' },
+    { key: 'completed', label: 'Completed', compactLabel: 'Done' },
   ].map((step, index) => ({ ...step, done: current === 'completed' || (currentIndex >= 0 && index < currentIndex), active: step.key === current }))
 })
 
@@ -190,8 +190,8 @@ onMounted(refreshAll)
     </div>
     <InlineAlert v-else-if="error" class="m-5">{{ error }}</InlineAlert>
 
-    <div v-else-if="item" class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 lg:overflow-hidden lg:p-5">
-      <section class="surface flex-none px-4 py-3.5 sm:px-5">
+    <div v-else-if="item" class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 lg:overflow-hidden lg:p-5">
+      <section class="surface flex-none px-3.5 py-3.5 sm:px-5">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div class="flex min-w-0 items-center gap-3">
             <span class="grid h-10 w-10 flex-none place-items-center rounded-md bg-primary-soft text-primary-strong"><Icon name="briefcase" class="h-5 w-5" /></span>
@@ -210,7 +210,10 @@ onMounted(refreshAll)
               <span class="relative z-10 grid h-6 w-6 place-items-center rounded-full border-2 text-[10px] font-bold" :class="step.done ? 'border-primary bg-primary text-white' : step.active ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-faint'">
                 <Icon v-if="step.done" name="check" class="h-3 w-3" /><span v-else>{{ index + 1 }}</span>
               </span>
-              <span class="mt-1.5 truncate text-[10.5px] font-medium" :class="step.active || step.done ? 'text-ink' : 'text-ink-faint'">{{ step.label }}</span>
+              <span class="mt-1.5 max-w-full truncate px-0.5 text-[9.5px] font-medium min-[420px]:text-[10.5px]" :class="step.active || step.done ? 'text-ink' : 'text-ink-faint'">
+                <span class="min-[420px]:hidden">{{ step.compactLabel }}</span>
+                <span class="hidden min-[420px]:inline">{{ step.label }}</span>
+              </span>
             </li>
           </ol>
 

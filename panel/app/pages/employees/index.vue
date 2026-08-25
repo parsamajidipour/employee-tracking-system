@@ -293,7 +293,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
       </Button>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-4 p-4 sm:p-5">
+    <div class="flex h-full min-h-0 flex-col gap-3 p-3 sm:gap-4 sm:p-5">
       <div class="grid flex-none grid-cols-2 gap-2.5 lg:grid-cols-4">
         <StatCard icon="users" label="On the roster" :value="String(counts.total)" accent="primary" />
         <StatCard icon="briefcase" label="Active cases" :value="String(counts.activeCases)" accent="neutral" />
@@ -309,8 +309,8 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
         flush
       >
         <div class="flex h-full min-h-0 flex-col">
-          <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-4 py-3 sm:px-5">
-            <div class="min-w-56 flex-1">
+          <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-3.5 py-3 sm:px-5">
+            <div class="w-full min-w-0 flex-1 min-[560px]:min-w-56">
               <TextInput
                 v-model="search"
                 label="Search"
@@ -318,14 +318,14 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
                 placeholder="Search by name, phone or email"
               />
             </div>
-            <div class="w-44">
+            <div class="w-full min-[360px]:w-[calc(50%_-_6px)] min-[560px]:w-44">
               <Select v-model="statusFilter" label="Status">
                 <option value="all">All statuses</option>
                 <option value="active">Active only</option>
                 <option value="inactive">Inactive only</option>
               </Select>
             </div>
-            <div class="w-48">
+            <div class="w-full min-[360px]:w-[calc(50%_-_6px)] min-[560px]:w-48">
               <Select v-model="coverageFilter" label="Shift coverage">
                 <option value="all">Any coverage</option>
                 <option value="scheduled">Has a shift</option>
@@ -348,7 +348,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
               :empty-message="isFiltered ? 'No employee matches these filters.' : 'No employees yet — add one to get started.'"
             >
               <template #cards>
-                <div v-for="employee in employees" :key="employee.id" class="surface-flat space-y-3 p-4">
+                <div v-for="employee in employees" :key="employee.id" class="surface-flat space-y-3 p-3.5 sm:p-4">
                   <div class="flex items-start gap-3">
                     <Avatar :name="employee.name" size="sm" :muted="!employee.is_active" />
                     <div class="min-w-0 flex-1">
@@ -374,14 +374,14 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
                     </div>
                   </dl>
 
-                  <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
-                    <button type="button" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="openActivity(employee)">
+                  <div class="flex flex-wrap items-center gap-1 border-t border-hairline pt-2.5">
+                    <button type="button" class="min-h-10 rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="openActivity(employee)">
                       Activity
                     </button>
-                    <NuxtLink :to="`/employees/${employee.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                    <NuxtLink :to="`/employees/${employee.id}`" class="inline-flex min-h-10 items-center rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
                       Schedule
                     </NuxtLink>
-                    <NuxtLink :to="`/employees/${employee.id}/histories`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
+                    <NuxtLink :to="`/employees/${employee.id}/histories`" class="inline-flex min-h-10 items-center rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken">
                       Histories
                     </NuxtLink>
                     <Popover class="ml-auto" :width="228" label="More actions">

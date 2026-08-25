@@ -55,14 +55,14 @@ onMounted(() => {
       </Button>
     </template>
 
-    <div class="surface-flat mb-4 flex flex-wrap items-end gap-3.5 p-4">
-      <div class="w-48">
+    <div class="surface-flat mb-3 flex flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-3.5 sm:p-4">
+      <div class="w-full min-[360px]:w-48">
         <Select v-model="statusFilter" label="Status">
           <option value="">All statuses</option>
           <option v-for="status in CASE_STATUSES" :key="status" :value="status">{{ caseStatusLabel(status) }}</option>
         </Select>
       </div>
-      <div class="w-56">
+      <div class="w-full min-[360px]:w-56">
         <Select v-model="assigneeFilter" label="Assignee">
           <option value="">All employees</option>
           <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
@@ -78,7 +78,7 @@ onMounted(() => {
       empty-message="No cases match these filters."
     >
       <template #cards>
-        <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block space-y-3 p-4">
+        <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block space-y-3 p-3.5 sm:p-4">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="truncate text-[14px] font-medium text-ink">{{ item.title }}</p>
@@ -114,7 +114,7 @@ onMounted(() => {
       </tr>
     </Table>
 
-    <div v-if="meta && meta.last_page > 1" class="mt-4 flex items-center justify-between">
+    <div v-if="meta && meta.last_page > 1" class="mt-4 flex flex-wrap items-center justify-between gap-3">
       <p class="text-[12.5px] text-ink-faint">Page {{ meta.current_page }} of {{ meta.last_page }} — {{ meta.total }} cases</p>
       <div class="flex items-center gap-2">
         <Button variant="secondary" size="sm" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">Prev</Button>

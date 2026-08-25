@@ -340,13 +340,13 @@ onUnmounted(() => map?.remove())
       <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`">Employee shifts</Button>
     </template>
 
-    <div class="flex h-full flex-col p-6 sm:p-7">
+    <div class="flex h-full flex-col p-3 sm:p-5 lg:p-7">
       <InlineAlert v-if="error" class="mb-4 flex-none">{{ error }}</InlineAlert>
 
-      <form class="surface-flat mb-4 flex flex-none flex-wrap items-end gap-4 p-4" @submit.prevent>
-        <div>
+      <form class="surface-flat mb-3 flex flex-none flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-4 sm:p-4" @submit.prevent>
+        <div class="w-full min-[360px]:w-auto">
           <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Date</label>
-          <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-48" />
+          <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-full min-[360px]:w-48" />
         </div>
 
         <div
@@ -371,7 +371,7 @@ onUnmounted(() => map?.remove())
         <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">Loading…</span>
       </form>
 
-      <section class="surface-flat relative min-h-[420px] flex-1 overflow-hidden">
+      <section class="surface-flat relative min-h-[300px] flex-1 overflow-hidden sm:min-h-[420px]">
         <div ref="mapContainer" class="!absolute !inset-0 bg-surface-sunken" />
 
         <div
