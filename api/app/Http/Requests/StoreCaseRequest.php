@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreCaseRequest extends FormRequest
 {
@@ -25,11 +24,6 @@ class StoreCaseRequest extends FormRequest
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'priority' => ['nullable', 'string', 'in:normal,high,urgent'],
             'notes' => ['nullable', 'string'],
-            'assigned_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('users', 'id')->where('role', 'employee')->where('is_active', true)->whereNull('deleted_at'),
-            ],
         ];
     }
 
@@ -38,8 +32,6 @@ class StoreCaseRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'assigned_to.exists' => 'That employee is deactivated or no longer on the roster — pick an active surveyor.',
-        ];
+        return [];
     }
 }

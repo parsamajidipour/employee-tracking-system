@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\Capability;
+use App\Enums\CaseStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureCapability;
 use App\Http\Requests\StoreCasePhotoRequest;
@@ -20,6 +21,7 @@ class CasePhotoController extends Controller
     public function store(StoreCasePhotoRequest $request, InspectionCase $case, CasePhotoService $photos): JsonResponse
     {
         abort_unless($case->assigned_to === $request->user()->id, 403);
+        abort_unless($case->status === CaseStatus::InProgress, 409, 'Start the inspection before adding site photos.');
 
         $photo = $photos->store($case, $request->user(), $request->file('photo'), [
             'lat' => (float) $request->validated('lat'),

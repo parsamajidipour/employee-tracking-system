@@ -173,7 +173,7 @@ onMounted(() => {
 <template>
   <AppShell title="Shift templates" subtitle="Organisation-wide shift definitions — assigned per employee" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" @click="refreshAll">
+      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh shift templates" @click="refreshAll">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>

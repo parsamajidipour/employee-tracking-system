@@ -115,14 +115,14 @@ onMounted(load)
 <template>
   <AppShell title="App releases" subtitle="Builds offered to the Android update-check flow" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" @click="load">
+      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh app releases" @click="load">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>
     </template>
 
     <div class="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-5 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="min-h-0 lg:overflow-y-auto lg:pr-1">
+      <div class="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <Card icon="upload" title="New release" subtitle="Publishing notifies every active employee">
           <form class="space-y-4" @submit.prevent="upload">
             <InlineAlert v-if="uploadError" class="!mb-0">{{ uploadError }}</InlineAlert>
@@ -179,14 +179,14 @@ onMounted(load)
         </Card>
       </div>
 
-      <div class="flex min-h-0 flex-col gap-4">
-        <div class="grid flex-none grid-cols-3 gap-2.5">
+      <div class="flex min-h-fit flex-col gap-4 lg:min-h-0">
+        <div class="grid flex-none grid-cols-1 gap-2.5 min-[480px]:grid-cols-3">
           <StatCard icon="download" label="Current version" :value="currentRelease ? `v${currentRelease.version_name}` : '—'" accent="primary" />
           <StatCard icon="inbox" label="Published builds" :value="String(releases.length)" accent="neutral" />
           <StatCard icon="upload" label="Storage used" :value="fileSize(totalSize)" accent="neutral" />
         </div>
 
-        <Card class="min-h-0 flex-1" icon="download" title="Published releases" :subtitle="`${releases.length} available to devices`" flush>
+        <Card class="lg:min-h-0 lg:flex-1" icon="download" title="Published releases" :subtitle="`${releases.length} available to devices`" flush>
           <div class="h-full min-h-0 overflow-y-auto">
             <Table
               embedded

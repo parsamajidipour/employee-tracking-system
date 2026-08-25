@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { WorkloadDetail, WorkloadActivity, WorkloadRow } from '~/composables/useWorkload'
 
+definePageMeta({ middleware: 'employees-workload' })
+
 type SortKey = 'name' | 'overdue' | 'active' | 'completed'
 
 function todayLocalDate(): string {
@@ -126,7 +128,7 @@ onMounted(load)
         <span class="h-1.5 w-1.5 rounded-full" :class="connected ? 'bg-state-success' : 'bg-state-neutral'"></span>
         {{ connected ? 'Live' : 'Offline' }}
       </span>
-      <Button variant="secondary" size="sm" :disabled="loading" @click="load">
+      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh workload" @click="load">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>

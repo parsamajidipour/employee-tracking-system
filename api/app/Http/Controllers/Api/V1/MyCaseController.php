@@ -21,7 +21,7 @@ class MyCaseController extends Controller
         $query = InspectionCase::query()
             ->withLatLng()
             ->where('assigned_to', $request->user()->id)
-            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'accepted' THEN 1 WHEN 'in_progress' THEN 2 ELSE 3 END")
+            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'overdue' THEN 1 WHEN 'accepted' THEN 2 WHEN 'in_progress' THEN 3 ELSE 4 END")
             ->orderByDesc('assigned_at');
 
         if ($request->filled('status')) {

@@ -63,7 +63,7 @@ onMounted(refreshAll)
 <template>
   <AppShell :title="employee?.name ?? 'Employee'" subtitle="Working schedule" back-to="/employees" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" @click="refreshAll">
+      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh employee" @click="refreshAll">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>

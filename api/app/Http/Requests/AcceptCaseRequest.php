@@ -17,7 +17,7 @@ class AcceptCaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'planned_at' => ['required', 'date'],
+            'planned_at' => ['required', 'date', 'after:now'],
         ];
     }
 }

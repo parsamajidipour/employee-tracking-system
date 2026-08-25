@@ -1,4 +1,4 @@
-export type CaseStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'rejected' | 'cancelled'
+export type CaseStatus = 'pending' | 'accepted' | 'overdue' | 'in_progress' | 'completed' | 'rejected' | 'cancelled'
 export type CasePriority = 'normal' | 'high' | 'urgent'
 
 export interface CaseStatusEvent {

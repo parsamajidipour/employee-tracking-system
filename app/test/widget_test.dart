@@ -10,29 +10,47 @@ import 'package:app/state/auth_controller.dart';
 import 'package:app/theme/app_theme.dart';
 
 class _FakePermissionService extends PermissionService {
+  bool fine = false;
+  bool background = false;
+  bool notifications = false;
+  bool battery = false;
+
   @override
   Future<PermissionSnapshot> currentSnapshot() async => PermissionSnapshot(
-        fineLocationGranted: false,
-        backgroundLocationGranted: false,
-        notificationsGranted: false,
-        batteryOptimizationExempt: false,
+        fineLocationGranted: fine,
+        backgroundLocationGranted: background,
+        notificationsGranted: notifications,
+        batteryOptimizationExempt: battery,
       );
 
   @override
-  Future<PermissionStatus> requestFineLocation() async => PermissionStatus.granted;
+  Future<PermissionStatus> requestFineLocation() async {
+    fine = true;
+    return PermissionStatus.granted;
+  }
 
   @override
-  Future<PermissionStatus> requestBackgroundLocation() async => PermissionStatus.granted;
+  Future<PermissionStatus> requestBackgroundLocation() async {
+    background = true;
+    return PermissionStatus.granted;
+  }
 
   @override
-  Future<PermissionStatus> requestNotifications() async => PermissionStatus.granted;
+  Future<PermissionStatus> requestNotifications() async {
+    notifications = true;
+    return PermissionStatus.granted;
+  }
 
   @override
-  Future<PermissionStatus> requestBatteryOptimizationExemption() async => PermissionStatus.granted;
+  Future<PermissionStatus> requestBatteryOptimizationExemption() async {
+    battery = true;
+    return PermissionStatus.granted;
+  }
 }
 
 void main() {
-  testWidgets('login screen shows identifier and password fields', (tester) async {
+  testWidgets('login screen shows identifier and password fields',
+      (tester) async {
     final authController = AuthController();
 
     await tester.pumpWidget(MaterialApp(
@@ -47,7 +65,9 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
   });
 
-  testWidgets('permission onboarding walks through all four steps then completes', (tester) async {
+  testWidgets(
+      'permission onboarding walks through all four steps then completes',
+      (tester) async {
     var completed = false;
 
     await tester.pumpWidget(MaterialApp(
@@ -75,7 +95,9 @@ void main() {
     expect(completed, isTrue);
   });
 
-  testWidgets('permission onboarding skips straight through when everything is already granted', (tester) async {
+  testWidgets(
+      'permission onboarding skips straight through when everything is already granted',
+      (tester) async {
     var completed = false;
 
     await tester.pumpWidget(MaterialApp(

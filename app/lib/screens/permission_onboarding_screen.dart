@@ -16,16 +16,25 @@ class PermissionOnboardingScreen extends StatefulWidget {
   });
 
   @override
-  State<PermissionOnboardingScreen> createState() => _PermissionOnboardingScreenState();
+  State<PermissionOnboardingScreen> createState() =>
+      _PermissionOnboardingScreenState();
 }
 
-enum _Step { fineLocation, backgroundLocation, notifications, batteryOptimization }
+enum _Step {
+  fineLocation,
+  backgroundLocation,
+  notifications,
+  batteryOptimization
+}
 
-class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen> {
+class _PermissionOnboardingScreenState
+    extends State<PermissionOnboardingScreen> {
   List<_Step> _steps = const [];
   int _stepIndex = 0;
   bool _requesting = false;
   bool _checking = true;
+  String? _permissionError;
+  bool _openSettingsRequired = false;
 
   _Step get _currentStep => _steps[_stepIndex];
 
@@ -53,12 +62,20 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
 
     setState(() {
       _steps = outstanding;
+      _stepIndex = 0;
       _checking = false;
+      _requesting = false;
+      _permissionError = null;
+      _openSettingsRequired = false;
     });
   }
 
   Future<void> _requestCurrent() async {
-    setState(() => _requesting = true);
+    setState(() {
+      _requesting = true;
+      _permissionError = null;
+      _openSettingsRequired = false;
+    });
 
     switch (_currentStep) {
       case _Step.fineLocation:
@@ -72,7 +89,35 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
     }
 
     if (!mounted) return;
-    _advance();
+    final snapshot = await widget.permissionService.currentSnapshot();
+    if (!mounted) return;
+
+    final granted = switch (_currentStep) {
+      _Step.fineLocation => snapshot.fineLocationGranted,
+      _Step.backgroundLocation => snapshot.backgroundLocationGranted,
+      _Step.notifications => snapshot.notificationsGranted,
+      _Step.batteryOptimization => snapshot.batteryOptimizationExempt,
+    };
+
+    if (granted) {
+      _advance();
+      return;
+    }
+
+    setState(() {
+      _requesting = false;
+      _permissionError = switch (_currentStep) {
+        _Step.fineLocation =>
+          'Location access is required to use this work app.',
+        _Step.backgroundLocation =>
+          'Choose “Allow all the time” so tracking continues during field work.',
+        _Step.notifications =>
+          'Notifications are required for assignments and tracking status.',
+        _Step.batteryOptimization =>
+          'Battery exemption is required for reliable shift tracking.',
+      };
+      _openSettingsRequired = true;
+    });
   }
 
   void _advance() {
@@ -154,9 +199,8 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                         curve: Curves.easeOutCubic,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: i <= _stepIndex
-                              ? colors.primary
-                              : colors.border,
+                          color:
+                              i <= _stepIndex ? colors.primary : colors.border,
                           borderRadius: AppRadii.pillRadius,
                         ),
                       ),
@@ -194,6 +238,32 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                             Text(title, style: context.text.titleLarge),
                             const SizedBox(height: AppSpacing.md),
                             Text(explanation, style: context.text.bodyLarge),
+                            if (_permissionError != null) ...[
+                              const SizedBox(height: AppSpacing.lg),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                decoration: BoxDecoration(
+                                  color: colors.danger.withValues(alpha: 0.1),
+                                  borderRadius: AppRadii.smallRadius,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.error_outline,
+                                        size: 20, color: colors.danger),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: Text(
+                                        _permissionError!,
+                                        style: context.text.bodySmall
+                                            ?.copyWith(color: colors.danger),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -228,11 +298,19 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                             )
                           : Text(buttonLabel),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    TextButton(
-                      onPressed: _requesting ? null : _advance,
-                      child: const Text('Not now'),
-                    ),
+                    if (_openSettingsRequired) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      OutlinedButton.icon(
+                        onPressed: _requesting
+                            ? null
+                            : () async {
+                                await widget.permissionService.openSettings();
+                                await _loadOutstandingSteps();
+                              },
+                        icon: const Icon(Icons.settings_outlined),
+                        label: const Text('Open app settings'),
+                      ),
+                    ],
                   ],
                 ),
               ),

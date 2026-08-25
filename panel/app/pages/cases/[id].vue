@@ -1,51 +1,64 @@
 <script setup lang="ts">
-import type { InspectionCase, NearestSurveyor } from '~/composables/useCases'
-import { caseStatusLabel, caseStatusVariant, casePriorityLabel, casePriorityVariant, caseAssignmentDisplay } from '~/utils/caseStatus'
+import type { CaseStatusEvent, InspectionCase, NearestSurveyor } from '~/composables/useCases'
+import { caseAssignmentDisplay, casePriorityLabel, casePriorityVariant } from '~/utils/caseStatus'
 import { formatDistance } from '~/utils/formatDistance'
 
 const route = useRoute()
 const caseId = Number(route.params.id)
 const toast = useToast()
 const { confirm } = useConfirm()
-
 const { data: employeesData, load: loadEmployees } = useEmployees()
-const employees = computed(() => employeesData.value ?? [])
-
 const { data: workloadData, load: loadWorkload } = useWorkloadList()
-const workloadByEmployee = computed(() => {
-  const map = new Map<number, (typeof workloadData.value)[number]>()
-  for (const row of workloadData.value) map.set(row.employee_id, row)
-  return map
-})
 
 const item = ref<InspectionCase | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
-
-const nearest = ref<NearestSurveyor[]>([])
-const nearestLoading = ref(false)
-const nearestError = ref<string | null>(null)
-
-const manualAssignee = ref<number | ''>('')
+const candidates = ref<NearestSurveyor[]>([])
+const candidatesLoading = ref(false)
+const candidatesError = ref<string | null>(null)
+const selectedSurveyorId = ref<number | null>(null)
 const assigning = ref(false)
-
 const cancelModalOpen = ref(false)
 const cancelNote = ref('')
 const cancelling = ref(false)
-
 const deleting = ref(false)
 
-const assignment = computed(() => (item.value ? caseAssignmentDisplay(item.value) : null))
-
-const canAssign = computed(() => item.value?.status === 'pending')
-const canReassignAfterRejection = computed(() => item.value?.status === 'rejected')
-const isAssignPanelActionable = computed(() => canAssign.value || canReassignAfterRejection.value)
+const assignment = computed(() => item.value ? caseAssignmentDisplay(item.value) : null)
+const canAssign = computed(() => item.value?.status === 'rejected' || (item.value?.status === 'pending' && item.value.assigned_to === null))
 const canCancel = computed(() => item.value ? ['pending', 'accepted', 'in_progress'].includes(item.value.status) : false)
-const canDelete = computed(() => item.value?.status === 'pending')
+const canDelete = computed(() => item.value?.status === 'pending' && item.value.assigned_to === null)
+const workloadByEmployee = computed(() => new Map(workloadData.value.map(row => [row.employee_id, row])))
+const candidateByEmployee = computed(() => new Map(candidates.value.map(row => [row.employee_id, row])))
+const activeEmployees = computed(() => (employeesData.value ?? []).filter(employee => employee.is_active))
+const surveyorChoices = computed(() => activeEmployees.value
+  .map((employee) => {
+    const nearby = candidateByEmployee.value.get(employee.id)
+    const workload = workloadByEmployee.value.get(employee.id)
+    const activeCases = workload?.summary.active_cases ?? nearby?.open_case_count ?? 0
+    const workloadPercent = Math.min(100, Math.round((activeCases / 6) * 100))
+    return { employee, nearby, workload, activeCases, workloadPercent }
+  })
+  .sort((a, b) => {
+    if (a.nearby && !b.nearby) return -1
+    if (!a.nearby && b.nearby) return 1
+    if (a.nearby && b.nearby) return a.nearby.distance_m - b.nearby.distance_m
+    return a.activeCases - b.activeCases
+  }))
+const selectedChoice = computed(() => surveyorChoices.value.find(row => row.employee.id === selectedSurveyorId.value) ?? null)
+const workflowSteps = computed(() => {
+  const current = assignment.value?.status ?? 'unassigned'
+  const order = ['unassigned', 'awaiting_acceptance', 'scheduled', 'in_progress', 'completed']
+  const currentIndex = order.indexOf(current)
+  return [
+    { key: 'unassigned', label: 'Received' },
+    { key: 'awaiting_acceptance', label: 'Assigned' },
+    { key: 'scheduled', label: 'Scheduled' },
+    { key: 'in_progress', label: 'Inspection' },
+    { key: 'completed', label: 'Completed' },
+  ].map((step, index) => ({ ...step, done: current === 'completed' || (currentIndex >= 0 && index < currentIndex), active: step.key === current }))
+})
 
-const hasAccepted = computed(() => item.value ? ['accepted', 'in_progress', 'completed'].includes(item.value.status) : false)
-
-async function load() {
+async function loadCase() {
   loading.value = true
   try {
     item.value = await fetchCase(caseId)
@@ -57,35 +70,39 @@ async function load() {
   }
 }
 
-async function loadNearest() {
-  nearestLoading.value = true
+async function loadCandidates() {
+  candidatesLoading.value = true
   try {
-    nearest.value = await fetchNearestSurveyors(caseId)
-    nearestError.value = null
+    candidates.value = await fetchNearestSurveyors(caseId)
+    candidatesError.value = null
   } catch {
-    nearestError.value = 'Could not load nearby surveyors.'
+    candidatesError.value = 'Live location ranking is temporarily unavailable.'
   } finally {
-    nearestLoading.value = false
+    candidatesLoading.value = false
   }
 }
 
-async function assignTo(employeeId: number) {
+async function refreshAll() {
+  await Promise.all([loadCase(), loadCandidates(), loadEmployees(), loadWorkload()])
+}
+
+async function assignSelected() {
+  if (!selectedSurveyorId.value || !selectedChoice.value) {
+    toast.error('Select an available surveyor first.')
+    return
+  }
   assigning.value = true
   try {
-    await assignCase(caseId, employeeId)
-    toast.success('Case assigned.')
-    manualAssignee.value = ''
-    await load()
+    await assignCase(caseId, selectedSurveyorId.value)
+    toast.success(`Case assigned to ${selectedChoice.value.employee.name}. Awaiting acceptance.`)
+    selectedSurveyorId.value = null
+    await refreshAll()
   } catch (err) {
-    toast.error(apiErrorMessage(err, 'This case can no longer be reassigned.'))
+    toast.error(apiErrorMessage(err, 'Assignment could not be completed. Nothing was changed.'))
+    await refreshAll()
   } finally {
     assigning.value = false
   }
-}
-
-function assignManually() {
-  if (!manualAssignee.value) return
-  assignTo(manualAssignee.value)
 }
 
 function openCancelModal() {
@@ -97,284 +114,171 @@ async function submitCancel() {
   cancelling.value = true
   try {
     await cancelCase(caseId, cancelNote.value || undefined)
-    toast.success('Case cancelled.')
+    toast.success('Case cancelled. Relevant users were notified.')
     cancelModalOpen.value = false
-    await load()
+    await refreshAll()
   } catch (err) {
-    toast.error(apiErrorMessage(err, 'This case can no longer be cancelled.'))
+    toast.error(apiErrorMessage(err, 'Case could not be cancelled. Nothing was changed.'))
   } finally {
     cancelling.value = false
   }
 }
 
 async function remove() {
-  const confirmed = await confirm(`Delete case "${item.value?.title}"? This cannot be undone.`, {
-    title: 'Delete case',
-    variant: 'danger',
-  })
+  const confirmed = await confirm(`Delete case "${item.value?.title}"? This cannot be undone.`, { title: 'Delete case', variant: 'danger' })
   if (!confirmed) return
-
   deleting.value = true
   try {
     await deleteCase(caseId)
-    toast.success('Case deleted.')
+    toast.success('Unassigned case deleted.')
     await navigateTo('/cases')
   } catch (err) {
-    toast.error(apiErrorMessage(err, 'Delete failed.'))
+    toast.error(apiErrorMessage(err, 'Case could not be deleted.'))
     deleting.value = false
   }
 }
 
-function timeLabel(value: string | null): string {
-  return value ? new Date(value).toLocaleString() : '—'
+function dateTimeLabel(value: string | null): string {
+  return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not set yet'
 }
 
-function dateLabel(value: string | null): string {
-  return value ? new Date(value).toLocaleDateString() : '—'
+function eventTitle(event: CaseStatusEvent): string {
+  if (event.to_status === 'pending' && event.note?.toLowerCase().includes('assigned')) return 'Surveyor assigned'
+  if (!event.from_status && event.to_status === 'pending') return 'Case received'
+  if (event.to_status === 'accepted') return 'Assignment accepted and scheduled'
+  if (event.to_status === 'in_progress') return 'Inspection started'
+  if (event.to_status === 'overdue') return 'Inspection became overdue'
+  if (event.to_status === 'completed') return 'Inspection completed'
+  if (event.to_status === 'rejected') return 'Assignment rejected'
+  if (event.to_status === 'cancelled') return 'Case cancelled'
+  return 'Case updated'
 }
 
-function clockLabel(value: string | null): string {
-  return value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
+function eventTone(event: CaseStatusEvent): string {
+  if (event.to_status === 'completed') return 'bg-state-success'
+  if (event.to_status === 'rejected' || event.to_status === 'cancelled' || event.to_status === 'overdue') return 'bg-state-danger'
+  if (event.to_status === 'in_progress' || event.to_status === 'accepted') return 'bg-primary'
+  return 'bg-state-neutral'
 }
 
 useCaseStream((payload) => {
   if (payload.case_id !== caseId) return
-
   if (payload.action === 'deleted') {
-    toast.error('This case was deleted by someone else.')
+    toast.error('This case was deleted in another session.')
     navigateTo('/cases')
     return
   }
-
-  load()
-  loadNearest()
+  refreshAll()
 })
 
-onMounted(() => {
-  loadEmployees()
-  loadWorkload()
-  load()
-  loadNearest()
-})
+onMounted(refreshAll)
 </script>
 
 <template>
-  <AppShell :title="item?.title ?? 'Case'" :subtitle="item?.reference_no" back-to="/cases" full-bleed>
+  <AppShell :title="item?.title ?? 'Case workspace'" :subtitle="item?.reference_no" back-to="/cases" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" @click="load(); loadNearest()">
+      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh case" @click="refreshAll">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>
     </template>
 
-    <div v-if="loading && !item" class="space-y-3 p-6 sm:p-7">
-      <Skeleton class="h-16" rounded="md" />
-      <Skeleton class="h-40" rounded="md" />
+    <div v-if="loading && !item" class="grid h-full grid-cols-12 gap-4 p-5">
+      <Skeleton class="col-span-12 h-24" rounded="md" />
+      <Skeleton class="col-span-7 h-full" rounded="md" />
+      <Skeleton class="col-span-5 h-full" rounded="md" />
     </div>
+    <InlineAlert v-else-if="error" class="m-5">{{ error }}</InlineAlert>
 
-    <InlineAlert v-else-if="error" class="m-6">{{ error }}</InlineAlert>
-
-    <div v-else-if="item" class="flex h-full flex-col overflow-hidden">
-      <div class="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-hidden p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div class="flex min-h-0 flex-col gap-5 overflow-y-auto pr-0.5 lg:pr-1">
-          <section class="surface-flat p-5">
-            <header class="mb-3.5 flex items-center justify-between gap-2">
-              <h2>Overview</h2>
-              <div class="flex items-center gap-2">
+    <div v-else-if="item" class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 lg:overflow-hidden lg:p-5">
+      <section class="surface flex-none px-4 py-3.5 sm:px-5">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="grid h-10 w-10 flex-none place-items-center rounded-md bg-primary-soft text-primary-strong"><Icon name="briefcase" class="h-5 w-5" /></span>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
                 <Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge>
                 <Badge :variant="casePriorityVariant(item.priority)">{{ casePriorityLabel(item.priority) }} priority</Badge>
               </div>
-            </header>
-            <p v-if="item.property_address" class="mb-1.5 text-[13.5px] text-ink-soft">{{ item.property_address }}</p>
-            <p class="tabular text-[12.5px] text-ink-faint">{{ item.lat.toFixed(6) }}, {{ item.lng.toFixed(6) }}</p>
-            <p v-if="item.notes" class="mt-3 border-t border-hairline pt-3 text-[13.5px] text-ink">{{ item.notes }}</p>
-
-            <div class="mt-4 flex flex-wrap gap-2 border-t border-hairline pt-4">
-              <Button variant="danger" size="sm" :disabled="!canCancel" @click="openCancelModal">Cancel case</Button>
-              <Button v-if="canDelete" variant="secondary" size="sm" :loading="deleting" @click="remove">Delete</Button>
+              <p class="mt-1 truncate text-[13px] text-ink-soft">{{ item.property_address || 'Property address not provided' }}</p>
             </div>
-          </section>
+          </div>
 
-          <section class="surface-flat p-5">
-            <header class="mb-3.5 flex items-center justify-between gap-2">
-              <h2>Assignment</h2>
-              <Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge>
-            </header>
+          <ol class="grid min-w-0 flex-1 grid-cols-5 xl:max-w-2xl">
+            <li v-for="(step, index) in workflowSteps" :key="step.key" class="relative flex min-w-0 flex-col items-center">
+              <span v-if="index" class="absolute right-1/2 top-3 h-px w-full" :class="step.done || step.active ? 'bg-primary' : 'bg-hairline'" />
+              <span class="relative z-10 grid h-6 w-6 place-items-center rounded-full border-2 text-[10px] font-bold" :class="step.done ? 'border-primary bg-primary text-white' : step.active ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-faint'">
+                <Icon v-if="step.done" name="check" class="h-3 w-3" /><span v-else>{{ index + 1 }}</span>
+              </span>
+              <span class="mt-1.5 truncate text-[10.5px] font-medium" :class="step.active || step.done ? 'text-ink' : 'text-ink-faint'">{{ step.label }}</span>
+            </li>
+          </ol>
 
-            <dl v-if="!hasAccepted" class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-3">
-              <div>
-                <dt class="eyebrow mb-1">Assigned Surveyor</dt>
-                <dd class="text-ink">{{ item.assignee_name ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">Assigned At</dt>
-                <dd class="tabular text-ink-soft">{{ timeLabel(item.assigned_at) }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">Planned Inspection</dt>
-                <dd class="text-ink-soft">Not set yet</dd>
-              </div>
+          <div class="flex flex-none items-center gap-2">
+            <Button variant="secondary" size="sm" :disabled="!canCancel" @click="openCancelModal">Cancel</Button>
+            <Button v-if="canDelete" variant="danger" size="sm" :loading="deleting" @click="remove">Delete</Button>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,.72fr)] xl:grid-cols-[minmax(0,.95fr)_minmax(280px,.62fr)_minmax(360px,.9fr)]">
+        <div class="flex min-h-fit flex-col gap-4 lg:min-h-0 xl:grid xl:grid-rows-[auto_minmax(240px,1fr)]">
+          <Card icon="briefcase" title="Case & assignment" subtitle="The operational facts at a glance">
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-3 text-[13px] min-[420px]:grid-cols-2">
+              <div><dt class="eyebrow mb-1">Assigned Surveyor</dt><dd class="font-medium text-ink">{{ item.assignee_name || 'No one yet' }}</dd></div>
+              <div><dt class="eyebrow mb-1">Assignment Status</dt><dd><Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge></dd></div>
+              <div><dt class="eyebrow mb-1">Assigned At</dt><dd class="tabular text-ink-soft">{{ dateTimeLabel(item.assigned_at) }}</dd></div>
+              <div><dt class="eyebrow mb-1">Planned Inspection</dt><dd class="tabular text-ink-soft">{{ dateTimeLabel(item.planned_at) }}</dd></div>
             </dl>
+            <div class="mt-3 border-t border-hairline pt-3"><p class="eyebrow mb-1">Field notes</p><p class="line-clamp-2 text-[13px] leading-5 text-ink-soft">{{ item.notes || 'No field notes were added.' }}</p></div>
+          </Card>
 
-            <dl v-else class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-3">
-              <div>
-                <dt class="eyebrow mb-1">Assigned Surveyor</dt>
-                <dd class="text-ink">{{ item.assignee_name ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">Inspection Date</dt>
-                <dd class="tabular text-ink-soft">{{ dateLabel(item.planned_at) }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">Inspection Time</dt>
-                <dd class="tabular text-ink-soft">{{ clockLabel(item.planned_at) }}</dd>
-              </div>
-            </dl>
-          </section>
-
-          <section class="surface-flat flex min-h-0 flex-1 flex-col p-5">
-            <h2 class="mb-3.5 flex-none">Status timeline</h2>
-            <EmptyState v-if="!item.status_events || item.status_events.length === 0" message="No status changes yet." />
-            <ol v-else class="min-h-0 flex-1 space-y-3.5 overflow-y-auto pr-0.5">
-              <li v-for="event in item.status_events" :key="event.id" class="flex items-start gap-3 border-b border-hairline pb-3.5 last:border-0 last:pb-0">
-                <span class="mt-1 h-2 w-2 flex-none rounded-full bg-primary"></span>
-                <div class="min-w-0">
-                  <p v-if="event.from_status && event.from_status !== event.to_status" class="text-[13.5px] text-ink">
-                    <span class="font-medium">{{ event.actor_name ?? 'System' }}</span>
-                    moved this from
-                    <Badge :variant="caseStatusVariant(event.from_status)">{{ caseStatusLabel(event.from_status) }}</Badge>
-                    to
-                    <Badge :variant="caseStatusVariant(event.to_status)">{{ caseStatusLabel(event.to_status) }}</Badge>
-                  </p>
-                  <p v-else class="text-[13.5px] text-ink">
-                    <span class="font-medium">{{ event.actor_name ?? 'System' }}</span>
-                    {{ ' ' }}{{ event.note || 'updated this case' }}
-                  </p>
-                  <p v-if="event.note && event.from_status && event.from_status !== event.to_status" class="mt-1 text-[13px] text-ink-soft">{{ event.note }}</p>
-                  <p class="mt-1 text-[12px] tabular text-ink-faint">{{ timeLabel(event.created_at) }}</p>
-                </div>
-              </li>
-            </ol>
-          </section>
+          <Card icon="map-pin" title="Property location" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
+            <div class="h-64 overflow-hidden rounded-b-lg xl:h-full xl:min-h-[240px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
+          </Card>
         </div>
 
-        <div class="flex min-h-0 flex-col gap-5 overflow-y-auto pr-0.5">
-          <section class="surface-flat flex flex-col p-0">
-            <header class="flex items-center justify-between p-4 pb-0">
-              <h2>Location</h2>
-            </header>
-            <div class="h-52 p-4">
-              <LocationPicker :lat="item.lat" :lng="item.lng" readonly />
+        <Card class="min-h-[420px] xl:min-h-0" icon="history" title="Status timeline" subtitle="Every lifecycle change, in order" scroll>
+          <EmptyState v-if="!item.status_events?.length" icon="history" message="No status activity yet." />
+          <ol v-else class="relative space-y-0">
+            <li v-for="(event, index) in [...item.status_events].reverse()" :key="event.id" class="relative flex gap-3 pb-5 last:pb-0">
+              <span v-if="index < item.status_events.length - 1" class="absolute bottom-0 left-[5px] top-3 w-px bg-hairline" />
+              <span class="relative z-10 mt-1.5 h-[11px] w-[11px] flex-none rounded-full ring-4 ring-surface" :class="eventTone(event)" />
+              <div class="min-w-0"><p class="text-[13.5px] font-semibold text-ink">{{ eventTitle(event) }}</p><p class="mt-0.5 text-[12.5px] leading-5 text-ink-soft">{{ event.note || 'Status updated.' }}</p><p class="mt-1 text-[11.5px] text-ink-faint">{{ event.actor_name || 'System' }} · <span class="tabular">{{ dateTimeLabel(event.created_at) }}</span></p></div>
+            </li>
+          </ol>
+        </Card>
+
+        <Card class="min-h-[560px] xl:min-h-0" icon="users" :title="canAssign ? (item.status === 'rejected' ? 'Reassign surveyor' : 'Assign surveyor') : 'Assignment'" subtitle="Location, availability and workload in one decision" flush>
+          <template #actions><Badge v-if="canAssign" variant="success">{{ surveyorChoices.length }} available</Badge><Badge v-else :variant="assignment?.variant">{{ assignment?.label }}</Badge></template>
+          <template v-if="canAssign">
+            <InlineAlert v-if="item.status === 'rejected'" class="m-4 mb-0">{{ item.assignee_name || 'The previous surveyor' }} rejected this assignment. Select a replacement.</InlineAlert>
+            <InlineAlert v-if="candidatesError" class="m-4 mb-0">{{ candidatesError }} You can still assign by workload.</InlineAlert>
+            <div class="border-b border-hairline px-4 py-3"><div class="grid grid-cols-[1fr_auto_auto] gap-3 text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint"><span>Surveyor</span><span>Cases</span><span>Workload</span></div></div>
+            <div class="max-h-[calc(100%-138px)] min-h-0 overflow-y-auto">
+              <div v-if="candidatesLoading && !surveyorChoices.length" class="space-y-2 p-4"><Skeleton v-for="i in 4" :key="i" class="h-20" rounded="md" /></div>
+              <EmptyState v-else-if="!surveyorChoices.length" icon="users" message="No active surveyor is available for assignment." />
+              <label v-for="choice in surveyorChoices" v-else :key="choice.employee.id" class="group grid cursor-pointer grid-cols-[minmax(0,1fr)_42px_76px] items-center gap-3 border-b border-hairline px-4 py-3 transition-colors last:border-0 hover:bg-surface-sunken" :class="selectedSurveyorId === choice.employee.id ? 'bg-primary-soft' : ''">
+                <input v-model="selectedSurveyorId" type="radio" name="surveyor" class="sr-only" :value="choice.employee.id" />
+                <div class="flex min-w-0 items-center gap-2.5"><Avatar :name="choice.employee.name" size="sm" /><div class="min-w-0"><p class="truncate text-[13px] font-semibold text-ink">{{ choice.employee.name }}</p><p class="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-faint"><span class="h-1.5 w-1.5 rounded-full" :class="choice.nearby?.connection_status === 'online' ? 'bg-state-success' : 'bg-state-neutral'" /><template v-if="choice.nearby">{{ formatDistance(choice.nearby.distance_m) }} away · {{ choice.nearby.connection_status }}</template><template v-else>Off shift / no live location</template></p><p class="mt-1 text-[11px] text-ink-soft">{{ choice.workload?.summary.pending ?? 0 }} pending · {{ choice.workload?.summary.scheduled ?? 0 }} scheduled<span v-if="choice.workload?.summary.overdue" class="text-state-danger"> · {{ choice.workload.summary.overdue }} overdue</span></p></div></div>
+                <span class="tabular text-center text-[13px] font-semibold text-ink">{{ choice.activeCases }}</span>
+                <div><div class="h-1.5 overflow-hidden rounded-full bg-surface-sunken"><span class="block h-full rounded-full" :class="choice.workloadPercent >= 80 ? 'bg-state-danger' : choice.workloadPercent >= 55 ? 'bg-state-warning' : 'bg-state-success'" :style="{ width: `${choice.workloadPercent}%` }" /></div><p class="mt-1 text-right text-[10.5px] tabular text-ink-faint">{{ choice.workloadPercent }}%</p></div>
+              </label>
             </div>
-          </section>
-
-          <section class="surface-flat p-5">
-            <header class="mb-3.5 flex items-center justify-between gap-2">
-              <h2>Assign</h2>
-              <Badge v-if="canReassignAfterRejection" variant="danger">Rejected</Badge>
-            </header>
-
-            <template v-if="isAssignPanelActionable">
-              <p v-if="canReassignAfterRejection" class="mb-3.5 text-[12.5px] text-ink-soft">
-                This case was rejected by {{ item.assignee_name ?? 'the previous surveyor' }}. Reassign it to try again.
-              </p>
-
-              <InlineAlert v-if="nearestError" class="mb-3">{{ nearestError }}</InlineAlert>
-
-              <div v-if="nearestLoading" class="space-y-2">
-                <Skeleton class="h-14" rounded="md" />
-                <Skeleton class="h-14" rounded="md" />
-              </div>
-
-              <EmptyState v-else-if="nearest.length === 0" message="No surveyors currently on shift and tracked." />
-
-              <ul v-else class="mb-4 space-y-2">
-                <li
-                  v-for="surveyor in nearest"
-                  :key="surveyor.employee_id"
-                  class="flex items-center justify-between gap-3 rounded-md border border-hairline px-3.5 py-2.5"
-                >
-                  <div class="min-w-0">
-                    <p class="flex items-center gap-1.5 text-[13.5px] font-medium text-ink">
-                      {{ surveyor.name }}
-                      <Badge :variant="surveyor.connection_status === 'online' ? 'success' : 'neutral'">{{ surveyor.connection_status }}</Badge>
-                    </p>
-                    <p class="tabular text-[12px] text-ink-faint">
-                      {{ formatDistance(surveyor.distance_m) }} away — {{ surveyor.open_case_count }} open case{{ surveyor.open_case_count === 1 ? '' : 's' }}
-                      <template v-if="workloadByEmployee.get(surveyor.employee_id)">
-                        · {{ workloadByEmployee.get(surveyor.employee_id)!.summary.pending }} pending, {{ workloadByEmployee.get(surveyor.employee_id)!.summary.overdue }} overdue
-                      </template>
-                    </p>
-                  </div>
-                  <Button size="sm" :loading="assigning" @click="assignTo(surveyor.employee_id)">
-                    {{ canReassignAfterRejection ? 'Reassign' : 'Assign' }}
-                  </Button>
-                </li>
-              </ul>
-
-              <div class="flex items-end gap-2 border-t border-hairline pt-3.5">
-                <div class="flex-1">
-                  <Select v-model="manualAssignee" label="Or pick any employee">
-                    <option value="">Select employee</option>
-                    <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
-                  </Select>
-                </div>
-                <Button variant="secondary" :disabled="!manualAssignee" :loading="assigning" @click="assignManually">
-                  {{ canReassignAfterRejection ? 'Reassign' : 'Assign' }}
-                </Button>
-              </div>
-            </template>
-
-            <template v-else>
-              <EmptyState
-                icon="briefcase"
-                :message="`Case is ${assignment?.label.toLowerCase() ?? caseStatusLabel(item.status).toLowerCase()} — assignment is only available while pending or just rejected.`"
-              />
-              <dl v-if="item.assignee_name" class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-hairline pt-4 text-[13px]">
-                <div>
-                  <dt class="eyebrow mb-1">Last Assigned Surveyor</dt>
-                  <dd class="text-ink">{{ item.assignee_name }}</dd>
-                </div>
-                <div>
-                  <dt class="eyebrow mb-1">Assigned At</dt>
-                  <dd class="tabular text-ink-soft">{{ timeLabel(item.assigned_at) }}</dd>
-                </div>
-              </dl>
-            </template>
-          </section>
-
-          <section class="surface-flat p-5">
-            <h2 class="mb-3.5">Photos</h2>
-            <EmptyState v-if="!item.photos || item.photos.length === 0" icon="camera" message="No photos uploaded yet." />
-            <div v-else class="grid grid-cols-2 gap-3.5">
-              <div v-for="photo in item.photos" :key="photo.id" class="overflow-hidden rounded-md border border-hairline">
-                <img :src="photo.url" :alt="`Case photo ${photo.id}`" class="h-32 w-full object-cover" />
-                <div class="space-y-1 p-2.5">
-                  <Badge v-if="photo.is_gps_verified" variant="success">GPS verified</Badge>
-                  <Badge v-else variant="warning">
-                    Not GPS-verified{{ photo.distance_from_case_m !== null ? ` — ${formatDistance(photo.distance_from_case_m)} from site` : '' }}
-                  </Badge>
-                  <p class="tabular text-[12px] text-ink-faint">{{ timeLabel(photo.captured_at) }}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+            <div class="mt-auto border-t border-hairline bg-surface px-4 py-3"><Button class="w-full" :disabled="!selectedSurveyorId" :loading="assigning" @click="assignSelected">{{ assigning ? 'Assigning…' : selectedChoice ? `Assign case to ${selectedChoice.employee.name}` : 'Select a surveyor to assign' }}</Button><p class="mt-2 text-center text-[11px] text-ink-faint">The surveyor receives a notification and must accept before scheduling.</p></div>
+          </template>
+          <div v-else class="flex h-full min-h-[300px] flex-col p-5">
+            <div class="flex items-center gap-3 rounded-md bg-surface-sunken p-4"><Avatar :name="item.assignee_name || 'Unassigned'" size="lg" :muted="!item.assignee_name" /><div class="min-w-0"><p class="font-semibold text-ink">{{ item.assignee_name || 'No surveyor assigned' }}</p><p class="mt-0.5 text-[12.5px] text-ink-soft">{{ assignment?.label }}</p></div></div>
+            <dl class="mt-5 space-y-4 text-[13px]"><div class="flex items-center justify-between gap-3 border-b border-hairline pb-3"><dt class="text-ink-soft">Assigned at</dt><dd class="tabular text-right font-medium">{{ dateTimeLabel(item.assigned_at) }}</dd></div><div class="flex items-center justify-between gap-3 border-b border-hairline pb-3"><dt class="text-ink-soft">Accepted at</dt><dd class="tabular text-right font-medium">{{ dateTimeLabel(item.accepted_at) }}</dd></div><div class="flex items-center justify-between gap-3"><dt class="text-ink-soft">Inspection plan</dt><dd class="tabular text-right font-medium">{{ dateTimeLabel(item.planned_at) }}</dd></div></dl>
+            <InlineAlert v-if="assignment?.status === 'awaiting_acceptance'" variant="warning" class="mt-5">Waiting for the surveyor to accept and set the inspection date and time.</InlineAlert>
+          </div>
+        </Card>
       </div>
     </div>
 
     <Modal v-model="cancelModalOpen" title="Cancel case">
-      <form class="space-y-3.5" @submit.prevent="submitCancel">
-        <p class="text-[13.5px] text-ink-soft">This will mark the case cancelled. You can add an optional note.</p>
-        <div>
-          <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">Note (optional)</label>
-          <textarea v-model="cancelNote" rows="3" placeholder="Reason for cancelling (optional)" class="field h-auto py-2.5" />
-        </div>
-      </form>
-      <template #footer>
-        <Button variant="secondary" @click="cancelModalOpen = false">Keep case</Button>
-        <Button variant="danger" :loading="cancelling" @click="submitCancel">{{ cancelling ? 'Cancelling…' : 'Confirm cancel' }}</Button>
-      </template>
+      <form class="space-y-3.5" @submit.prevent="submitCancel"><p class="text-[13.5px] text-ink-soft">Cancelling stops this inspection and notifies the assigned surveyor and management.</p><div><label for="cancel-note" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Reason (optional)</label><textarea id="cancel-note" v-model="cancelNote" rows="3" placeholder="e.g. Client withdrew the inspection request" class="field h-auto py-2.5" /></div></form>
+      <template #footer><Button variant="secondary" @click="cancelModalOpen = false">Keep case</Button><Button variant="danger" :loading="cancelling" @click="submitCancel">Confirm cancellation</Button></template>
     </Modal>
   </AppShell>
 </template>

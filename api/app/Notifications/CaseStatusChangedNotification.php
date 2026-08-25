@@ -42,11 +42,16 @@ class CaseStatusChangedNotification extends Notification
 
     private function message(): string
     {
+        if ($this->to === CaseStatus::Overdue) {
+            return "{$this->case->reference_no} — {$this->case->title} is overdue.";
+        }
+
         $who = $this->actorName ?? 'Someone';
         $verb = match ($this->to) {
             CaseStatus::Accepted => 'accepted',
             CaseStatus::Rejected => 'rejected',
             CaseStatus::InProgress => 'started',
+            CaseStatus::Overdue => 'became overdue',
             CaseStatus::Completed => 'completed',
             CaseStatus::Cancelled => 'cancelled',
             CaseStatus::Pending => 'reopened',

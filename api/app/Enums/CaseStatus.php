@@ -7,6 +7,7 @@ enum CaseStatus: string
     case Pending = 'pending';
     case Accepted = 'accepted';
     case InProgress = 'in_progress';
+    case Overdue = 'overdue';
     case Completed = 'completed';
     case Rejected = 'rejected';
     case Cancelled = 'cancelled';
@@ -16,7 +17,7 @@ enum CaseStatus: string
      */
     public static function open(): array
     {
-        return [self::Pending, self::Accepted, self::InProgress];
+        return [self::Pending, self::Accepted, self::Overdue, self::InProgress];
     }
 
     public function isOpen(): bool
@@ -31,7 +32,8 @@ enum CaseStatus: string
     {
         return match ($this) {
             self::Pending => [self::Accepted, self::Rejected, self::Cancelled],
-            self::Accepted => [self::InProgress, self::Cancelled],
+            self::Accepted => [self::InProgress, self::Overdue, self::Cancelled],
+            self::Overdue => [self::InProgress, self::Cancelled],
             self::InProgress => [self::Completed, self::Cancelled],
             self::Completed, self::Rejected, self::Cancelled => [],
         };

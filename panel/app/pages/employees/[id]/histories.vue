@@ -333,7 +333,7 @@ onUnmounted(() => map?.remove())
 <template>
   <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift" :back-to="`/employees/${employeeId}`" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="trailLoading" @click="loadTrail">
+      <Button variant="secondary" size="sm" :disabled="trailLoading" aria-label="Refresh route history" @click="loadTrail">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="trailLoading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>

@@ -53,14 +53,6 @@ class CaseController extends Controller
     {
         $case = $lifecycle->create($request->validated(), $request->user());
 
-        if ($request->filled('assigned_to')) {
-            try {
-                $lifecycle->assign($case, User::findOrFail($request->integer('assigned_to')), $request->user());
-            } catch (LogicException $e) {
-                return response()->json(['message' => $e->getMessage()], 409);
-            }
-        }
-
         $employees = $audience->activeEmployees();
 
         if ($employees->isNotEmpty()) {
@@ -103,7 +95,11 @@ class CaseController extends Controller
 
     public function destroy(InspectionCase $case): Response
     {
-        abort_if($case->status !== CaseStatus::Pending, 409, 'Only unaccepted, unassigned cases can be deleted.');
+        abort_if(
+            $case->status !== CaseStatus::Pending || $case->assigned_to !== null,
+            409,
+            'Only unaccepted, unassigned cases can be deleted.',
+        );
 
         $caseId = $case->id;
         $case->delete();

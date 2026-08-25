@@ -26,13 +26,15 @@ class SmartInspectionApp extends StatefulWidget {
   State<SmartInspectionApp> createState() => _SmartInspectionAppState();
 }
 
-class _SmartInspectionAppState extends State<SmartInspectionApp> {
+class _SmartInspectionAppState extends State<SmartInspectionApp>
+    with WidgetsBindingObserver {
   final _authController = AuthController();
   final _trackingServiceController = TrackingServiceController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _authController.initialize();
     _trackingServiceController.init();
 
@@ -49,9 +51,17 @@ class _SmartInspectionAppState extends State<SmartInspectionApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     _authController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _authController.recheckRequiredPermissions();
+    }
   }
 
   @override
@@ -147,10 +157,9 @@ class SplashScreen extends StatelessWidget {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness:
-            Theme.of(context).brightness == Brightness.dark
-                ? Brightness.light
-                : Brightness.dark,
+        statusBarIconBrightness: Theme.of(context).brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
 

@@ -118,9 +118,34 @@ final class CaseLifecycleService
         return $this->announce($case, CaseStatus::InProgress, $employee, 'started', null);
     }
 
+    public function markOverdue(InspectionCase $case): InspectionCase
+    {
+        if ($case->status !== CaseStatus::Accepted || $case->planned_at === null || $case->planned_at->isFuture()) {
+            throw new LogicException('Only a scheduled case past its planned time can become overdue.');
+        }
+
+        DB::transaction(function () use ($case) {
+            $case->update(['status' => CaseStatus::Overdue]);
+            $this->logEvent($case, null, CaseStatus::Accepted, CaseStatus::Overdue, 'Planned inspection time passed.');
+        });
+
+        $fresh = $case->fresh();
+        $notification = new CaseStatusChangedNotification($fresh, CaseStatus::Overdue, null, 'Planned inspection time passed.');
+        Notification::send($this->audience->managers(), $notification);
+        $fresh->assignee?->notify($notification);
+        event(CaseChanged::for('overdue', $fresh));
+
+        return $fresh;
+    }
+
     public function complete(InspectionCase $case, User $employee, ?string $note): InspectionCase
     {
         $this->guardActor($case, $employee);
+
+        if (! $case->photos()->where('is_gps_verified', true)->exists()) {
+            throw new LogicException('Add at least one GPS-verified site photo before completing the inspection.');
+        }
+
         $now = $this->transition($case, CaseStatus::Completed, $employee, $note ?? 'Inspection completed.');
 
         $case->update(['completed_at' => $now]);
@@ -180,6 +205,10 @@ final class CaseLifecycleService
 
         if (! in_array($case->status, [CaseStatus::Pending, CaseStatus::Rejected], true)) {
             throw new LogicException('Only a pending or rejected case can be assigned or reassigned.');
+        }
+
+        if ($case->status === CaseStatus::Pending && $case->assigned_to !== null) {
+            throw new LogicException('This assignment is awaiting the surveyor response and cannot be replaced yet.');
         }
     }
 

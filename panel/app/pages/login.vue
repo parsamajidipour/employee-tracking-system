@@ -44,8 +44,8 @@ async function submit() {
         <form @submit.prevent="submit" class="space-y-3.5">
           <InlineAlert v-if="error">{{ error }}</InlineAlert>
 
-          <TextInput v-model="email" type="email" label="Email" icon="mail" autocomplete="username" required />
-          <TextInput v-model="password" type="password" label="Password" icon="lock" autocomplete="current-password" required />
+          <TextInput v-model="email" type="email" label="Email" placeholder="e.g. admin@inspection.local" icon="mail" autocomplete="username" required />
+          <TextInput v-model="password" type="password" label="Password" placeholder="Enter your work password" icon="lock" autocomplete="current-password" required />
 
           <Button type="submit" :loading="submitting" class="w-full justify-center">
             {{ submitting ? 'Signing in…' : 'Sign in' }}

@@ -6,6 +6,7 @@ import '../services/auth_storage.dart';
 import '../services/case_repository.dart';
 import '../services/me_repository.dart';
 import '../services/notification_repository.dart';
+import '../services/permission_service.dart';
 import '../services/realtime_client.dart';
 import 'live_updates.dart';
 
@@ -43,7 +44,11 @@ class AuthController extends ChangeNotifier {
 
   Future<void> initialize() async {
     final token = await storage.token();
-    onboardingCompleted = await storage.onboardingCompleted();
+    final storedOnboarding = await storage.onboardingCompleted();
+    final permissions = await PermissionService().currentSnapshot();
+    onboardingCompleted = storedOnboarding &&
+        permissions.fineLocationGranted &&
+        permissions.backgroundLocationGranted;
     status = token != null ? AuthStatus.signedIn : AuthStatus.signedOut;
     notifyListeners();
 
@@ -58,10 +63,21 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> recheckRequiredPermissions() async {
+    if (status != AuthStatus.signedIn) return;
+    final permissions = await PermissionService().currentSnapshot();
+    final allowed = permissions.fineLocationGranted &&
+        permissions.backgroundLocationGranted;
+    if (onboardingCompleted == allowed) return;
+    onboardingCompleted = allowed;
+    notifyListeners();
+  }
+
   Future<void> login(String identifier, String password) async {
     final deviceIdentifier = await storage.deviceIdentifier();
 
-    final json = await apiClient.postJsonUnauthenticated('/api/v1/device/login', {
+    final json =
+        await apiClient.postJsonUnauthenticated('/api/v1/device/login', {
       'identifier': identifier,
       'password': password,
       'device_identifier': deviceIdentifier,

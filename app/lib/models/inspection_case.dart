@@ -18,9 +18,10 @@ class CaseStatusEvent {
     required this.createdAt,
   });
 
-  factory CaseStatusEvent.fromJson(Map<String, dynamic> json) => CaseStatusEvent(
+  factory CaseStatusEvent.fromJson(Map<String, dynamic> json) =>
+      CaseStatusEvent(
         id: json['id'] as int,
-        actorName: json['actor_name'] as String,
+        actorName: json['actor_name'] as String? ?? 'System',
         fromStatus: json['from_status'] as String?,
         toStatus: json['to_status'] as String,
         note: json['note'] as String?,
@@ -99,7 +100,8 @@ class InspectionCase {
         id: json['id'] as int,
         referenceNo: json['reference_no'] as String,
         title: json['title'] as String,
-        propertyAddress: json['property_address'] as String,
+        propertyAddress: json['property_address'] as String? ??
+            'Property address not provided',
         lat: (json['lat'] as num).toDouble(),
         lng: (json['lng'] as num).toDouble(),
         status: json['status'] as String,
@@ -128,7 +130,8 @@ class CaseUnseenCount {
 
   CaseUnseenCount({required this.pending, required this.unreadNotifications});
 
-  factory CaseUnseenCount.fromJson(Map<String, dynamic> json) => CaseUnseenCount(
+  factory CaseUnseenCount.fromJson(Map<String, dynamic> json) =>
+      CaseUnseenCount(
         pending: json['pending'] as int,
         unreadNotifications: json['unread_notifications'] as int,
       );

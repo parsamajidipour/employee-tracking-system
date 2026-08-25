@@ -13,7 +13,7 @@ final class CaseWorkloadService
     public function __construct(private readonly ShiftWindowResolver $resolver) {}
 
     /**
-     * @return array{active_cases: int, pending: int, scheduled: int, overdue: int, completed_today: int, completed_week: int, completed_month: int, oldest_pending_hours: ?float}
+     * @return array{active_cases: int, pending: int, scheduled: int, in_progress: int, overdue: int, completed_today: int, completed_week: int, completed_month: int, oldest_pending_hours: ?float}
      */
     public function summary(User $employee): array
     {
@@ -22,8 +22,13 @@ final class CaseWorkloadService
 
         $pending = $cases->where('status', CaseStatus::Pending);
         $open = $cases->filter(fn (InspectionCase $c) => $c->status->isOpen());
-        $scheduled = $open->filter(fn (InspectionCase $c) => $c->planned_at !== null && $c->planned_at->greaterThan($now));
-        $overdue = $open->filter(fn (InspectionCase $c) => $c->planned_at !== null && $c->planned_at->lessThan($now));
+        $scheduled = $cases->filter(fn (InspectionCase $c) => $c->status === CaseStatus::Accepted
+            && $c->planned_at !== null
+            && $c->planned_at->greaterThan($now));
+        $overdue = $cases->filter(fn (InspectionCase $c) => $c->status === CaseStatus::Overdue
+            || ($c->status === CaseStatus::Accepted
+                && $c->planned_at !== null
+                && $c->planned_at->lessThan($now)));
 
         $oldestPending = $pending->sortBy('assigned_at')->first();
 
@@ -31,6 +36,7 @@ final class CaseWorkloadService
             'active_cases' => $open->count(),
             'pending' => $pending->count(),
             'scheduled' => $scheduled->count(),
+            'in_progress' => $cases->where('status', CaseStatus::InProgress)->count(),
             'overdue' => $overdue->count(),
             'completed_today' => $cases->filter(fn (InspectionCase $c) => $c->status === CaseStatus::Completed && $c->completed_at?->isToday())->count(),
             'completed_week' => $cases->filter(fn (InspectionCase $c) => $c->status === CaseStatus::Completed && $c->completed_at?->greaterThanOrEqualTo($now->startOfWeek()))->count(),

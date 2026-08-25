@@ -37,6 +37,8 @@ class CasePhotoControllerTest extends TestCase
             'priority' => 'normal',
         ], $admin);
         $case = $lifecycle->assign($case, $employee, $admin);
+        $case = $lifecycle->accept($case, $employee, now()->addHour());
+        $case = $lifecycle->start($case, $employee);
 
         return [$case, $employee];
     }

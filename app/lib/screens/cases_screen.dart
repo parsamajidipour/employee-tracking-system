@@ -20,6 +20,7 @@ const _filters = <({String? value, String label})>[
   (value: null, label: 'All'),
   (value: 'pending', label: 'Pending'),
   (value: 'accepted', label: 'Scheduled'),
+  (value: 'overdue', label: 'Overdue'),
   (value: 'in_progress', label: 'In progress'),
   (value: 'completed', label: 'Completed'),
 ];
@@ -27,6 +28,7 @@ const _filters = <({String? value, String label})>[
 StatusTone caseStatusTone(String status) => switch (status) {
       'pending' => StatusTone.warning,
       'accepted' => StatusTone.idle,
+      'overdue' => StatusTone.danger,
       'in_progress' => StatusTone.active,
       'completed' => StatusTone.active,
       'rejected' => StatusTone.danger,
@@ -35,8 +37,9 @@ StatusTone caseStatusTone(String status) => switch (status) {
     };
 
 String caseStatusLabel(String status) => switch (status) {
-      'pending' => 'Pending',
+      'pending' => 'Awaiting acceptance',
       'accepted' => 'Scheduled',
+      'overdue' => 'Overdue',
       'in_progress' => 'In progress',
       'completed' => 'Completed',
       'rejected' => 'Rejected',
@@ -58,7 +61,8 @@ class CasesScreen extends StatefulWidget {
   State<CasesScreen> createState() => _CasesScreenState();
 }
 
-class _CasesScreenState extends State<CasesScreen> with LiveRefresh<CasesScreen> {
+class _CasesScreenState extends State<CasesScreen>
+    with LiveRefresh<CasesScreen> {
   List<InspectionCase>? _cases;
   String? _error;
   bool _loading = false;
@@ -323,8 +327,8 @@ class _CaseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isPriority =
-        inspectionCase.priority == 'urgent' || inspectionCase.priority == 'high';
+    final isPriority = inspectionCase.priority == 'urgent' ||
+        inspectionCase.priority == 'high';
 
     return AppCard(
       onTap: onTap,
@@ -332,52 +336,13 @@ class _CaseRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      inspectionCase.referenceNo,
-                      style: context.text.labelSmall?.copyWith(
-                        color: colors.textTertiary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (isPriority) ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: inspectionCase.priority == 'urgent'
-                                  ? colors.danger
-                                  : colors.warning,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                        ],
-                        Expanded(
-                          child: Text(
-                            inspectionCase.title,
-                            style: context.text.titleMedium,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      inspectionCase.propertyAddress,
-                      style: context.text.bodySmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                child: Text(
+                  inspectionCase.referenceNo,
+                  style: context.text.labelSmall?.copyWith(
+                    color: colors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -387,13 +352,47 @@ class _CaseRow extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              if (isPriority) ...[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: inspectionCase.priority == 'urgent'
+                        ? colors.danger
+                        : colors.warning,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+              Expanded(
+                child: Text(
+                  inspectionCase.title,
+                  style: context.text.titleMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            inspectionCase.propertyAddress,
+            style: context.text.bodySmall,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
           if (inspectionCase.plannedAt != null) ...[
             const SizedBox(height: AppSpacing.md),
             Divider(color: colors.border, height: 1),
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                Icon(Icons.event_outlined, size: 16, color: colors.textSecondary),
+                Icon(Icons.event_outlined,
+                    size: 16, color: colors.textSecondary),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'Planned ${formatDateTime(inspectionCase.plannedAt!)}',

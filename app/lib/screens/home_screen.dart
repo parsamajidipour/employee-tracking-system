@@ -125,8 +125,7 @@ class _HomeScreenState extends State<HomeScreen>
       final cases = await widget.authController.caseRepository.fetchCases();
       if (!mounted) return;
       setState(() => _cases = cases);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _refreshServiceDerivedState() async {
@@ -193,7 +192,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _openNotifications() async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => NotificationsScreen(authController: widget.authController),
+      builder: (_) =>
+          NotificationsScreen(authController: widget.authController),
     ));
   }
 
@@ -273,21 +273,22 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: AppSpacing.xl),
           FadeSlideIn(
             index: step(),
-            child: _ShiftHero(
-              current: snapshot.response.current,
-              next: snapshot.response.next,
-              serviceRunning: _serviceRunning,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-          FadeSlideIn(
-            index: step(),
             child: const SectionHeader(
-              overline: 'Workload',
-              title: 'Your cases today',
+              overline: 'Field queue',
+              title: 'Your inspections',
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+          if (nextVisit != null) ...[
+            FadeSlideIn(
+              index: step(),
+              child: _NextVisitCard(
+                inspectionCase: nextVisit,
+                onTap: () => _openCase(nextVisit.id),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.cardGap),
+          ],
           FadeSlideIn(
             index: step(),
             child: _WorkloadTiles(
@@ -297,16 +298,23 @@ class _HomeScreenState extends State<HomeScreen>
               onOpen: _openCases,
             ),
           ),
-          if (nextVisit != null) ...[
-            const SizedBox(height: AppSpacing.cardGap),
-            FadeSlideIn(
-              index: step(),
-              child: _NextVisitCard(
-                inspectionCase: nextVisit,
-                onTap: () => _openCase(nextVisit.id),
-              ),
+          const SizedBox(height: AppSpacing.xxl),
+          FadeSlideIn(
+            index: step(),
+            child: const SectionHeader(
+              overline: 'Working hours',
+              title: 'Tracking status',
             ),
-          ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FadeSlideIn(
+            index: step(),
+            child: _ShiftHero(
+              current: snapshot.response.current,
+              next: snapshot.response.next,
+              serviceRunning: _serviceRunning,
+            ),
+          ),
           const SizedBox(height: AppSpacing.xxl),
           FadeSlideIn(
             index: step(),
@@ -599,7 +607,8 @@ class _OffShiftHero extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Icon(Icons.shield_outlined, size: 16, color: colors.textSecondary),
+              Icon(Icons.shield_outlined,
+                  size: 16, color: colors.textSecondary),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(

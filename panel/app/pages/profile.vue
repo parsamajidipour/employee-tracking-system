@@ -111,7 +111,7 @@ onMounted(refreshProfile)
 <template>
   <AppShell title="Admin profile" subtitle="Your account details and sign-in credentials" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="refreshing" @click="refreshProfile">
+      <Button variant="secondary" size="sm" :disabled="refreshing" aria-label="Refresh profile" @click="refreshProfile">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="refreshing" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>

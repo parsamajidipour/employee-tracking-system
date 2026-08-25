@@ -12,7 +12,6 @@ const links = [
 
 const caseLinks = [
   { to: '/cases', label: 'Cases', icon: 'briefcase' },
-  { to: '/workload', label: 'Workload', icon: 'chart-bar' },
 ]
 
 const adminLinks = [{ to: '/app-releases', label: 'App releases', icon: 'download' }]

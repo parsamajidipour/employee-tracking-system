@@ -165,16 +165,32 @@ touched.
 In:
 - Inspection/valuation case management: create, assign, accept/reject,
   start/complete, cancel — `App\Services\CaseLifecycleService`
+- Case creation and assignment are separate operations. A new case is always
+  unassigned, and every active employee receives its creation notification.
+- The lifecycle is `unassigned -> pending (awaiting acceptance) -> accepted
+  (scheduled) -> in_progress -> completed`. Rejection returns the case to the
+  assignment queue, and accepted cases whose planned time passes become
+  `overdue` until the inspection starts or the case is cancelled.
 - Assignment distribution by live location + current workload —
   `App\Services\CaseAssignmentService`, `GET /api/v1/cases/{case}/nearest-surveyors`
-- Job notification on assignment (database + Reverb broadcast; no OS push —
-  see `DECISIONS.md`)
+- Assignment candidates expose location, availability, current activity,
+  active/pending/scheduled/overdue counts and workload. Inactive employees
+  cannot receive assignments.
+- Relevant case changes notify the assignee and/or management through the
+  database inbox and Reverb broadcast. The Android app converts received
+  broadcasts into local device notifications while it is connected; no FCM
+  delivery exists yet — see `DECISIONS.md`.
 - Surveyor acceptance with planned inspection date/time
-- GPS-verified site-survey photos, flagged (never blocked) outside
-  `tracking.case_photo_radius_m` of the case location
+- Site photos can only be captured after the inspection starts. Photos outside
+  `tracking.case_photo_radius_m` are retained but fail GPS verification; at
+  least one GPS-verified photo is required to complete the case.
 - Per-employee workload and productivity dashboard, including a
   travel/inspection/idle time split for the current shift window —
   `App\Services\CaseWorkloadService`
+- Employees and workload are one management workspace in the panel.
+- Fine and background location permissions are a mandatory Android app gate.
+  Revocation while the app is installed returns the user to the permission
+  gate. The company-bound app does not expose employee logout.
 - GPS/network/flight-mode interruption reporting during a shift window,
   surfaced on the existing trail read as an `interruptions` array
 

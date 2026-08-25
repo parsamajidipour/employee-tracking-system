@@ -3,11 +3,13 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Enums\CaseStatus;
+use App\Models\CasePhoto;
 use App\Models\InspectionCase;
 use App\Models\User;
 use App\Services\CaseLifecycleService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class MyCaseControllerTest extends TestCase
@@ -100,10 +102,58 @@ class MyCaseControllerTest extends TestCase
 
         $this->postJson("/api/v1/me/cases/{$case->id}/accept", ['planned_at' => now()->addHour()->toISOString()])->assertOk();
         $this->postJson("/api/v1/me/cases/{$case->id}/start")->assertOk();
+        CasePhoto::create([
+            'inspection_case_id' => $case->id,
+            'employee_id' => $employee->id,
+            'disk_path' => 'case-photos/test.png',
+            'location' => DB::raw('ST_SetSRID(ST_MakePoint(58.35, 23.55), 4326)::geography'),
+            'accuracy_m' => 5,
+            'distance_from_case_m' => 0,
+            'is_gps_verified' => true,
+            'captured_at' => now(),
+        ]);
         $response = $this->postJson("/api/v1/me/cases/{$case->id}/complete", ['note' => 'Done.']);
 
         $response->assertOk();
         $response->assertJsonPath('status', 'completed');
-        $this->assertDatabaseCount('case_status_events', 5);
+        $this->assertSame(5, $case->statusEvents()->count());
+    }
+
+    public function test_case_cannot_be_completed_without_a_gps_verified_site_photo(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+        $case = $this->makeCase($admin, $employee);
+
+        $this->actingAs($employee);
+        $this->postJson("/api/v1/me/cases/{$case->id}/accept", ['planned_at' => now()->addHour()->toISOString()])->assertOk();
+        $this->postJson("/api/v1/me/cases/{$case->id}/start")->assertOk();
+
+        $response = $this->postJson("/api/v1/me/cases/{$case->id}/complete", ['note' => 'Done.']);
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('message', 'Add at least one GPS-verified site photo before completing the inspection.');
+        $this->assertDatabaseHas('inspection_cases', ['id' => $case->id, 'status' => CaseStatus::InProgress->value]);
+    }
+
+    public function test_scheduler_marks_past_scheduled_case_overdue_and_notifies_the_surveyor(): void
+    {
+        $this->travelTo(now()->startOfHour());
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+        $case = $this->makeCase($admin, $employee);
+        app(CaseLifecycleService::class)->accept($case, $employee, now()->addMinutes(5));
+
+        $this->travel(6)->minutes();
+        $this->artisan('cases:mark-overdue')->assertSuccessful();
+
+        $this->assertDatabaseHas('inspection_cases', ['id' => $case->id, 'status' => CaseStatus::Overdue->value]);
+        $this->assertDatabaseHas('case_status_events', [
+            'inspection_case_id' => $case->id,
+            'from_status' => CaseStatus::Accepted->value,
+            'to_status' => CaseStatus::Overdue->value,
+        ]);
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $employee->id]);
+        $this->travelBack();
     }
 }

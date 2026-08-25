@@ -145,6 +145,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
+      _showSnack(
+          'Assignment accepted. Inspection scheduled for ${formatDateTime(plannedAt)}.');
       _fetch();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -173,6 +175,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
+      _showSnack('Assignment rejected. Management has been notified.');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -194,6 +197,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
+      _showSnack('Inspection started. GPS and site photo tools are ready.');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -221,6 +225,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
+      _showSnack('Inspection completed. Management has been notified.');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -252,7 +257,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text.trim()),
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
             child: Text(confirmLabel),
           ),
         ],
@@ -262,14 +268,16 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
 
   Future<void> _capturePhoto() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      _showError('Turn location on before taking a photo — it must be stamped with GPS.');
+      _showError(
+          'Turn location on before taking a photo — it must be stamped with GPS.');
       return;
     }
 
     final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      _showError('Location permission is required before a photo can be uploaded.');
+      _showError(
+          'Location permission is required before a photo can be uploaded.');
       return;
     }
 
@@ -307,7 +315,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('No GPS lock. Turn on location and try again outdoors — the photo was not uploaded.');
+      _showError(
+          'No GPS lock. Turn on location and try again outdoors — the photo was not uploaded.');
     }
   }
 
@@ -344,7 +353,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         children: [
           FadeSlideIn(child: _Header(inspectionCase: inspectionCase)),
           const SizedBox(height: AppSpacing.cardGap),
-          FadeSlideIn(index: 1, child: _DetailsCard(inspectionCase: inspectionCase)),
+          FadeSlideIn(
+              index: 1, child: _DetailsCard(inspectionCase: inspectionCase)),
           const SizedBox(height: AppSpacing.cardGap),
           FadeSlideIn(
             index: 2,
@@ -389,6 +399,7 @@ class _Header extends StatelessWidget {
   StatusTone _toneFor(String status) => switch (status) {
         'pending' => StatusTone.warning,
         'accepted' => StatusTone.idle,
+        'overdue' => StatusTone.danger,
         'in_progress' => StatusTone.active,
         'completed' => StatusTone.active,
         'rejected' => StatusTone.danger,
@@ -397,8 +408,9 @@ class _Header extends StatelessWidget {
       };
 
   String _labelFor(String status) => switch (status) {
-        'pending' => 'Pending',
-        'accepted' => 'Accepted',
+        'pending' => 'Awaiting acceptance',
+        'accepted' => 'Scheduled',
+        'overdue' => 'Overdue',
         'in_progress' => 'In progress',
         'completed' => 'Completed',
         'rejected' => 'Rejected',
@@ -408,27 +420,27 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+        Row(
+          children: [
+            Expanded(
+              child: Text(
                 inspectionCase.referenceNo.toUpperCase(),
                 style: context.text.labelSmall
                     ?.copyWith(color: context.colors.primaryStrong),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(inspectionCase.title, style: context.text.titleLarge),
-            ],
-          ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            StatusPill(
+              label: _labelFor(inspectionCase.status),
+              tone: _toneFor(inspectionCase.status),
+            ),
+          ],
         ),
-        StatusPill(
-          label: _labelFor(inspectionCase.status),
-          tone: _toneFor(inspectionCase.status),
-        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(inspectionCase.title, style: context.text.titleLarge),
       ],
     );
   }
@@ -481,7 +493,8 @@ class _DetailsCard extends StatelessWidget {
               value: formatDateTime(inspectionCase.plannedAt!),
             ),
           ],
-          if (inspectionCase.notes != null && inspectionCase.notes!.isNotEmpty) ...[
+          if (inspectionCase.notes != null &&
+              inspectionCase.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
             Divider(color: colors.border, height: 1),
             const SizedBox(height: AppSpacing.lg),
@@ -498,7 +511,8 @@ class _DetailsCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
 
   final IconData icon;
   final String label;
@@ -563,33 +577,39 @@ class _ActionsCard extends StatelessWidget {
         onPressed: busy ? null : onReject,
         child: const Text('Reject'),
       ));
-    } else if (status == 'accepted') {
+    } else if (status == 'accepted' || status == 'overdue') {
       widgets.add(FilledButton(
         onPressed: busy ? null : onStart,
-        child: const Text('Start'),
-      ));
-      widgets.add(const SizedBox(height: AppSpacing.sm));
-      widgets.add(OutlinedButton(
-        onPressed: busy ? null : onCapturePhoto,
-        child: const Text('Add site photo'),
+        child: const Text('Start inspection'),
       ));
     } else if (status == 'in_progress') {
+      final hasVerifiedPhoto =
+          inspectionCase.photos?.any((photo) => photo.isGpsVerified) ?? false;
       widgets.add(FilledButton(
         onPressed: busy ? null : onCapturePhoto,
-        child: const Text('Add site photo'),
+        child: const Text('Take GPS-verified photo'),
       ));
       widgets.add(const SizedBox(height: AppSpacing.sm));
       widgets.add(OutlinedButton(
-        onPressed: busy ? null : onComplete,
-        child: const Text('Complete'),
+        onPressed: busy || !hasVerifiedPhoto ? null : onComplete,
+        child: const Text('Complete inspection'),
       ));
+      if (!hasVerifiedPhoto) {
+        widgets.add(const SizedBox(height: AppSpacing.sm));
+        widgets.add(Text(
+          'A GPS-verified site photo is required before completion.',
+          textAlign: TextAlign.center,
+          style: context.text.bodySmall,
+        ));
+      }
     }
 
     if (widgets.isEmpty) {
       return AppCard(
         child: Row(
           children: [
-            Icon(Icons.info_outline, size: 18, color: context.colors.textSecondary),
+            Icon(Icons.info_outline,
+                size: 18, color: context.colors.textSecondary),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
@@ -606,6 +626,15 @@ class _ActionsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text(
+            status == 'pending'
+                ? 'Assignment response'
+                : status == 'accepted' || status == 'overdue'
+                    ? 'Ready for inspection'
+                    : 'Site verification',
+            style: context.text.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.lg),
           if (busy)
             const Padding(
               padding: EdgeInsets.only(bottom: AppSpacing.md),
@@ -628,6 +657,25 @@ class _TimelineCard extends StatelessWidget {
   const _TimelineCard({required this.events});
 
   final List<CaseStatusEvent> events;
+
+  String _eventTitle(CaseStatusEvent event) {
+    final note = event.note?.toLowerCase() ?? '';
+    if (event.toStatus == 'pending' && note.contains('assigned')) {
+      return 'Surveyor assigned';
+    }
+    if (event.fromStatus == null && event.toStatus == 'pending') {
+      return 'Case received';
+    }
+    return switch (event.toStatus) {
+      'accepted' => 'Assignment accepted and scheduled',
+      'in_progress' => 'Inspection started',
+      'overdue' => 'Inspection became overdue',
+      'completed' => 'Inspection completed',
+      'rejected' => 'Assignment rejected',
+      'cancelled' => 'Case cancelled',
+      _ => 'Case updated',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -659,9 +707,7 @@ class _TimelineCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        events[i].fromStatus == null
-                            ? 'Created → ${events[i].toStatus}'
-                            : '${events[i].fromStatus} → ${events[i].toStatus}',
+                        _eventTitle(events[i]),
                         style: context.text.bodyLarge,
                       ),
                       Text(
@@ -671,7 +717,8 @@ class _TimelineCard extends StatelessWidget {
                       if (events[i].note != null && events[i].note!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text(events[i].note!, style: context.text.bodyMedium),
+                          child: Text(events[i].note!,
+                              style: context.text.bodyMedium),
                         ),
                     ],
                   ),
@@ -703,7 +750,8 @@ class _PhotosCard extends StatelessWidget {
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,
             children: [
-              for (final photo in photos) _PhotoThumb(photo: photo, authController: authController),
+              for (final photo in photos)
+                _PhotoThumb(photo: photo, authController: authController),
             ],
           ),
         ],
@@ -749,7 +797,8 @@ class _PhotoThumb extends StatelessWidget {
                   if (snapshot.hasError || !snapshot.hasData) {
                     return Container(
                       color: colors.surfaceMuted,
-                      child: Icon(Icons.broken_image_outlined, color: colors.textTertiary),
+                      child: Icon(Icons.broken_image_outlined,
+                          color: colors.textTertiary),
                     );
                   }
                   return Image.memory(
@@ -762,7 +811,9 @@ class _PhotoThumb extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Icon(
-            photo.isGpsVerified ? Icons.verified_outlined : Icons.warning_amber_outlined,
+            photo.isGpsVerified
+                ? Icons.verified_outlined
+                : Icons.warning_amber_outlined,
             size: 14,
             color: photo.isGpsVerified ? colors.success : colors.warning,
           ),

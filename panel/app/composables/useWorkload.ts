@@ -2,6 +2,7 @@ export interface WorkloadSummary {
   active_cases: number
   pending: number
   scheduled: number
+  in_progress: number
   overdue: number
   completed_today: number
   completed_week: number

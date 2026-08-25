@@ -71,7 +71,7 @@ class CaseControllerTest extends TestCase
         ]);
     }
 
-    public function test_reassigning_a_still_pending_case_logs_a_reassignment_note_without_a_fake_status_transition(): void
+    public function test_an_assignment_awaiting_acceptance_cannot_be_replaced(): void
     {
         $admin = User::factory()->admin()->create();
         $employeeA = User::factory()->create();
@@ -88,20 +88,15 @@ class CaseControllerTest extends TestCase
         ], $admin);
 
         $case = $lifecycle->assign($case, $employeeA, $admin);
-        $lifecycle->assign($case, $employeeB, $admin);
 
-        $this->assertDatabaseHas('case_status_events', [
+        $this->actingAs($admin);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employeeB->id]);
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('message', 'This assignment is awaiting the surveyor response and cannot be replaced yet.');
+        $this->assertDatabaseMissing('case_status_events', [
             'inspection_case_id' => $case->id,
             'note' => "Reassigned from {$employeeA->name} to {$employeeB->name}.",
-            'from_status' => 'pending',
-            'to_status' => 'pending',
-        ]);
-
-        $this->assertDatabaseHas('case_status_events', [
-            'inspection_case_id' => $case->id,
-            'note' => "Assigned to {$employeeA->name}.",
-            'from_status' => null,
-            'to_status' => 'pending',
         ]);
     }
 
@@ -145,6 +140,28 @@ class CaseControllerTest extends TestCase
         $response->assertCreated();
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $activeEmployee->id]);
         $this->assertDatabaseMissing('notifications', ['notifiable_id' => $inactiveEmployee->id]);
+    }
+
+    public function test_new_case_cannot_be_assigned_in_the_create_request(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+
+        $this->actingAs($admin);
+        $response = $this->postJson('/api/v1/cases', [
+            'reference_no' => 'INS-113',
+            'title' => 'Create separately from assign',
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'assigned_to' => $employee->id,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('assigned_to', null);
+        $this->assertDatabaseHas('inspection_cases', [
+            'reference_no' => 'INS-113',
+            'assigned_to' => null,
+        ]);
     }
 
     public function test_an_already_accepted_case_cannot_be_reassigned(): void
@@ -192,6 +209,28 @@ class CaseControllerTest extends TestCase
         $response = $this->deleteJson("/api/v1/cases/{$case->id}");
 
         $response->assertStatus(409);
+        $this->assertDatabaseHas('inspection_cases', ['id' => $case->id]);
+    }
+
+    public function test_destroy_refuses_an_assignment_awaiting_acceptance(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+        $case = app(CaseLifecycleService::class)->create([
+            'reference_no' => 'INS-DELETE-ASSIGNED',
+            'title' => 'Assigned case',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+        app(CaseLifecycleService::class)->assign($case, $employee, $admin);
+
+        $this->actingAs($admin)
+            ->deleteJson("/api/v1/cases/{$case->id}")
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Only unaccepted, unassigned cases can be deleted.');
+
         $this->assertDatabaseHas('inspection_cases', ['id' => $case->id]);
     }
 

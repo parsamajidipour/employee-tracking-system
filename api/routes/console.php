@@ -13,3 +13,5 @@ Schedule::command('tracking:ensure-partitions')->daily();
 Schedule::command('tracking:close-ended-sessions')->everyFiveMinutes();
 
 Schedule::command('tracking:prune-location-history')->daily();
+
+Schedule::command('cases:mark-overdue')->everyMinute()->withoutOverlapping();

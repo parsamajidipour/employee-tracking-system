@@ -41,7 +41,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     startLiveRefresh();
     _fetchCount();
     liveUpdates.refreshInbox();
-    WidgetsBinding.instance.addPostFrameCallback((_) => liveUpdates.markAllRead());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => liveUpdates.markAllRead());
   }
 
   @override
@@ -56,7 +57,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   Future<void> _fetchCount() async {
     try {
-      final count = await widget.authController.caseRepository.fetchUnseenCount();
+      final count =
+          await widget.authController.caseRepository.fetchUnseenCount();
       if (!mounted) return;
       setState(() {
         _count = count;
@@ -171,7 +173,7 @@ class _PendingSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Open the Cases tab to accept or reject them.',
+                  'Open the Inspections tab to accept or reject them.',
                   style: context.text.bodySmall,
                 ),
               ],
