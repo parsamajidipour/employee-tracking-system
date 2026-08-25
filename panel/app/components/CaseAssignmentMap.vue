@@ -33,7 +33,7 @@ function markerButton(color: string, label: string, selected = false): HTMLButto
     background: color,
     boxShadow: selected ? '0 0 0 3px rgba(79,70,229,.38), 0 5px 16px rgba(20,20,30,.28)' : '0 4px 12px rgba(20,20,30,.24)',
     cursor: 'pointer',
-    transition: 'transform 150ms ease',
+    transition: 'none',
   })
   return button
 }
@@ -98,7 +98,7 @@ function renderMarkers(): void {
     bounds.extend([candidate.lng, candidate.lat])
   })
 
-  map.fitBounds(bounds, { padding: 46, maxZoom: 14.5, duration: 350 })
+  map.fitBounds(bounds, { padding: 46, maxZoom: 14.5, duration: 0 })
 }
 
 onMounted(() => {

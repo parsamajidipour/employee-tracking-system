@@ -79,6 +79,25 @@ class CasePhotoControllerTest extends TestCase
         $this->assertGreaterThan(150, $response->json('distance_from_case_m'));
     }
 
+    public function test_photo_inside_gps_accuracy_tolerance_is_marked_gps_verified(): void
+    {
+        Storage::fake('local');
+        [$case, $employee] = $this->makeAssignedCase(23.55, 58.35);
+
+        $this->actingAs($employee);
+        $response = $this->postJson("/api/v1/me/cases/{$case->id}/photos", [
+            'photo' => $this->fakePngUpload(),
+            'lat' => 23.5519,
+            'lng' => 58.35,
+            'accuracy_m' => 80.0,
+            'captured_at' => now()->toISOString(),
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('is_gps_verified', true);
+        $this->assertGreaterThan(150, $response->json('distance_from_case_m'));
+    }
+
     public function test_only_the_assigned_employee_can_upload_a_photo(): void
     {
         Storage::fake('local');

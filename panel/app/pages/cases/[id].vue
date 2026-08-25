@@ -151,6 +151,15 @@ function dateTimeLabel(value: string | null): string {
   return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not set yet'
 }
 
+function shortDateTimeLabel(value: string | null): string {
+  return value ? new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not set'
+}
+
+function photoDistanceLabel(distance: number | null): string {
+  if (distance === null) return 'Distance unavailable'
+  return `${formatDistance(distance)} from property`
+}
+
 function eventTitle(event: CaseStatusEvent): string {
   if (event.to_status === 'pending' && event.note?.toLowerCase().includes('assigned')) return 'Surveyor assigned'
   if (!event.from_status && event.to_status === 'pending') return 'Case received'
@@ -259,6 +268,38 @@ onMounted(refreshAll)
               <div class="min-w-0"><p class="text-[13.5px] font-semibold text-ink">{{ eventTitle(event) }}</p><p class="mt-0.5 text-[12.5px] leading-5 text-ink-soft">{{ event.note || 'Status updated.' }}</p><p class="mt-1 text-[11.5px] text-ink-faint">{{ event.actor_name || 'System' }} · <span class="tabular">{{ dateTimeLabel(event.created_at) }}</span></p></div>
             </li>
           </ol>
+        </Card>
+
+        <Card icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`" scroll>
+          <template #actions>
+            <Badge :variant="item.photos?.some(photo => photo.is_gps_verified) ? 'success' : 'warning'">
+              {{ item.photos?.some(photo => photo.is_gps_verified) ? 'Verified' : 'Needs verified photo' }}
+            </Badge>
+          </template>
+          <EmptyState v-if="!item.photos?.length" icon="camera" message="No site photos have been uploaded yet." />
+          <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <a
+              v-for="photo in item.photos"
+              :key="photo.id"
+              :href="photo.url"
+              target="_blank"
+              rel="noreferrer"
+              class="group overflow-hidden rounded-md border border-hairline bg-surface-sunken transition-colors hover:border-primary/40"
+            >
+              <div class="aspect-[4/3] overflow-hidden bg-surface">
+                <img :src="photo.url" :alt="`Site photo captured ${shortDateTimeLabel(photo.captured_at)}`" class="h-full w-full object-cover transition-transform duration-fast group-hover:scale-[1.02]" loading="lazy" />
+              </div>
+              <div class="flex items-start justify-between gap-2 p-3">
+                <div class="min-w-0">
+                  <p class="truncate text-[12.5px] font-semibold text-ink">{{ shortDateTimeLabel(photo.captured_at) }}</p>
+                  <p class="mt-0.5 truncate text-[11.5px] text-ink-faint">{{ photoDistanceLabel(photo.distance_from_case_m) }}</p>
+                </div>
+                <span class="grid h-7 w-7 flex-none place-items-center rounded-full" :class="photo.is_gps_verified ? 'bg-state-success-soft text-state-success' : 'bg-state-danger-soft text-state-danger'">
+                  <Icon :name="photo.is_gps_verified ? 'check-circle' : 'alert-triangle'" class="h-4 w-4" />
+                </span>
+              </div>
+            </a>
+          </div>
         </Card>
 
         <Card class="min-h-[560px] xl:min-h-0" icon="users" :title="canAssign ? (item.status === 'rejected' ? 'Reassign surveyor' : 'Assign surveyor') : 'Assignment'" subtitle="Location, availability and workload in one decision" flush>

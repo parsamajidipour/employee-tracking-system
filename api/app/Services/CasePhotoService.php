@@ -23,6 +23,10 @@ final class CasePhotoService
             [$gps['lng'], $gps['lat'], $case->id],
         )->meters;
 
+        $accuracy = $gps['accuracy_m'] ?? null;
+        $verificationRadius = (float) config('tracking.case_photo_radius_m');
+        $allowedDistance = $verificationRadius + max(0.0, (float) ($accuracy ?? 0.0));
+
         $path = $file->store("case-photos/{$case->id}", 'local');
 
         return CasePhoto::create([
@@ -34,9 +38,9 @@ final class CasePhotoService
                 sprintf('%.8F', $gps['lng']),
                 sprintf('%.8F', $gps['lat']),
             )),
-            'accuracy_m' => $gps['accuracy_m'] ?? null,
+            'accuracy_m' => $accuracy,
             'distance_from_case_m' => $distance,
-            'is_gps_verified' => $distance <= (float) config('tracking.case_photo_radius_m'),
+            'is_gps_verified' => $distance <= $allowedDistance,
             'captured_at' => CarbonImmutable::parse($gps['captured_at']),
         ]);
     }
