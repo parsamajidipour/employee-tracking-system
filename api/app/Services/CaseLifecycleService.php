@@ -41,13 +41,25 @@ final class CaseLifecycleService
     public function assign(InspectionCase $case, User $employee, User $actor): InspectionCase
     {
         return DB::transaction(function () use ($case, $employee, $actor) {
+            $now = CarbonImmutable::now();
+            $previousAssigneeId = $case->assigned_to;
+            $previousAssigneeName = $previousAssigneeId
+                ? User::query()->find($previousAssigneeId)?->name
+                : null;
+
             $case->update([
                 'assigned_to' => $employee->id,
-                'assigned_at' => CarbonImmutable::now(),
+                'assigned_at' => $now,
                 'status' => CaseStatus::Pending,
             ]);
 
-            $this->logEvent($case, $actor, $case->status, CaseStatus::Pending, "Assigned to {$employee->name}.");
+            $note = $previousAssigneeId
+                ? "Reassigned from {$previousAssigneeName} to {$employee->name}."
+                : "Assigned to {$employee->name}.";
+
+            $from = $previousAssigneeId ? CaseStatus::Pending : null;
+
+            $this->logEvent($case, $actor, $from, CaseStatus::Pending, $note, $now);
 
             $employee->notify(new CaseAssignedNotification($case));
 
@@ -58,9 +70,9 @@ final class CaseLifecycleService
     public function accept(InspectionCase $case, User $employee, CarbonInterface $plannedAt): InspectionCase
     {
         $this->guardActor($case, $employee);
-        $this->transition($case, CaseStatus::Accepted, $employee, 'Accepted by surveyor.');
+        $now = $this->transition($case, CaseStatus::Accepted, $employee, 'Accepted by surveyor.');
 
-        $case->update(['accepted_at' => CarbonImmutable::now(), 'planned_at' => CarbonImmutable::instance($plannedAt)]);
+        $case->update(['accepted_at' => $now, 'planned_at' => CarbonImmutable::instance($plannedAt)]);
 
         return $case->fresh();
     }
@@ -76,9 +88,9 @@ final class CaseLifecycleService
     public function start(InspectionCase $case, User $employee): InspectionCase
     {
         $this->guardActor($case, $employee);
-        $this->transition($case, CaseStatus::InProgress, $employee, 'Inspection started.');
+        $now = $this->transition($case, CaseStatus::InProgress, $employee, 'Inspection started.');
 
-        $case->update(['started_at' => CarbonImmutable::now()]);
+        $case->update(['started_at' => $now]);
 
         return $case->fresh();
     }
@@ -86,9 +98,9 @@ final class CaseLifecycleService
     public function complete(InspectionCase $case, User $employee, ?string $note): InspectionCase
     {
         $this->guardActor($case, $employee);
-        $this->transition($case, CaseStatus::Completed, $employee, $note ?? 'Inspection completed.');
+        $now = $this->transition($case, CaseStatus::Completed, $employee, $note ?? 'Inspection completed.');
 
-        $case->update(['completed_at' => CarbonImmutable::now()]);
+        $case->update(['completed_at' => $now]);
 
         return $case->fresh();
     }
@@ -107,20 +119,23 @@ final class CaseLifecycleService
         }
     }
 
-    private function transition(InspectionCase $case, CaseStatus $to, User $actor, string $note): void
+    private function transition(InspectionCase $case, CaseStatus $to, User $actor, string $note): CarbonImmutable
     {
         if (! $case->status->canTransitionTo($to)) {
             throw new LogicException("Cannot move case from {$case->status->value} to {$to->value}.");
         }
 
-        DB::transaction(function () use ($case, $to, $actor, $note) {
+        return DB::transaction(function () use ($case, $to, $actor, $note) {
+            $now = CarbonImmutable::now();
             $from = $case->status;
             $case->update(['status' => $to]);
-            $this->logEvent($case, $actor, $from, $to, $note);
+            $this->logEvent($case, $actor, $from, $to, $note, $now);
+
+            return $now;
         });
     }
 
-    private function logEvent(InspectionCase $case, ?User $actor, ?CaseStatus $from, CaseStatus $to, string $note): void
+    private function logEvent(InspectionCase $case, ?User $actor, ?CaseStatus $from, CaseStatus $to, string $note, ?CarbonImmutable $createdAt = null): void
     {
         CaseStatusEvent::create([
             'inspection_case_id' => $case->id,
@@ -128,6 +143,7 @@ final class CaseLifecycleService
             'from_status' => $from,
             'to_status' => $to,
             'note' => $note,
+            'created_at' => $createdAt ?? CarbonImmutable::now(),
         ]);
     }
 

@@ -8,7 +8,7 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.card),
     this.onTap,
-    this.elevated = true,
+    this.elevated = false,
   });
 
   final Widget child;

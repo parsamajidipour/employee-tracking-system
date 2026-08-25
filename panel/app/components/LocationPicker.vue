@@ -2,10 +2,14 @@
 import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 
-const props = defineProps<{
-  lat: number | null
-  lng: number | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    lat: number | null
+    lng: number | null
+    readonly?: boolean
+  }>(),
+  { readonly: false },
+)
 
 const emit = defineEmits<{
   (e: 'update:lat', value: number): void
@@ -52,7 +56,10 @@ onMounted(() => {
       [52.1, 16.6],
       [59.95, 26.6],
     ],
+    interactive: !props.readonly,
   })
+
+  if (props.readonly) return
 
   if (hasPositioned.value) {
     map.on('load', emitCenter)
@@ -89,6 +96,7 @@ onUnmounted(() => {
     <div class="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/30"></div>
 
     <div
+      v-if="!readonly"
       class="surface pointer-events-none absolute left-3 top-3 px-3 py-2 text-[12.5px]"
       :class="hasPositioned ? 'text-ink-soft' : 'font-semibold text-state-warning'"
     >

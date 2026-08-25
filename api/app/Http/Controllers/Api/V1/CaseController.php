@@ -10,12 +10,14 @@ use App\Http\Requests\StoreCaseRequest;
 use App\Http\Resources\CaseResource;
 use App\Models\InspectionCase;
 use App\Models\User;
+use App\Notifications\CaseCreatedNotification;
 use App\Services\CaseAssignmentService;
 use App\Services\CaseLifecycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Notification;
 use LogicException;
 
 class CaseController extends Controller
@@ -51,6 +53,12 @@ class CaseController extends Controller
 
         if ($request->filled('assigned_to')) {
             $lifecycle->assign($case, User::findOrFail($request->integer('assigned_to')), $request->user());
+        }
+
+        $employees = User::query()->employees()->active()->get();
+
+        if ($employees->isNotEmpty()) {
+            Notification::send($employees, new CaseCreatedNotification($case));
         }
 
         return CaseResource::make(

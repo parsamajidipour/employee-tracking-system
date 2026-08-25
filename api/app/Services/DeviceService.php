@@ -58,4 +58,13 @@ final class DeviceService
 
         $device->update(['revoked_at' => now()]);
     }
+
+    public function logout(User $employee, int $currentTokenId): void
+    {
+        PersonalAccessToken::where('id', $currentTokenId)->delete();
+
+        Device::where('employee_id', $employee->id)
+            ->where('personal_access_token_id', $currentTokenId)
+            ->update(['revoked_at' => now()]);
+    }
 }

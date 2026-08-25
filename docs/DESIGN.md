@@ -1,11 +1,14 @@
 # Design system
 
-**Panel-only as of this rewrite.** The Flutter app (`app/`) still runs the flat/vivid
-tokens from the previous panel system and has not been touched — see
-`app/lib/theme/app_theme.dart`. The gap this creates (two visibly different
-products) is the same gap the previous version of this file flagged about itself;
-bringing the app in line with the system below is unstarted follow-up work, not
-an oversight. Everything in this file describes `panel/` only until that happens.
+**`app/lib/theme/app_theme.dart` is now current.** The Flutter app carries the
+same indigo accent, light/dark surface split, radii, spacing and motion
+principles described below, adapted into `AppColors`/`AppSpacing`/`AppRadii`/
+`AppDurations` Dart tokens rather than CSS custom properties, and into
+mobile-native screens (bottom navigation, not a port of the panel's card
+layouts) rather than a literal reuse of panel components. Everything in this
+file still describes `panel/`'s actual implementation (CSS tokens, Tailwind
+names); treat the app's Dart token file as the mobile-side implementation of
+the same system, not a separate one.
 
 A colour, radius, or shadow that is not in this file does not belong in a
 component. Implementation: `panel/app/assets/css/tokens.css` (CSS custom

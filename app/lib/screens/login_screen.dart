@@ -143,16 +143,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     controller: _identifierController,
                                     decoration: const InputDecoration(
                                       labelText: 'Email or phone number',
+                                      hintText: 'e.g. jane@example.com',
                                       prefixIcon: Icon(Icons.person_outline),
                                     ),
                                     keyboardType: TextInputType.emailAddress,
                                     textInputAction: TextInputAction.next,
                                     autocorrect: false,
                                     enableSuggestions: false,
-                                    autofillHints: const [
-                                      AutofillHints.email,
-                                      AutofillHints.telephoneNumber,
-                                    ],
+                                    autofillHints: const [],
                                     enabled: !_submitting,
                                     onFieldSubmitted: (_) =>
                                         _passwordFocus.requestFocus(),
@@ -167,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     focusNode: _passwordFocus,
                                     decoration: InputDecoration(
                                       labelText: 'Password',
+                                      hintText: 'Enter your password',
                                       prefixIcon: const Icon(Icons.lock_outline),
                                       suffixIcon: IconButton(
                                         onPressed: () => setState(

@@ -67,6 +67,82 @@ class CaseControllerTest extends TestCase
         $this->assertDatabaseCount('notifications', 1);
     }
 
+    public function test_reassigning_a_still_pending_case_logs_a_reassignment_note_without_a_fake_status_transition(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employeeA = User::factory()->create();
+        $employeeB = User::factory()->create();
+
+        $lifecycle = app(CaseLifecycleService::class);
+        $case = $lifecycle->create([
+            'reference_no' => 'INS-110',
+            'title' => 'Reassignment case',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+
+        $case = $lifecycle->assign($case, $employeeA, $admin);
+        $lifecycle->assign($case, $employeeB, $admin);
+
+        $this->assertDatabaseHas('case_status_events', [
+            'inspection_case_id' => $case->id,
+            'note' => "Reassigned from {$employeeA->name} to {$employeeB->name}.",
+            'from_status' => 'pending',
+            'to_status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('case_status_events', [
+            'inspection_case_id' => $case->id,
+            'note' => "Assigned to {$employeeA->name}.",
+            'from_status' => null,
+            'to_status' => 'pending',
+        ]);
+    }
+
+    public function test_assign_sets_assigned_at_matching_the_logged_events_created_at(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+
+        $lifecycle = app(CaseLifecycleService::class);
+        $case = $lifecycle->create([
+            'reference_no' => 'INS-111',
+            'title' => 'Timestamp case',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+
+        $case = $lifecycle->assign($case, $employee, $admin);
+
+        $event = $case->statusEvents()->latest('created_at')->first();
+
+        $this->assertNotNull($event);
+        $this->assertTrue($case->assigned_at->equalTo($event->created_at));
+    }
+
+    public function test_creating_a_case_notifies_every_active_employee(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $activeEmployee = User::factory()->create(['is_active' => true]);
+        $inactiveEmployee = User::factory()->create(['is_active' => false]);
+
+        $this->actingAs($admin);
+        $response = $this->postJson('/api/v1/cases', [
+            'reference_no' => 'INS-112',
+            'title' => 'Notify-all case',
+            'lat' => 23.55,
+            'lng' => 58.35,
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $activeEmployee->id]);
+        $this->assertDatabaseMissing('notifications', ['notifiable_id' => $inactiveEmployee->id]);
+    }
+
     public function test_an_already_accepted_case_cannot_be_reassigned(): void
     {
         $admin = User::factory()->admin()->create();

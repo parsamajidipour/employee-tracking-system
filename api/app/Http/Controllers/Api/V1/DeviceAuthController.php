@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DeviceLoginRequest;
 use App\Services\DeviceService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DeviceAuthController extends Controller
 {
@@ -40,5 +41,12 @@ class DeviceAuthController extends Controller
         }
 
         return response()->json(['token' => $result->token]);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $this->devices->logout($request->user(), $request->user()->currentAccessToken()->id);
+
+        return response()->json(status: 204);
     }
 }

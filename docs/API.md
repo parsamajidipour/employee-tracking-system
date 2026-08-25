@@ -88,7 +88,9 @@ valid, the case's current state just doesn't allow it.
   case count. Only employees currently inside a resolved shift window and
   present in the live-position cache are returned.
 - `POST /api/v1/cases` (`manage-cases`) — optional `assigned_to` assigns
-  immediately on creation.
+  immediately on creation. Every active employee is notified the case exists
+  (database + Reverb broadcast, `CaseCreatedNotification`, event
+  `case.created`) regardless of whether it was assigned at creation.
 - `POST /api/v1/cases/{case}/assign` (`manage-cases`) — `{employee_id}`.
   `409` if the case is not `pending` (already accepted cases cannot be
   silently reassigned).

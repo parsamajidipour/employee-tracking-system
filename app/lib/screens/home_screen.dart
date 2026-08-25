@@ -21,16 +21,19 @@ import '../widgets/status_pill.dart';
 import '../widgets/tracking_status_banner.dart';
 import '../widgets/update_dialog.dart';
 import 'cases_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.authController,
     required this.trackingServiceController,
+    this.onOpenCases,
   });
 
   final AuthController authController;
   final TrackingServiceController trackingServiceController;
+  final VoidCallback? onOpenCases;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -112,8 +115,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openCases() async {
+    if (widget.onOpenCases != null) {
+      widget.onOpenCases!();
+      return;
+    }
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => CasesScreen(authController: widget.authController),
+    ));
+    _fetchUnseenCount();
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => NotificationsScreen(authController: widget.authController),
     ));
     _fetchUnseenCount();
   }
@@ -182,7 +196,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final unread = _unseenCount?.unreadNotifications ?? 0;
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        actions: [
+          IconButton(
+            onPressed: _openNotifications,
+            tooltip: 'Notifications',
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+        ],
+      ),
       body: SafeArea(child: _buildBody()),
     );
   }

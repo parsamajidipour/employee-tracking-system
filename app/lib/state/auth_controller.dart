@@ -70,4 +70,15 @@ class AuthController extends ChangeNotifier {
     status = AuthStatus.signedOut;
     notifyListeners();
   }
+
+  Future<void> logout() async {
+    try {
+      await apiClient.postJson('/api/v1/device/logout', {});
+    } catch (_) {
+    }
+    await storage.clearToken();
+    revokedMessage = null;
+    status = AuthStatus.signedOut;
+    notifyListeners();
+  }
 }

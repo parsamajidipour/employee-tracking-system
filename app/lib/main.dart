@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
-import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/main_shell.dart';
 import 'screens/permission_onboarding_screen.dart';
 import 'services/permission_service.dart';
 import 'services/track_upload_service.dart';
@@ -109,7 +109,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp> {
       );
     }
 
-    return HomeScreen(
+    return MainShell(
       key: const ValueKey('home'),
       authController: _authController,
       trackingServiceController: _trackingServiceController,

@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/v1/admin/password', [AdminProfileController::class, 'updatePassword']);
 
     Route::prefix('v1')->group(function () {
+        Route::post('/device/logout', [DeviceAuthController::class, 'logout']);
         Route::post('/track', [TrackController::class, 'store']);
         Route::post('/track/ping', [TrackController::class, 'ping']);
         Route::get('/me/window', [MeController::class, 'window']);
