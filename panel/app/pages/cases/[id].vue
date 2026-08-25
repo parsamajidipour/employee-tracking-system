@@ -26,7 +26,7 @@ const deleting = ref(false)
 const assignment = computed(() => item.value ? caseAssignmentDisplay(item.value) : null)
 const canAssign = computed(() => item.value?.status === 'rejected' || (item.value?.status === 'pending' && item.value.assigned_to === null))
 const canCancel = computed(() => item.value ? ['pending', 'accepted', 'in_progress'].includes(item.value.status) : false)
-const canDelete = computed(() => item.value?.status === 'pending' && item.value.assigned_to === null)
+const canDelete = computed(() => item.value !== null)
 const workloadByEmployee = computed(() => new Map(workloadData.value.map(row => [row.employee_id, row])))
 const candidateByEmployee = computed(() => new Map(candidates.value.map(row => [row.employee_id, row])))
 const activeEmployees = computed(() => (employeesData.value ?? []).filter(employee => employee.is_active))
@@ -105,6 +105,12 @@ async function assignSelected() {
   }
 }
 
+async function assignFromMap(employeeId: number) {
+  selectedSurveyorId.value = employeeId
+  await nextTick()
+  await assignSelected()
+}
+
 function openCancelModal() {
   cancelNote.value = ''
   cancelModalOpen.value = true
@@ -125,12 +131,15 @@ async function submitCancel() {
 }
 
 async function remove() {
-  const confirmed = await confirm(`Delete case "${item.value?.title}"? This cannot be undone.`, { title: 'Delete case', variant: 'danger' })
+  const confirmed = await confirm(
+    `Permanently delete case "${item.value?.title}" and its timeline and site photos? This cannot be undone.`,
+    { title: 'Permanently delete case', variant: 'danger' },
+  )
   if (!confirmed) return
   deleting.value = true
   try {
     await deleteCase(caseId)
-    toast.success('Unassigned case deleted.')
+    toast.success('Case and all related inspection data were permanently deleted.')
     await navigateTo('/cases')
   } catch (err) {
     toast.error(apiErrorMessage(err, 'Case could not be deleted.'))
@@ -254,11 +263,21 @@ onMounted(refreshAll)
 
         <Card class="min-h-[560px] xl:min-h-0" icon="users" :title="canAssign ? (item.status === 'rejected' ? 'Reassign surveyor' : 'Assign surveyor') : 'Assignment'" subtitle="Location, availability and workload in one decision" flush>
           <template #actions><Badge v-if="canAssign" variant="success">{{ surveyorChoices.length }} available</Badge><Badge v-else :variant="assignment?.variant">{{ assignment?.label }}</Badge></template>
-          <template v-if="canAssign">
+          <div v-if="canAssign" class="flex h-full min-h-0 flex-col">
             <InlineAlert v-if="item.status === 'rejected'" class="m-4 mb-0">{{ item.assignee_name || 'The previous surveyor' }} rejected this assignment. Select a replacement.</InlineAlert>
             <InlineAlert v-if="candidatesError" class="m-4 mb-0">{{ candidatesError }} You can still assign by workload.</InlineAlert>
+            <div v-if="candidates.length" class="h-52 flex-none border-b border-hairline">
+              <CaseAssignmentMap
+                :case-lat="item.lat"
+                :case-lng="item.lng"
+                :candidates="candidates"
+                :selected-id="selectedSurveyorId"
+                @select="selectedSurveyorId = $event"
+                @assign="assignFromMap"
+              />
+            </div>
             <div class="border-b border-hairline px-4 py-3"><div class="grid grid-cols-[1fr_auto_auto] gap-3 text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint"><span>Surveyor</span><span>Cases</span><span>Workload</span></div></div>
-            <div class="max-h-[calc(100%-138px)] min-h-0 overflow-y-auto">
+            <div class="min-h-0 flex-1 overflow-y-auto">
               <div v-if="candidatesLoading && !surveyorChoices.length" class="space-y-2 p-4"><Skeleton v-for="i in 4" :key="i" class="h-20" rounded="md" /></div>
               <EmptyState v-else-if="!surveyorChoices.length" icon="users" message="No active surveyor is available for assignment." />
               <label v-for="choice in surveyorChoices" v-else :key="choice.employee.id" class="group grid cursor-pointer grid-cols-[minmax(0,1fr)_42px_76px] items-center gap-3 border-b border-hairline px-4 py-3 transition-colors last:border-0 hover:bg-surface-sunken" :class="selectedSurveyorId === choice.employee.id ? 'bg-primary-soft' : ''">
@@ -269,7 +288,7 @@ onMounted(refreshAll)
               </label>
             </div>
             <div class="mt-auto border-t border-hairline bg-surface px-4 py-3"><Button class="w-full" :disabled="!selectedSurveyorId" :loading="assigning" @click="assignSelected">{{ assigning ? 'Assigning…' : selectedChoice ? `Assign case to ${selectedChoice.employee.name}` : 'Select a surveyor to assign' }}</Button><p class="mt-2 text-center text-[11px] text-ink-faint">The surveyor receives a notification and must accept before scheduling.</p></div>
-          </template>
+          </div>
           <div v-else class="flex h-full min-h-[300px] flex-col p-5">
             <div class="flex items-center gap-3 rounded-md bg-surface-sunken p-4"><Avatar :name="item.assignee_name || 'Unassigned'" size="lg" :muted="!item.assignee_name" /><div class="min-w-0"><p class="font-semibold text-ink">{{ item.assignee_name || 'No surveyor assigned' }}</p><p class="mt-0.5 text-[12.5px] text-ink-soft">{{ assignment?.label }}</p></div></div>
             <dl class="mt-5 space-y-4 text-[13px]"><div class="flex items-center justify-between gap-3 border-b border-hairline pb-3"><dt class="text-ink-soft">Assigned at</dt><dd class="tabular text-right font-medium">{{ dateTimeLabel(item.assigned_at) }}</dd></div><div class="flex items-center justify-between gap-3 border-b border-hairline pb-3"><dt class="text-ink-soft">Accepted at</dt><dd class="tabular text-right font-medium">{{ dateTimeLabel(item.accepted_at) }}</dd></div><div class="flex items-center justify-between gap-3"><dt class="text-ink-soft">Inspection plan</dt><dd class="tabular text-right font-medium">{{ dateTimeLabel(item.planned_at) }}</dd></div></dl>

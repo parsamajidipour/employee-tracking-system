@@ -183,8 +183,8 @@ onMounted(() => {
       </Button>
     </template>
 
-    <div class="grid min-h-full grid-cols-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="min-h-fit lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+    <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="flex-none lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <Card
           :icon="editingId === null ? 'plus' : 'pencil'"
           :title="editingId === null ? 'New template' : 'Edit template'"
@@ -268,7 +268,7 @@ onMounted(() => {
       </div>
 
       <Card
-        class="min-h-fit lg:min-h-0"
+        class="flex-none lg:min-h-0"
         icon="calendar"
         title="Templates"
         :subtitle="`${templates.length} defined`"

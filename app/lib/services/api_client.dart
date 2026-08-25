@@ -1,11 +1,15 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
+import 'package:path/path.dart' as path_util;
 
 import 'api_exception.dart';
 import 'auth_storage.dart';
 
 const _requestTimeout = Duration(seconds: 15);
+const _uploadTimeout = Duration(minutes: 2);
 
 class ApiClient {
   final String baseUrl;
@@ -34,7 +38,8 @@ class ApiClient {
     return _decode(response);
   }
 
-  Future<Map<String, dynamic>> postJson(String path, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> postJson(
+      String path, Map<String, dynamic> body) async {
     final response = await _send('POST', path, body: body, authenticated: true);
     return _decode(response);
   }
@@ -43,7 +48,8 @@ class ApiClient {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final response = await _send('POST', path, body: body, authenticated: false);
+    final response =
+        await _send('POST', path, body: body, authenticated: false);
     return _decode(response);
   }
 
@@ -89,12 +95,18 @@ class ApiClient {
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
     final uri = Uri.parse('$baseUrl$path');
+    final mimeType = lookupMimeType(filePath) ?? 'image/jpeg';
     final request = http.MultipartRequest('POST', uri)
       ..headers.addAll(headers)
       ..fields.addAll(fields)
-      ..files.add(await http.MultipartFile.fromPath(fileField, filePath));
+      ..files.add(await http.MultipartFile.fromPath(
+        fileField,
+        filePath,
+        filename: path_util.basename(filePath),
+        contentType: MediaType.parse(mimeType),
+      ));
 
-    final streamedResponse = await request.send().timeout(_requestTimeout);
+    final streamedResponse = await request.send().timeout(_uploadTimeout);
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 401) {
@@ -114,7 +126,8 @@ class ApiClient {
         ? Uri.parse(urlOrPath)
         : Uri.parse('$baseUrl$urlOrPath');
 
-    final response = await http.get(uri, headers: headers).timeout(_requestTimeout);
+    final response =
+        await http.get(uri, headers: headers).timeout(_requestTimeout);
 
     if (response.statusCode == 401) {
       await onUnauthorized();
@@ -144,9 +157,11 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl$path');
     final response = await switch (method) {
       'GET' => http.get(uri, headers: headers),
-      'POST' => http.post(uri, headers: headers, body: body == null ? null : jsonEncode(body)),
+      'POST' => http.post(uri,
+          headers: headers, body: body == null ? null : jsonEncode(body)),
       _ => throw UnsupportedError('Unsupported method $method'),
-    }.timeout(_requestTimeout);
+    }
+        .timeout(_requestTimeout);
 
     if (response.statusCode == 401 && authenticated) {
       await onUnauthorized();
@@ -175,8 +190,7 @@ class ApiClient {
       if (decoded is Map && decoded['message'] is String) {
         return decoded['message'] as String;
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     return 'Something went wrong (${response.statusCode}).';
   }
 }

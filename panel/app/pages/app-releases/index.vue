@@ -121,8 +121,8 @@ onMounted(load)
       </Button>
     </template>
 
-    <div class="grid min-h-full grid-cols-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+    <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="flex-none lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <Card icon="upload" title="New release" subtitle="Publishing notifies every active employee">
           <form class="space-y-4" @submit.prevent="upload">
             <InlineAlert v-if="uploadError" class="!mb-0">{{ uploadError }}</InlineAlert>
@@ -179,7 +179,7 @@ onMounted(load)
         </Card>
       </div>
 
-      <div class="flex min-h-fit flex-col gap-4 lg:min-h-0">
+      <div class="flex flex-none flex-col gap-4 lg:min-h-0">
         <div class="grid flex-none grid-cols-1 gap-2.5 min-[480px]:grid-cols-3">
           <StatCard icon="download" label="Current version" :value="currentRelease ? `v${currentRelease.version_name}` : '—'" accent="primary" />
           <StatCard icon="inbox" label="Published builds" :value="String(releases.length)" accent="neutral" />

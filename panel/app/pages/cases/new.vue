@@ -62,14 +62,18 @@ async function submit() {
 <template>
   <AppShell title="New case" subtitle="Create an inspection case" back-to="/cases" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" to="/cases">Cancel</Button>
-      <Button size="sm" :loading="submitting" @click="submit">
-        {{ submitting ? 'Creating…' : 'Create case' }}
+      <Button variant="secondary" size="sm" to="/cases" aria-label="Cancel case creation">
+        <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
+        <span class="hidden sm:inline">Cancel</span>
+      </Button>
+      <Button size="sm" :loading="submitting" aria-label="Create case" @click="submit">
+        <Icon v-if="!submitting" name="plus" class="h-3.5 w-3.5 sm:hidden" />
+        <span class="hidden sm:inline">{{ submitting ? 'Creating…' : 'Create case' }}</span>
       </Button>
     </template>
 
-    <div class="grid min-h-full grid-cols-1 gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="flex min-h-fit flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+    <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
+      <div class="flex flex-none flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>
 
         <Card class="flex-none" icon="briefcase" title="Case details" subtitle="What is being inspected, and how urgently">
@@ -115,7 +119,7 @@ async function submit() {
         </Card>
       </div>
 
-      <Card class="min-h-fit lg:min-h-0" icon="map-pin" title="Property location" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
+      <Card class="flex-none lg:min-h-0" icon="map-pin" title="Property location" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
         <template #actions>
           <Badge :variant="hasLocation ? 'success' : 'warning'">
             {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : 'Not set' }}

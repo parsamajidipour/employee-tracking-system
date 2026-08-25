@@ -134,7 +134,7 @@ onMounted(load)
       </Button>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-4 p-4 sm:p-5">
+    <div class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3 sm:p-5 lg:overflow-hidden">
       <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 
       <div class="grid flex-none grid-cols-2 gap-2.5 lg:grid-cols-4">
@@ -150,13 +150,13 @@ onMounted(load)
       </div>
 
       <Card
-        class="min-h-0 flex-1"
+        class="flex-none lg:min-h-0 lg:flex-1"
         icon="chart-bar"
         title="By surveyor"
         :subtitle="`${visibleRows.length} shown of ${rows.length}`"
         flush
       >
-        <div class="flex h-full min-h-0 flex-col">
+        <div class="flex min-h-0 flex-col lg:h-full">
           <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-4 py-3 sm:px-5">
             <div class="min-w-56 flex-1">
               <TextInput v-model="search" label="Search" icon="search" placeholder="Search a surveyor by name" />
@@ -171,7 +171,7 @@ onMounted(load)
             </div>
           </div>
 
-          <div class="min-h-0 flex-1 overflow-y-auto">
+          <div class="min-h-0 lg:flex-1 lg:overflow-y-auto">
             <div v-if="loading && rows.length === 0" class="space-y-2.5 p-4 sm:p-5">
               <Skeleton v-for="i in 5" :key="i" class="h-16" rounded="md" />
             </div>

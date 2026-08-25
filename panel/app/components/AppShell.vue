@@ -8,11 +8,12 @@ const { open } = useSidebar()
 
 <template>
   <header
-    class="flex min-h-[72px] flex-none flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-hairline
-           bg-surface/90 px-3 py-2 backdrop-blur-sm sm:h-[72px] sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-0 lg:px-6"
+    class="flex h-16 flex-none items-center gap-1.5 border-b border-hairline bg-surface/90 px-3
+           backdrop-blur-sm sm:h-[72px] sm:gap-3 sm:px-5 lg:px-6"
   >
-    <div class="order-1 flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3">
+    <div class="flex min-w-0 flex-1 items-center gap-1 sm:gap-3">
       <button
+        v-if="!backTo"
         type="button"
         class="grid h-10 w-10 flex-none place-items-center rounded-sm text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink lg:hidden"
         aria-label="Open menu"
@@ -35,15 +36,15 @@ const { open } = useSidebar()
     </div>
     <div
       v-if="$slots.actions"
-      class="order-3 flex w-full flex-none items-center justify-end gap-1.5 pt-0.5 sm:order-2 sm:w-auto sm:gap-2.5 sm:pt-0"
+      class="flex flex-none items-center justify-end gap-1 sm:gap-2.5"
     >
       <slot name="actions" />
     </div>
-    <span v-if="$slots.actions" class="order-3 mx-0.5 hidden h-6 w-px bg-hairline sm:block" />
-    <div class="order-2 flex-none sm:order-4"><NotificationBell /></div>
+    <span v-if="$slots.actions" class="mx-0.5 hidden h-6 w-px bg-hairline sm:block" />
+    <div class="flex-none"><NotificationBell /></div>
   </header>
 
-  <main :class="fullBleed ? 'relative flex-1 overflow-hidden' : 'flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7'">
+  <main :class="fullBleed ? 'relative min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7'">
     <slot />
   </main>
 </template>

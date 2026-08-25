@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/inspection_case.dart';
+import 'case_location_screen.dart';
 import '../services/api_exception.dart';
 import '../state/auth_controller.dart';
 import '../state/live_refresh.dart';
@@ -273,7 +275,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
       return;
     }
 
-    final permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       _showError(
@@ -281,8 +286,19 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
       return;
     }
 
-    final photo = await _imagePicker.pickImage(source: ImageSource.camera);
+    final photo = await _imagePicker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 84,
+      maxWidth: 2400,
+      maxHeight: 2400,
+      requestFullMetadata: false,
+    );
     if (photo == null || !mounted) return;
+
+    if (await File(photo.path).length() > 10 * 1024 * 1024) {
+      _showError('The photo is larger than 10 MB. Retake it and try again.');
+      return;
+    }
 
     setState(() => _busy = true);
     try {
@@ -312,12 +328,23 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
       if (!mounted) return;
       setState(() => _busy = false);
       _showError(e.message);
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _showError(
+          'The upload timed out. Keep the app open and try again when the connection is stronger.');
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
       _showError(
-          'No GPS lock. Turn on location and try again outdoors — the photo was not uploaded.');
+          'The photo could not be uploaded. Check GPS and internet, then try again.');
     }
+  }
+
+  void _openMap(InspectionCase inspectionCase) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => CaseLocationScreen(inspectionCase: inspectionCase),
+    ));
   }
 
   @override
@@ -354,7 +381,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
           FadeSlideIn(child: _Header(inspectionCase: inspectionCase)),
           const SizedBox(height: AppSpacing.cardGap),
           FadeSlideIn(
-              index: 1, child: _DetailsCard(inspectionCase: inspectionCase)),
+              index: 1,
+              child: _DetailsCard(
+                inspectionCase: inspectionCase,
+                onOpenMap: () => _openMap(inspectionCase),
+              )),
           const SizedBox(height: AppSpacing.cardGap),
           FadeSlideIn(
             index: 2,
@@ -447,9 +478,13 @@ class _Header extends StatelessWidget {
 }
 
 class _DetailsCard extends StatelessWidget {
-  const _DetailsCard({required this.inspectionCase});
+  const _DetailsCard({
+    required this.inspectionCase,
+    required this.onOpenMap,
+  });
 
   final InspectionCase inspectionCase;
+  final VoidCallback onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -482,6 +517,15 @@ class _DetailsCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onOpenMap,
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Open property map'),
+            ),
           ),
           if (inspectionCase.plannedAt != null) ...[
             const SizedBox(height: AppSpacing.lg),

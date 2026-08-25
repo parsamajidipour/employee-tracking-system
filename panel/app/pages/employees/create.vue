@@ -59,9 +59,13 @@ async function submit() {
 <template>
   <AppShell title="Add employee" subtitle="Create an account and give it a working schedule" back-to="/employees" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" to="/employees">Cancel</Button>
-      <Button size="sm" :loading="submitting" @click="submit">
-        {{ submitting ? 'Creating…' : 'Create employee' }}
+      <Button variant="secondary" size="sm" to="/employees" aria-label="Cancel employee creation">
+        <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
+        <span class="hidden sm:inline">Cancel</span>
+      </Button>
+      <Button size="sm" :loading="submitting" aria-label="Create employee" @click="submit">
+        <Icon v-if="!submitting" name="plus" class="h-3.5 w-3.5 sm:hidden" />
+        <span class="hidden sm:inline">{{ submitting ? 'Creating…' : 'Create employee' }}</span>
       </Button>
     </template>
 

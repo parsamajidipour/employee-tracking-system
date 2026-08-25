@@ -293,7 +293,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
       </Button>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-3 p-3 sm:gap-4 sm:p-5">
+    <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:overflow-hidden">
       <div class="grid flex-none grid-cols-2 gap-2.5 lg:grid-cols-4">
         <StatCard icon="users" label="On the roster" :value="String(counts.total)" accent="primary" />
         <StatCard icon="briefcase" label="Active cases" :value="String(counts.activeCases)" accent="neutral" />
@@ -302,13 +302,13 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
       </div>
 
       <Card
-        class="min-h-0 flex-1"
+        class="flex-none lg:min-h-0 lg:flex-1"
         icon="users"
         title="Workforce & workload"
         :subtitle="`${employees.length} shown of ${counts.total} · live operational capacity`"
         flush
       >
-        <div class="flex h-full min-h-0 flex-col">
+        <div class="flex min-h-0 flex-col lg:h-full">
           <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-3.5 py-3 sm:px-5">
             <div class="w-full min-w-0 flex-1 min-[560px]:min-w-56">
               <TextInput
@@ -338,7 +338,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
             </Button>
           </div>
 
-          <div class="min-h-0 flex-1 overflow-y-auto">
+          <div class="min-h-0 lg:flex-1 lg:overflow-y-auto">
             <Table
               embedded
               :headers="['Employee', 'Activity & location', 'Active', 'Pending / Scheduled', 'Workload', '']"

@@ -337,10 +337,13 @@ onUnmounted(() => map?.remove())
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="trailLoading" />
         <span class="hidden sm:inline">Refresh</span>
       </Button>
-      <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`">Employee shifts</Button>
+      <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`" aria-label="Employee shifts">
+        <Icon name="calendar" class="h-3.5 w-3.5" />
+        <span class="hidden sm:inline">Employee shifts</span>
+      </Button>
     </template>
 
-    <div class="flex h-full flex-col p-3 sm:p-5 lg:p-7">
+    <div class="flex h-full min-h-0 flex-col overflow-y-auto p-3 sm:p-5 lg:p-7">
       <InlineAlert v-if="error" class="mb-4 flex-none">{{ error }}</InlineAlert>
 
       <form class="surface-flat mb-3 flex flex-none flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-4 sm:p-4" @submit.prevent>

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\CaseStatus;
 use App\Events\CaseChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssignCaseRequest;
@@ -19,7 +18,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use LogicException;
 
 class CaseController extends Controller
@@ -95,14 +96,21 @@ class CaseController extends Controller
 
     public function destroy(InspectionCase $case): Response
     {
-        abort_if(
-            $case->status !== CaseStatus::Pending || $case->assigned_to !== null,
-            409,
-            'Only unaccepted, unassigned cases can be deleted.',
-        );
-
         $caseId = $case->id;
-        $case->delete();
+        $photoPaths = $case->photos()->pluck('disk_path')->all();
+
+        DB::transaction(function () use ($case): void {
+            // Keep this explicit as well as using cascading foreign keys so
+            // deletion remains safe during rolling deployments where the new
+            // constraint migration may not have run yet.
+            $case->statusEvents()->delete();
+            $case->photos()->delete();
+            $case->delete();
+        });
+
+        if ($photoPaths !== []) {
+            Storage::disk('local')->delete($photoPaths);
+        }
 
         event(CaseChanged::deleted($caseId));
 

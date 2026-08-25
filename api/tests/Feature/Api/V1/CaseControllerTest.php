@@ -188,7 +188,7 @@ class CaseControllerTest extends TestCase
         $response->assertStatus(409);
     }
 
-    public function test_destroy_refuses_a_case_that_is_no_longer_pending(): void
+    public function test_admin_can_permanently_delete_a_case_that_is_no_longer_pending(): void
     {
         $admin = User::factory()->admin()->create();
         $employee = User::factory()->create();
@@ -208,11 +208,12 @@ class CaseControllerTest extends TestCase
         $this->actingAs($admin);
         $response = $this->deleteJson("/api/v1/cases/{$case->id}");
 
-        $response->assertStatus(409);
-        $this->assertDatabaseHas('inspection_cases', ['id' => $case->id]);
+        $response->assertNoContent();
+        $this->assertDatabaseMissing('inspection_cases', ['id' => $case->id]);
+        $this->assertDatabaseMissing('case_status_events', ['inspection_case_id' => $case->id]);
     }
 
-    public function test_destroy_refuses_an_assignment_awaiting_acceptance(): void
+    public function test_admin_can_permanently_delete_an_assignment_awaiting_acceptance(): void
     {
         $admin = User::factory()->admin()->create();
         $employee = User::factory()->create();
@@ -228,10 +229,10 @@ class CaseControllerTest extends TestCase
 
         $this->actingAs($admin)
             ->deleteJson("/api/v1/cases/{$case->id}")
-            ->assertStatus(409)
-            ->assertJsonPath('message', 'Only unaccepted, unassigned cases can be deleted.');
+            ->assertNoContent();
 
-        $this->assertDatabaseHas('inspection_cases', ['id' => $case->id]);
+        $this->assertDatabaseMissing('inspection_cases', ['id' => $case->id]);
+        $this->assertDatabaseMissing('case_status_events', ['inspection_case_id' => $case->id]);
     }
 
     public function test_assigning_to_a_deactivated_employee_is_refused_with_a_message(): void
