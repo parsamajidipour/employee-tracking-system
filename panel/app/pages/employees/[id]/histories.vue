@@ -271,6 +271,7 @@ onMounted(() => {
 
   map = new MapLibreMap({
     container: mapContainer.value!,
+    attributionControl: { compact: true },
     style: {
       version: 8,
       sources: {
