@@ -37,13 +37,6 @@ const employees = computed(() => {
   })
 })
 
-const counts = computed(() => ({
-  total: allEmployees.value.length,
-  activeCases: workloadData.value.reduce((sum, row) => sum + row.summary.active_cases, 0),
-  pending: workloadData.value.reduce((sum, row) => sum + row.summary.pending, 0),
-  overdue: workloadData.value.reduce((sum, row) => sum + row.summary.overdue, 0),
-}))
-
 function workloadPercent(employeeId: number): number {
   const activeCases = workloadByEmployee.value.get(employeeId)?.summary.active_cases ?? 0
   return Math.min(100, Math.round((activeCases / 6) * 100))
@@ -257,18 +250,11 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:overflow-hidden">
-      <div class="grid flex-none grid-cols-2 gap-2.5 lg:grid-cols-4">
-        <StatCard icon="users" label="On the roster" :value="String(counts.total)" accent="primary" />
-        <StatCard icon="briefcase" label="Active cases" :value="String(counts.activeCases)" accent="neutral" />
-        <StatCard icon="clock" label="Awaiting acceptance" :value="String(counts.pending)" :accent="counts.pending > 0 ? 'warning' : 'neutral'" />
-        <StatCard icon="alert-triangle" label="Overdue" :value="String(counts.overdue)" :accent="counts.overdue > 0 ? 'danger' : 'neutral'" />
-      </div>
-
       <Card
         class="flex-none lg:min-h-0 lg:flex-1"
         icon="users"
         title="Workforce & workload"
-        :subtitle="`${employees.length} shown of ${counts.total} · live operational capacity`"
+        :subtitle="`${employees.length} shown of ${allEmployees.length} · live operational capacity`"
         flush
       >
         <div class="flex min-h-0 flex-col lg:h-full">
