@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CaseStatus;
 use App\Events\CaseChanged;
+use App\Models\CaseAssignmentHistory;
 use App\Models\CaseStatusEvent;
 use App\Models\InspectionCase;
 use App\Models\User;
@@ -74,6 +75,12 @@ final class CaseLifecycleService
                 : ($previousAssigneeId ? CaseStatus::Pending : null);
 
             $this->logEvent($case, $actor, $from, CaseStatus::Pending, $note, $now);
+            CaseAssignmentHistory::create([
+                'inspection_case_id' => $case->id,
+                'employee_id' => $employee->id,
+                'actor_id' => $actor->id,
+                'assigned_at' => $now,
+            ]);
 
             $employee->notify(new CaseAssignedNotification($case));
 

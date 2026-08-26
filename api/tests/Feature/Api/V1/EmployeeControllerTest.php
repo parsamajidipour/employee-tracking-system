@@ -9,6 +9,7 @@ use App\Models\Device;
 use App\Models\ShiftTemplate;
 use App\Models\TrackingSession;
 use App\Models\User;
+use App\Services\CaseLifecycleService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -90,6 +91,34 @@ class EmployeeControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJson(['started_at' => null]);
+    }
+
+    public function test_assigned_cases_lists_cases_ever_assigned_to_the_employee(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employeeA = User::factory()->create();
+        $employeeB = User::factory()->create();
+        $lifecycle = app(CaseLifecycleService::class);
+
+        $case = $lifecycle->create([
+            'reference_no' => 'INS-ACT-1',
+            'title' => 'Previously assigned case',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+
+        $case = $lifecycle->assign($case, $employeeA, $admin);
+        $lifecycle->reject($case, $employeeA, 'Busy.');
+        $lifecycle->assign($case->fresh(), $employeeB, $admin);
+
+        $this->actingAs($admin);
+        $response = $this->getJson("/api/v1/employees/{$employeeA->id}/assigned-cases");
+
+        $response->assertOk();
+        $response->assertJsonPath('0.id', $case->id);
+        $response->assertJsonPath('0.reference_no', 'INS-ACT-1');
     }
 
     public function test_store_creates_an_active_employee(): void

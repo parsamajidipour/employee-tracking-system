@@ -337,14 +337,14 @@ onMounted(() => {
                 <div class="flex items-center justify-end gap-1">
                   <button
                     type="button"
-                    class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong opacity-0 transition-opacity hover:bg-surface-sunken group-hover:opacity-100 focus-visible:opacity-100"
+                    class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
                     @click="startEdit(template)"
                   >
                     Edit
                   </button>
                   <button
                     type="button"
-                    class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft opacity-0 transition-opacity hover:bg-surface-sunken hover:text-state-danger group-hover:opacity-100 focus-visible:opacity-100"
+                    class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger"
                     @click="remove(template)"
                   >
                     Delete

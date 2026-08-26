@@ -248,14 +248,14 @@ onMounted(refreshAll)
             <div class="relative isolate h-72 overflow-hidden rounded-b-md xl:h-[300px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
           </Card>
 
-          <Card class="relative z-10 min-h-[360px] xl:flex-1" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`">
+          <Card class="relative z-10 min-h-[360px] xl:flex-1 xl:max-h-[calc(100vh-620px)] xl:min-h-[360px]" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`" scroll>
             <template #actions>
               <Badge :variant="item.photos?.some(photo => photo.is_gps_verified) ? 'success' : 'warning'">
                 {{ item.photos?.some(photo => photo.is_gps_verified) ? 'Verified' : 'Needs verified photo' }}
               </Badge>
             </template>
             <EmptyState v-if="!item.photos?.length" icon="camera" message="No site photos have been uploaded yet." />
-            <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-3">
               <a
                 v-for="photo in item.photos"
                 :key="photo.id"
@@ -264,7 +264,7 @@ onMounted(refreshAll)
                 rel="noreferrer"
                 class="group overflow-hidden rounded-md border border-hairline bg-surface-sunken transition-colors hover:border-primary/40"
               >
-                <div class="aspect-[4/3] overflow-hidden bg-surface">
+                <div class="aspect-[4/3] overflow-hidden bg-surface xl:aspect-square">
                   <img :src="photo.url" :alt="`Site photo captured ${shortDateTimeLabel(photo.captured_at)}`" class="h-full w-full object-cover transition-transform duration-fast group-hover:scale-[1.02]" loading="lazy" />
                 </div>
                 <div class="flex items-start justify-between gap-2 p-3">

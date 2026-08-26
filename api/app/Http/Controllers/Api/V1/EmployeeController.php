@@ -10,7 +10,9 @@ use App\Http\Requests\SetEmployeeActiveRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\SyncEmployeeShiftsRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
+use App\Http\Resources\CaseResource;
 use App\Http\Resources\EmployeeResource;
+use App\Models\CaseAssignmentHistory;
 use App\Mail\EmployeePasswordChangedMail;
 use App\Mail\EmployeeWelcomeMail;
 use App\Models\InspectionCase;
@@ -185,5 +187,50 @@ class EmployeeController extends Controller
         return response()->json([
             'started_at' => $session?->started_at?->toISOString(),
         ]);
+    }
+
+    public function assignedCases(User $employee): AnonymousResourceCollection
+    {
+        abort_unless($employee->role === UserRole::Employee, 404);
+
+        $notifiedCaseIds = $employee->notifications()
+            ->get()
+            ->filter(fn ($notification) => ($notification->data['type'] ?? null) === 'case.assigned')
+            ->map(fn ($notification) => (int) ($notification->data['case_id'] ?? 0))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $historyCaseIds = CaseAssignmentHistory::query()
+            ->where('employee_id', $employee->id)
+            ->pluck('inspection_case_id')
+            ->unique()
+            ->values();
+
+        $cases = InspectionCase::query()
+            ->withLatLng()
+            ->with('assignee')
+            ->where(function ($query) use ($employee, $historyCaseIds, $notifiedCaseIds): void {
+                $query->where('assigned_to', $employee->id);
+
+                if ($historyCaseIds->isNotEmpty()) {
+                    $query->orWhereIn('id', $historyCaseIds);
+                }
+
+                if ($notifiedCaseIds->isNotEmpty()) {
+                    $query->orWhereIn('id', $notifiedCaseIds);
+                }
+
+                $query->orWhereHas('statusEvents', function ($events) use ($employee): void {
+                    $events->where('note', "Assigned to {$employee->name}.")
+                        ->orWhere('note', 'like', "% to {$employee->name}.");
+                });
+            })
+            ->orderByDesc('assigned_at')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
+        return CaseResource::collection($cases);
     }
 }

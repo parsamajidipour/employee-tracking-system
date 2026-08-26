@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Employee } from '~/composables/useEmployees'
-import type { WorkloadActivity, WorkloadDetail } from '~/composables/useWorkload'
+import type { InspectionCase } from '~/composables/useCases'
+import { casePriorityLabel, casePriorityVariant, caseStatusLabel, caseStatusVariant } from '~/utils/caseStatus'
 
 const { data: employeesData, loading, error: cacheError, load, refresh } = useEmployees()
 const { data: workloadData, loading: workloadLoading, load: loadWorkload } = useWorkloadList()
@@ -64,48 +65,15 @@ function locationOf(employee: Employee): string {
   return `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)} · ${position.connection_status}`
 }
 
-function todayLocalDate(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
 const activityDrawerOpen = ref(false)
 const activityEmployeeId = ref<number | null>(null)
 const activityEmployeeName = ref('')
-const activityDate = ref(todayLocalDate())
-const activityDetail = ref<WorkloadDetail | null>(null)
+const assignedCases = ref<InspectionCase[]>([])
 const activityLoading = ref(false)
 const activityError = ref<string | null>(null)
 
-function minutesLabel(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const remainder = Math.round(minutes % 60)
-  return hours === 0 ? `${remainder}m` : `${hours}h ${remainder}m`
-}
-
-function activitySegments(activity: WorkloadActivity) {
-  const total = activity.inspection_minutes + activity.travel_minutes + activity.idle_minutes
-  if (total <= 0) return { inspection: 0, travel: 0, idle: 100 }
-  return {
-    inspection: (activity.inspection_minutes / total) * 100,
-    travel: (activity.travel_minutes / total) * 100,
-    idle: (activity.idle_minutes / total) * 100,
-  }
-}
-
-function utilizationPercent(activity: WorkloadActivity): number {
-  const total = activity.inspection_minutes + activity.travel_minutes + activity.idle_minutes
-  if (total <= 0) return 0
-  return Math.round(((activity.inspection_minutes + activity.travel_minutes) / total) * 100)
-}
-
-function activityRingStyle(activity: WorkloadActivity) {
-  const segments = activitySegments(activity)
-  const inspectionEnd = segments.inspection
-  const travelEnd = inspectionEnd + segments.travel
-  return {
-    background: `conic-gradient(var(--primary) 0% ${inspectionEnd}%, var(--warning) ${inspectionEnd}% ${travelEnd}%, var(--neutral-soft) ${travelEnd}% 100%)`,
-  }
+function dateTimeLabel(value: string | null): string {
+  return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not set'
 }
 
 async function loadActivityDetail() {
@@ -113,9 +81,9 @@ async function loadActivityDetail() {
   activityLoading.value = true
   activityError.value = null
   try {
-    activityDetail.value = await fetchWorkloadDetail(activityEmployeeId.value, activityDate.value)
+    assignedCases.value = await apiFetch<InspectionCase[]>(`/api/v1/employees/${activityEmployeeId.value}/assigned-cases`)
   } catch (err) {
-    activityError.value = apiErrorMessage(err, 'Could not load activity for this day.')
+    activityError.value = apiErrorMessage(err, 'Could not load assigned cases for this employee.')
   } finally {
     activityLoading.value = false
   }
@@ -124,15 +92,10 @@ async function loadActivityDetail() {
 function openActivity(employee: Employee) {
   activityEmployeeId.value = employee.id
   activityEmployeeName.value = employee.name
-  activityDate.value = todayLocalDate()
-  activityDetail.value = null
+  assignedCases.value = []
   activityDrawerOpen.value = true
   loadActivityDetail()
 }
-
-watch(activityDate, () => {
-  if (activityDrawerOpen.value) loadActivityDetail()
-})
 
 async function refreshAll() {
   await Promise.all([refresh(), loadWorkload()])
@@ -429,20 +392,20 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
                   <div class="flex items-center justify-end gap-1 whitespace-nowrap">
                     <button
                       type="button"
-                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong opacity-0 transition-opacity hover:bg-surface-sunken group-hover:opacity-100 focus-visible:opacity-100"
+                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
                       @click="openActivity(employee)"
                     >
                       Activity
                     </button>
                     <NuxtLink
                       :to="`/employees/${employee.id}`"
-                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong opacity-0 transition-opacity hover:bg-surface-sunken group-hover:opacity-100 focus-visible:opacity-100"
+                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
                     >
                       Schedule
                     </NuxtLink>
                     <NuxtLink
                       :to="`/employees/${employee.id}/histories`"
-                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong opacity-0 transition-opacity hover:bg-surface-sunken group-hover:opacity-100 focus-visible:opacity-100"
+                      class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
                     >
                       Histories
                     </NuxtLink>
@@ -468,83 +431,43 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
       </Card>
     </div>
 
-    <Drawer v-model="activityDrawerOpen" :title="`${activityEmployeeName} · activity`">
-      <div class="space-y-4">
-        <div>
-          <label for="employee-activity-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Activity date</label>
-          <input
-            id="employee-activity-date"
-            v-model="activityDate"
-            type="date"
-            placeholder="Pick an activity date"
-            :max="todayLocalDate()"
-            class="field w-full"
-          />
-        </div>
-
+    <Drawer v-model="activityDrawerOpen" :title="`${activityEmployeeName} · assigned cases`">
+      <div class="space-y-3">
         <InlineAlert v-if="activityError" class="!mb-0">{{ activityError }}</InlineAlert>
 
         <div v-if="activityLoading" class="space-y-2.5">
-          <Skeleton class="h-24" rounded="md" />
-          <Skeleton class="h-40" rounded="md" />
+          <Skeleton v-for="i in 5" :key="i" class="h-24" rounded="md" />
         </div>
 
-        <template v-else-if="activityDetail">
-          <section class="surface-flat">
-            <header class="border-b border-hairline px-4 py-3">
-              <h2>Case workload</h2>
-              <p class="mt-0.5 text-[12px] text-ink-faint">Operational capacity for the selected surveyor</p>
-            </header>
-            <div class="grid grid-cols-2 gap-2.5 p-4">
-              <StatCard tone="sunken" icon="briefcase" label="Open" :value="String(activityDetail.summary.active_cases)" accent="primary" />
-              <StatCard tone="sunken" icon="inbox" label="Awaiting" :value="String(activityDetail.summary.pending)" accent="warning" />
-              <StatCard tone="sunken" icon="calendar" label="Scheduled" :value="String(activityDetail.summary.scheduled)" accent="neutral" />
-              <StatCard tone="sunken" icon="alert-triangle" label="Overdue" :value="String(activityDetail.summary.overdue)" :accent="activityDetail.summary.overdue > 0 ? 'danger' : 'neutral'" />
+        <EmptyState
+          v-else-if="assignedCases.length === 0"
+          icon="briefcase"
+          message="No cases have been assigned to this employee yet."
+        />
+
+        <NuxtLink
+          v-for="caseItem in assignedCases"
+          v-else
+          :key="caseItem.id"
+          :to="`/cases/${caseItem.id}`"
+          class="block rounded-md border border-hairline bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-sunken/60"
+          @click="activityDrawerOpen = false"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-[14px] font-semibold text-ink">{{ caseItem.title }}</p>
+              <p class="mt-0.5 truncate text-[12px] text-ink-faint">{{ caseItem.reference_no }}</p>
             </div>
-          </section>
-
-          <section class="surface-flat">
-            <header class="flex items-center justify-between gap-2 border-b border-hairline px-4 py-3">
-              <div>
-                <h2>Time on task</h2>
-                <p class="mt-0.5 text-[12px] text-ink-faint">Inspection, travel and idle time</p>
-              </div>
-              <span class="text-[12px] tabular text-ink-faint">{{ new Date(activityDate).toLocaleDateString() }}</span>
-            </header>
-            <div class="p-4">
-              <div class="flex items-center gap-3.5">
-                <div class="relative grid h-16 w-16 flex-none place-items-center rounded-full" :style="activityRingStyle(activityDetail.activity)">
-                  <div class="grid h-11 w-11 place-items-center rounded-full bg-surface">
-                    <span class="text-[13px] font-bold tabular text-ink">{{ utilizationPercent(activityDetail.activity) }}%</span>
-                  </div>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="flex h-2.5 w-full overflow-hidden rounded-pill bg-surface-sunken">
-                    <div class="bg-primary" :style="{ width: activitySegments(activityDetail.activity).inspection + '%' }" />
-                    <div class="bg-state-warning" :style="{ width: activitySegments(activityDetail.activity).travel + '%' }" />
-                    <div class="bg-state-neutral" :style="{ width: activitySegments(activityDetail.activity).idle + '%' }" />
-                  </div>
-                  <p class="mt-2 tabular text-[12px] text-ink-faint">{{ formatDistance(activityDetail.activity.distance_m) }} travelled</p>
-                </div>
-              </div>
-
-              <dl class="mt-4 grid grid-cols-3 gap-2.5 border-t border-hairline pt-4 text-[13px]">
-                <div><dt class="eyebrow mb-1">Inspecting</dt><dd class="tabular font-semibold text-ink">{{ minutesLabel(activityDetail.activity.inspection_minutes) }}</dd></div>
-                <div><dt class="eyebrow mb-1">Travelling</dt><dd class="tabular font-semibold text-ink">{{ minutesLabel(activityDetail.activity.travel_minutes) }}</dd></div>
-                <div><dt class="eyebrow mb-1">Idle</dt><dd class="tabular font-semibold text-ink">{{ minutesLabel(activityDetail.activity.idle_minutes) }}</dd></div>
-              </dl>
-
-              <InlineAlert v-if="activityDetail.activity.window_minutes === null" variant="info" class="mt-4 !mb-0">
-                No shift window resolved for this day, so no work location was collected.
-              </InlineAlert>
-            </div>
-          </section>
-
-          <Button variant="secondary" class="w-full justify-center" :to="`/employees/${activityDetail.employee_id}/histories`">
-            <Icon name="route" class="h-4 w-4" />
-            Open route history
-          </Button>
-        </template>
+            <Badge :variant="caseStatusVariant(caseItem.status)">{{ caseStatusLabel(caseItem.status) }}</Badge>
+          </div>
+          <p class="mt-3 line-clamp-2 text-[12.5px] leading-5 text-ink-soft">
+            {{ caseItem.property_address || 'Property address not provided' }}
+          </p>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <Badge :variant="casePriorityVariant(caseItem.priority)">{{ casePriorityLabel(caseItem.priority) }} priority</Badge>
+            <span class="tabular text-[11.5px] text-ink-faint">Assigned {{ dateTimeLabel(caseItem.assigned_at) }}</span>
+          </div>
+        </NuxtLink>
       </div>
     </Drawer>
 

@@ -88,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/cases', [CaseController::class, 'index']);
             Route::get('/cases/{case}', [CaseController::class, 'show']);
             Route::get('/cases/{case}/nearest-surveyors', [CaseController::class, 'nearestSurveyors']);
+            Route::get('/employees/{employee}/assigned-cases', [EmployeeController::class, 'assignedCases']);
             Route::get('/workload', [WorkloadController::class, 'index']);
             Route::get('/workload/{employee}', [WorkloadController::class, 'show']);
         });

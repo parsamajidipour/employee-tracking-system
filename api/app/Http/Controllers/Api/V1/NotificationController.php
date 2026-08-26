@@ -14,16 +14,19 @@ class NotificationController extends Controller
     {
         $notifications = $request->user()
             ->notifications()
-            ->where('data->type', '!=', 'case.created')
             ->latest()
-            ->limit(50)
-            ->get();
+            ->limit(100)
+            ->get()
+            ->filter(fn ($notification) => ($notification->data['type'] ?? null) !== 'case.created')
+            ->take(50)
+            ->values();
 
         return response()->json([
             'data' => NotificationResource::collection($notifications)->resolve(),
             'unread_count' => $request->user()
                 ->unreadNotifications()
-                ->where('data->type', '!=', 'case.created')
+                ->get()
+                ->filter(fn ($notification) => ($notification->data['type'] ?? null) !== 'case.created')
                 ->count(),
         ]);
     }
