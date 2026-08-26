@@ -81,8 +81,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative h-full w-full overflow-hidden rounded-md">
-    <div ref="mapContainer" class="h-full w-full bg-surface-sunken"></div>
+  <div class="relative isolate h-full w-full overflow-hidden rounded-md">
+    <div ref="mapContainer" class="absolute inset-0 bg-surface-sunken"></div>
 
     <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
       <svg width="34" height="44" viewBox="0 0 34 44" fill="none">

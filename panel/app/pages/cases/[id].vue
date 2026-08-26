@@ -243,12 +243,12 @@ onMounted(refreshAll)
       </section>
 
       <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,.9fr)_minmax(360px,.95fr)]">
-        <div class="flex min-h-fit flex-col gap-4 lg:min-h-0">
-          <Card icon="map-pin" title="Property location" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
-            <div class="h-72 overflow-hidden rounded-b-lg xl:h-[300px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
+        <div class="flex min-h-fit flex-col gap-5 lg:min-h-0">
+          <Card class="relative z-0 overflow-hidden" icon="map-pin" title="Property location" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
+            <div class="relative isolate h-72 overflow-hidden rounded-b-md xl:h-[300px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
           </Card>
 
-          <Card class="min-h-[360px] xl:flex-1" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`">
+          <Card class="relative z-10 min-h-[360px] xl:flex-1" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`">
             <template #actions>
               <Badge :variant="item.photos?.some(photo => photo.is_gps_verified) ? 'success' : 'warning'">
                 {{ item.photos?.some(photo => photo.is_gps_verified) ? 'Verified' : 'Needs verified photo' }}

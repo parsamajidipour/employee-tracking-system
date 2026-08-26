@@ -12,7 +12,7 @@ withDefaults(
 </script>
 
 <template>
-  <section class="surface-flat flex min-h-0 flex-col">
+  <section class="surface-flat flex min-h-0 flex-col overflow-hidden">
     <header
       v-if="title || $slots.actions"
       class="flex flex-none flex-wrap items-start justify-between gap-2.5 border-b border-hairline px-3.5 py-3 sm:flex-nowrap sm:px-5"
