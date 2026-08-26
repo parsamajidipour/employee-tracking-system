@@ -2,7 +2,7 @@ name: app
 description: "Smart Inspection field tracking app."
 publish_to: 'none'
 
-version: 1.0.4+5
+version: 1.0.6+7
 
 environment:
   sdk: ^3.6.2
