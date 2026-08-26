@@ -9,12 +9,14 @@ const { data: cases, meta, loading, error, load } = useCasesList()
 
 const statusFilter = ref<CaseStatus | ''>('')
 const assigneeFilter = ref<number | ''>('')
+const createdDateFilter = ref('')
 const page = ref(1)
 
 function currentFilters() {
   return {
     status: statusFilter.value || undefined,
     assigned_to: assigneeFilter.value || undefined,
+    created_date: createdDateFilter.value || undefined,
     page: page.value,
   }
 }
@@ -23,7 +25,7 @@ function refresh() {
   return load(currentFilters())
 }
 
-watch([statusFilter, assigneeFilter], () => {
+watch([statusFilter, assigneeFilter, createdDateFilter], () => {
   page.value = 1
   refresh()
 })
@@ -68,6 +70,13 @@ onMounted(() => {
           <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
         </Select>
       </div>
+      <div class="w-full min-[360px]:w-48">
+        <label for="case-created-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Date</label>
+        <input id="case-created-date" v-model="createdDateFilter" type="date" class="field w-full" />
+      </div>
+      <Button v-if="createdDateFilter" variant="secondary" size="sm" type="button" @click="createdDateFilter = ''">
+        Clear date
+      </Button>
     </div>
 
     <Table

@@ -74,6 +74,7 @@ export interface CasesPage {
 export interface CaseFilters {
   status?: CaseStatus
   assigned_to?: number
+  created_date?: string
   page?: number
 }
 
@@ -92,6 +93,7 @@ function buildQuery(filters: CaseFilters): string {
   const query = new URLSearchParams()
   if (filters.status) query.set('status', filters.status)
   if (filters.assigned_to) query.set('assigned_to', String(filters.assigned_to))
+  if (filters.created_date) query.set('created_date', filters.created_date)
   if (filters.page) query.set('page', String(filters.page))
   const qs = query.toString()
   return qs ? `?${qs}` : ''

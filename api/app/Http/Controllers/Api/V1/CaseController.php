@@ -34,6 +34,11 @@ class CaseController extends Controller
             $query->where('assigned_to', $request->integer('assigned_to'));
         }
 
+        if ($request->filled('created_date')) {
+            $request->validate(['created_date' => ['date_format:Y-m-d']]);
+            $query->whereDate('created_at', $request->string('created_date')->toString());
+        }
+
         return CaseResource::collection($query->paginate(50));
     }
 

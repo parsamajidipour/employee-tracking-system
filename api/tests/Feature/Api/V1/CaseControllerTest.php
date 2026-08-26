@@ -31,6 +31,35 @@ class CaseControllerTest extends TestCase
         $this->assertDatabaseHas('inspection_cases', ['reference_no' => 'INS-100']);
     }
 
+    public function test_admin_can_filter_cases_by_created_date(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $lifecycle = app(CaseLifecycleService::class);
+
+        $matching = $lifecycle->create([
+            'reference_no' => 'INS-DATE-1',
+            'title' => 'Created on selected date',
+            'lat' => 23.55,
+            'lng' => 58.35,
+        ], $admin);
+        $other = $lifecycle->create([
+            'reference_no' => 'INS-DATE-2',
+            'title' => 'Created on another date',
+            'lat' => 23.55,
+            'lng' => 58.35,
+        ], $admin);
+
+        $matching->forceFill(['created_at' => '2026-08-26 09:15:00'])->save();
+        $other->forceFill(['created_at' => '2026-08-25 23:59:59'])->save();
+
+        $this->actingAs($admin);
+        $response = $this->getJson('/api/v1/cases?created_date=2026-08-26');
+
+        $response->assertOk();
+        $response->assertJsonFragment(['reference_no' => 'INS-DATE-1']);
+        $response->assertJsonMissing(['reference_no' => 'INS-DATE-2']);
+    }
+
     public function test_employee_without_capability_cannot_create_a_case(): void
     {
         $this->actingAs(User::factory()->create());
