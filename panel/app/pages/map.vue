@@ -55,7 +55,7 @@ function closeDetail() {
 function focusEmployee(employeeId: number) {
   const position = positions.value.find((p) => p.employee_id === employeeId)
   if (position && map) {
-    map.flyTo({ center: [position.lng, position.lat], zoom: Math.max(map.getZoom(), 13) })
+    map.jumpTo({ center: [position.lng, position.lat], zoom: Math.max(map.getZoom(), 13) })
   }
   selectEmployee(employeeId)
 }
@@ -137,7 +137,7 @@ onMounted(() => {
         if (snapshot.length === 0 || !map) return
         const [first, ...rest] = snapshot
         const bounds = rest.reduce((b, position) => b.extend([position.lng, position.lat]), new LngLatBounds([first!.lng, first!.lat], [first!.lng, first!.lat]))
-        map.fitBounds(bounds, { padding: 60, maxZoom: MAX_AUTO_ZOOM, duration: 500 })
+        map.fitBounds(bounds, { padding: 60, maxZoom: MAX_AUTO_ZOOM, duration: 0 })
         stop()
       },
       { deep: true },
@@ -247,3 +247,9 @@ onUnmounted(() => {
     </aside>
   </AppShell>
 </template>
+
+<style scoped>
+:deep(.maplibregl-marker) {
+  transition: none !important;
+}
+</style>

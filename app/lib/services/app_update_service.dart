@@ -17,7 +17,8 @@ class AppUpdateService {
       final packageInfo = await PackageInfo.fromPlatform();
       final installedBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
 
-      final json = await apiClient.getJsonUnauthenticated('/api/v1/app/latest-version');
+      final json =
+          await apiClient.getJsonUnauthenticated('/api/v1/app/latest-version');
       final info = AppUpdateInfo.fromJson(json);
 
       if (info.versionCode <= installedBuild) return null;
@@ -27,29 +28,40 @@ class AppUpdateService {
     }
   }
 
-  Future<File> downloadApk(AppUpdateInfo info, {void Function(double progress)? onProgress}) async {
+  Future<File> downloadApk(AppUpdateInfo info,
+      {void Function(double progress)? onProgress}) async {
+    final client = http.Client();
     final request = http.Request('GET', Uri.parse(info.downloadUrl));
-    final response = await http.Client().send(request);
+    final response = await client.send(request);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      client.close();
       throw Exception('Download failed (${response.statusCode}).');
     }
 
-    final total = response.contentLength;
+    final total =
+        response.contentLength ?? (info.fileSize > 0 ? info.fileSize : null);
     var received = 0;
 
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/smart-inspection-${info.versionName}.apk');
+    final file =
+        File('${directory.path}/smart-inspection-${info.versionName}.apk');
     final sink = file.openWrite();
 
-    await response.stream.map((chunk) {
-      received += chunk.length;
-      if (total != null && total > 0) {
-        onProgress?.call(received / total);
-      }
-      return chunk;
-    }).pipe(sink);
-    await sink.close();
+    try {
+      await response.stream.map((chunk) {
+        received += chunk.length;
+        if (total != null && total > 0) {
+          onProgress?.call((received / total).clamp(0.0, 1.0));
+        }
+        return chunk;
+      }).pipe(sink);
+      await sink.close();
+    } finally {
+      client.close();
+    }
+
+    onProgress?.call(1);
 
     return file;
   }

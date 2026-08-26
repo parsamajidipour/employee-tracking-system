@@ -1,5 +1,3 @@
-
-
 String formatTime(DateTime dateTime) {
   final local = dateTime.toLocal();
   final hh = local.hour.toString().padLeft(2, '0');
@@ -22,7 +20,9 @@ String formatDateTime(DateTime dateTime) {
 }
 
 String formatDuration(Duration duration) {
-  if (duration.isNegative || duration.inMinutes < 1) return 'less than a minute';
+  if (duration.isNegative || duration.inMinutes < 1) {
+    return 'less than a minute';
+  }
   if (duration.inMinutes < 60) return '${duration.inMinutes} min';
 
   final hours = duration.inHours;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -21,13 +22,15 @@ class LiveUpdates extends ChangeNotifier {
 
   NotificationInbox inbox = NotificationInbox.empty;
 
-  RealtimeConnectionState connectionState = RealtimeConnectionState.disconnected;
+  RealtimeConnectionState connectionState =
+      RealtimeConnectionState.disconnected;
 
   int revision = 0;
 
   StreamSubscription<RealtimeEvent>? _eventSubscription;
   StreamSubscription<RealtimeConnectionState>? _stateSubscription;
   Timer? _fallbackTimer;
+  final _arrivals = StreamController<AppNotification>.broadcast();
 
   bool _started = false;
   bool _seeded = false;
@@ -35,6 +38,8 @@ class LiveUpdates extends ChangeNotifier {
   final Set<String> _announced = <String>{};
 
   List<AppNotification> get notifications => inbox.notifications;
+
+  Stream<AppNotification> get arrivals => _arrivals.stream;
 
   int get unreadCount => inbox.unreadCount;
 
@@ -99,6 +104,7 @@ class LiveUpdates extends ChangeNotifier {
   }
 
   void _onEvent(RealtimeEvent event) {
+    _announceRealtime(event);
     unawaited(refreshInbox());
     bumpRevision();
   }
@@ -111,8 +117,7 @@ class LiveUpdates extends ChangeNotifier {
 
       _announceNew(previous);
       notifyListeners();
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   void _announceNew(NotificationInbox previous) {
@@ -124,7 +129,18 @@ class LiveUpdates extends ChangeNotifier {
 
     for (final notification in inbox.notifications.reversed) {
       if (notification.read) continue;
+      final realtimeKey = _realtimeKey(
+        notification.type,
+        caseId: notification.caseId,
+        versionCode: notification.versionCode,
+        fallback: notification.referenceNo,
+      );
+      if (realtimeKey != null && _announced.contains(realtimeKey)) {
+        _announced.add(notification.id);
+        continue;
+      }
       if (!_announced.add(notification.id)) continue;
+      if (!_arrivals.isClosed) _arrivals.add(notification);
 
       unawaited(LocalNotificationService.show(
         id: notification.id.hashCode & 0x7fffffff,
@@ -132,8 +148,58 @@ class LiveUpdates extends ChangeNotifier {
         body: notification.message.isEmpty
             ? 'Open the app for details.'
             : notification.message,
+        payload: jsonEncode(notification.toPayload()),
       ));
     }
+  }
+
+  void _announceRealtime(RealtimeEvent event) {
+    final type = event.type;
+    if (type != 'case.assigned' &&
+        type != 'case.created' &&
+        type != 'app-release.published') {
+      return;
+    }
+
+    final caseId = (event.payload['case_id'] as num?)?.toInt();
+    final versionCode = (event.payload['version_code'] as num?)?.toInt();
+    final key = _realtimeKey(
+      type,
+      caseId: caseId,
+      versionCode: versionCode,
+      fallback: event.payload['reference_no'] ?? event.name,
+    );
+    if (key == null) return;
+    if (!_announced.add(key)) return;
+
+    final title = AppNotification.titleFor(type);
+    final message =
+        (event.payload['message'] as String?) ?? 'Open the app for details.';
+
+    unawaited(LocalNotificationService.show(
+      id: key.hashCode & 0x7fffffff,
+      title: title,
+      body: message,
+      payload: jsonEncode({
+        'type': type,
+        if (caseId != null) 'case_id': caseId,
+        if (versionCode != null) 'version_code': versionCode,
+      }),
+    ));
+  }
+
+  String? _realtimeKey(
+    String type, {
+    int? caseId,
+    int? versionCode,
+    Object? fallback,
+  }) {
+    if (type != 'case.assigned' &&
+        type != 'case.created' &&
+        type != 'app-release.published') {
+      return null;
+    }
+    return 'realtime:$type:${caseId ?? versionCode ?? fallback ?? ''}';
   }
 
   Future<void> markAllRead() async {
@@ -147,8 +213,7 @@ class LiveUpdates extends ChangeNotifier {
 
     try {
       await notificationRepository.markAllRead();
-    } catch (_) {
-    }
+    } catch (_) {}
     await refreshInbox();
   }
 
@@ -158,6 +223,7 @@ class LiveUpdates extends ChangeNotifier {
     unawaited(_eventSubscription?.cancel());
     unawaited(_stateSubscription?.cancel());
     unawaited(client.dispose());
+    unawaited(_arrivals.close());
     super.dispose();
   }
 }

@@ -146,3 +146,9 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+:deep(.maplibregl-marker) {
+  transition: none !important;
+}
+</style>

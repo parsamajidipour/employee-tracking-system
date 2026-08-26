@@ -5,6 +5,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/permission_onboarding_screen.dart';
+import 'services/local_notification_service.dart';
 import 'services/permission_service.dart';
 import 'services/track_upload_service.dart';
 import 'services/tracking_service_controller.dart';
@@ -37,6 +38,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
     WidgetsBinding.instance.addObserver(this);
     _authController.initialize();
     _trackingServiceController.init();
+    LocalNotificationService.initialize();
 
     registerPeriodicWindowCheck();
 

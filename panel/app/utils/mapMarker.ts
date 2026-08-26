@@ -5,12 +5,6 @@ export interface EmployeeMarkerPosition {
   lng: number
 }
 
-const GLIDE_DURATION_MS = 700
-
-function easeOutCubic(t: number): number {
-  return 1 - (1 - t) ** 3
-}
-
 export interface EmployeeMarkerOverlayInstance {
   setName(name: string): void
   setColor(color: string): void
@@ -23,12 +17,9 @@ export interface EmployeeMarkerOverlayInstance {
 /**
  * MapLibre's `Marker` already reprojects its DOM element on every map render,
  * so unlike the old Google `OverlayView` version this needs no manual
- * `draw()`/projection step — `moveTo` only has to animate the lng/lat and let
- * the Marker place it. The glide between position updates (instead of
- * snapping) is what turns GPS noise around a stationary point into a smooth
- * micro-drift rather than a visible jitter; the coordinate driving it is
- * always the exact reported position, nothing here rounds or discards
- * accuracy.
+ * `draw()`/projection step. Position updates must snap immediately so the
+ * marker stays attached to the reported location while the map is dragged or
+ * moved.
  */
 export function createEmployeeMarker(
   map: MapLibreMap,
@@ -56,9 +47,6 @@ export function createEmployeeMarker(
 
   const marker = new MapLibreMarker({ element: div }).setLngLat([position.lng, position.lat]).addTo(map)
 
-  let current: EmployeeMarkerPosition = position
-  let animationFrame: number | null = null
-
   return {
     setName(newName: string): void {
       label.textContent = newName
@@ -80,25 +68,10 @@ export function createEmployeeMarker(
     },
 
     moveTo(target: EmployeeMarkerPosition): void {
-      const start = current
-      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
-
-      const startedAt = performance.now()
-
-      const tick = (now: number) => {
-        const t = Math.min(1, (now - startedAt) / GLIDE_DURATION_MS)
-        const eased = easeOutCubic(t)
-        current = { lat: start.lat + (target.lat - start.lat) * eased, lng: start.lng + (target.lng - start.lng) * eased }
-        marker.setLngLat([current.lng, current.lat])
-
-        animationFrame = t < 1 ? requestAnimationFrame(tick) : null
-      }
-
-      animationFrame = requestAnimationFrame(tick)
+      marker.setLngLat([target.lng, target.lat])
     },
 
     destroy(): void {
-      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
       marker.remove()
     },
   }

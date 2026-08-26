@@ -7,7 +7,6 @@ import '../models/permission_snapshot.dart';
 import '../models/shift_window.dart';
 import '../models/window_snapshot.dart';
 import '../services/api_exception.dart';
-import '../services/app_update_service.dart';
 import '../services/auth_storage.dart';
 import '../services/location_queue_repository.dart';
 import '../services/permission_service.dart';
@@ -22,9 +21,7 @@ import '../widgets/app_card.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/live_dot.dart';
 import '../widgets/status_pill.dart';
-import '../widgets/update_dialog.dart';
 import 'case_detail_screen.dart';
-import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -32,11 +29,13 @@ class HomeScreen extends StatefulWidget {
     required this.authController,
     required this.trackingServiceController,
     this.onOpenCases,
+    this.onOpenNotifications,
   });
 
   final AuthController authController;
   final TrackingServiceController trackingServiceController;
   final void Function(String? statusFilter)? onOpenCases;
+  final Future<void> Function()? onOpenNotifications;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -47,14 +46,10 @@ class _HomeScreenState extends State<HomeScreen>
   final LocationQueueRepository _queueRepository = LocationQueueRepository();
   final AuthStorage _authStorage = AuthStorage();
   final PermissionService _permissionService = PermissionService();
-  late final AppUpdateService _updateService =
-      AppUpdateService(apiClient: widget.authController.apiClient);
 
   WindowSnapshot? _snapshot;
   String? _error;
   bool _loading = false;
-  bool _checkingForUpdate = false;
-  bool _updateDialogVisible = false;
   Timer? _ticker;
 
   bool? _serviceRunning;
@@ -71,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen>
   void onLiveUpdate() {
     _fetchCases();
     _fetchWindow();
-    _checkForUpdate();
   }
 
   @override
@@ -90,7 +84,6 @@ class _HomeScreenState extends State<HomeScreen>
     _refreshServiceDerivedState();
     _fetchCases();
     _fetchIdentity();
-    _checkForUpdate();
   }
 
   @override
@@ -107,7 +100,6 @@ class _HomeScreenState extends State<HomeScreen>
       _fetchWindow();
       _refreshServiceDerivedState();
       _fetchCases();
-      _checkForUpdate();
     }
   }
 
@@ -115,23 +107,6 @@ class _HomeScreenState extends State<HomeScreen>
     final identity = await widget.authController.meRepository.fetchIdentity();
     if (!mounted || identity == null) return;
     setState(() => _displayName = identity.name);
-  }
-
-  Future<void> _checkForUpdate() async {
-    if (_checkingForUpdate || _updateDialogVisible) return;
-    _checkingForUpdate = true;
-
-    try {
-      final info = await _updateService.checkForUpdate();
-      if (info == null || !mounted) return;
-
-      _updateDialogVisible = true;
-      await showUpdateDialog(context,
-          info: info, updateService: _updateService);
-    } finally {
-      _checkingForUpdate = false;
-      _updateDialogVisible = false;
-    }
   }
 
   Future<void> _fetchCases() async {
@@ -205,10 +180,7 @@ class _HomeScreenState extends State<HomeScreen>
       widget.onOpenCases?.call(statusFilter);
 
   Future<void> _openNotifications() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) =>
-          NotificationsScreen(authController: widget.authController),
-    ));
+    await widget.onOpenNotifications?.call();
   }
 
   Future<void> _openCase(int id) async {

@@ -16,12 +16,14 @@ Future<void> showUpdateDialog(
     context: context,
     barrierDismissible: !info.isMandatory,
     barrierColor: Colors.black.withValues(alpha: 0.82),
-    builder: (context) => UpdateDialog(info: info, updateService: updateService),
+    builder: (context) =>
+        UpdateDialog(info: info, updateService: updateService),
   );
 }
 
 class UpdateDialog extends StatefulWidget {
-  const UpdateDialog({super.key, required this.info, required this.updateService});
+  const UpdateDialog(
+      {super.key, required this.info, required this.updateService});
 
   final AppUpdateInfo info;
   final AppUpdateService updateService;
@@ -68,7 +70,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
       final result = await OpenFilex.open(file.path).timeout(
         const Duration(seconds: 20),
-        onTimeout: () => OpenResult(type: ResultType.error, message: 'timed out'),
+        onTimeout: () =>
+            OpenResult(type: ResultType.error, message: 'timed out'),
       );
 
       if (!mounted) return;
@@ -105,6 +108,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final installing = _phase == _DownloadPhase.installing;
     final busy = downloading || installing;
     final notes = info.releaseNotes;
+    final percent = (_progress * 100).clamp(0, 100).round();
 
     return PopScope(
       canPop: !info.isMandatory,
@@ -121,7 +125,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
               const SizedBox(height: AppSpacing.lg),
               Text('Update available', style: context.text.titleLarge),
               const SizedBox(height: AppSpacing.xs),
-              Text('Version ${info.versionName}', style: context.text.bodyMedium),
+              Text('Version ${info.versionName}',
+                  style: context.text.bodyMedium),
               if (notes != null && notes.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
                 Text(notes, style: context.text.bodyLarge),
@@ -131,7 +136,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 Text(
                   "This update is required — the app can't be used until it's "
                   'installed. Tap Update and complete the install this time.',
-                  style: context.text.bodySmall?.copyWith(color: colors.warning),
+                  style:
+                      context.text.bodySmall?.copyWith(color: colors.warning),
                 ),
               ],
               if (_phase == _DownloadPhase.error) ...[
@@ -140,6 +146,28 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   'Could not download the update. Check your connection (and that '
                   'installing from this app is allowed in Settings) and try again.',
                   style: context.text.bodySmall?.copyWith(color: colors.danger),
+                ),
+              ],
+              if (downloading) ...[
+                const SizedBox(height: AppSpacing.xl),
+                Row(
+                  children: [
+                    Expanded(
+                      child: LinearProgressIndicator(
+                        value: _progress > 0 ? _progress.clamp(0.0, 1.0) : null,
+                        minHeight: 8,
+                        borderRadius: AppRadii.pillRadius,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Text(
+                      '$percent%',
+                      style: context.text.titleSmall?.copyWith(
+                        color: colors.primaryStrong,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
                 ),
               ],
               const SizedBox(height: AppSpacing.xl),
@@ -161,7 +189,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                           Text(
                             installing
                                 ? 'Installing…'
-                                : 'Downloading ${(_progress * 100).round()}%',
+                                : 'Downloading $percent%',
                           ),
                         ],
                       )

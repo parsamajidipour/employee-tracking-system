@@ -5,6 +5,9 @@ class AppNotification {
   final String message;
   final int? caseId;
   final String? referenceNo;
+  final int? versionCode;
+  final String? versionName;
+  final bool isMandatoryUpdate;
   final DateTime createdAt;
   final bool read;
 
@@ -15,6 +18,9 @@ class AppNotification {
     required this.message,
     required this.caseId,
     required this.referenceNo,
+    required this.versionCode,
+    required this.versionName,
+    required this.isMandatoryUpdate,
     required this.createdAt,
     required this.read,
   });
@@ -29,10 +35,20 @@ class AppNotification {
       message: (json['message'] as String?) ?? '',
       caseId: (json['case_id'] as num?)?.toInt(),
       referenceNo: json['reference_no'] as String?,
+      versionCode: (json['version_code'] as num?)?.toInt(),
+      versionName: json['version_name'] as String?,
+      isMandatoryUpdate: json['is_mandatory'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       read: json['read_at'] != null,
     );
   }
+
+  Map<String, dynamic> toPayload() => {
+        'notification_id': id,
+        'type': type,
+        if (caseId != null) 'case_id': caseId,
+        if (versionCode != null) 'version_code': versionCode,
+      };
 
   static String titleFor(String type) => switch (type) {
         'case.assigned' => 'New case assigned',

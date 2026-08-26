@@ -14,9 +14,14 @@ import '../widgets/live_dot.dart';
 import 'case_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key, required this.authController});
+  const NotificationsScreen({
+    super.key,
+    required this.authController,
+    required this.onUpdateNotificationTap,
+  });
 
   final AuthController authController;
+  final Future<void> Function() onUpdateNotificationTap;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -83,6 +88,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _fetchCount();
   }
 
+  Future<void> _handleNotificationTap(AppNotification notification) async {
+    if (notification.type == 'app-release.published') {
+      await widget.onUpdateNotificationTap();
+      return;
+    }
+
+    final caseId = notification.caseId;
+    if (caseId != null) {
+      await _openCase(caseId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,9 +150,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   index: i + 1,
                   child: _NotificationTile(
                     notification: inbox[i],
-                    onTap: inbox[i].caseId == null
+                    onTap: inbox[i].caseId == null &&
+                            inbox[i].type != 'app-release.published'
                         ? null
-                        : () => _openCase(inbox[i].caseId!),
+                        : () => _handleNotificationTap(inbox[i]),
                   ),
                 ),
               ),
@@ -195,6 +213,7 @@ class _NotificationTile extends StatelessWidget {
         'case.assigned' => Icons.assignment_ind_outlined,
         'case.created' => Icons.note_add_outlined,
         'case.cancelled' => Icons.cancel_outlined,
+        'app-release.published' => Icons.system_update_alt_outlined,
         _ => Icons.notifications_active_outlined,
       };
 
