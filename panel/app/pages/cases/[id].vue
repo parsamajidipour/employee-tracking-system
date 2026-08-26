@@ -242,67 +242,55 @@ onMounted(refreshAll)
         </div>
       </section>
 
-      <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(0,1fr)_minmax(360px,.48fr)]">
-        <div class="grid min-h-fit grid-cols-1 gap-4 lg:min-h-0 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,.95fr)]">
-          <div class="flex min-h-fit flex-col gap-4 lg:min-h-0 xl:grid xl:grid-rows-[auto_minmax(260px,1fr)]">
-          <Card icon="briefcase" title="Case & assignment" subtitle="The operational facts at a glance">
-            <dl class="grid grid-cols-1 gap-x-4 gap-y-3 text-[13px] min-[420px]:grid-cols-2">
-              <div><dt class="eyebrow mb-1">Assigned Surveyor</dt><dd class="font-medium text-ink">{{ item.assignee_name || 'No one yet' }}</dd></div>
-              <div><dt class="eyebrow mb-1">Assignment Status</dt><dd><Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge></dd></div>
-              <div><dt class="eyebrow mb-1">Assigned At</dt><dd class="tabular text-ink-soft">{{ dateTimeLabel(item.assigned_at) }}</dd></div>
-              <div><dt class="eyebrow mb-1">Planned Inspection</dt><dd class="tabular text-ink-soft">{{ dateTimeLabel(item.planned_at) }}</dd></div>
-            </dl>
-            <div class="mt-3 border-t border-hairline pt-3"><p class="eyebrow mb-1">Field notes</p><p class="line-clamp-2 text-[13px] leading-5 text-ink-soft">{{ item.notes || 'No field notes were added.' }}</p></div>
-          </Card>
-
+      <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,.9fr)_minmax(360px,.95fr)]">
+        <div class="flex min-h-fit flex-col gap-4 lg:min-h-0">
           <Card icon="map-pin" title="Property location" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
-            <div class="h-64 overflow-hidden rounded-b-lg xl:h-full xl:min-h-[240px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
-          </Card>
-          </div>
-
-          <Card class="min-h-[420px] lg:min-h-0" icon="history" title="Status timeline" subtitle="Every lifecycle change, in order" scroll>
-            <EmptyState v-if="!item.status_events?.length" icon="history" message="No status activity yet." />
-            <ol v-else class="relative space-y-0">
-              <li v-for="(event, index) in [...item.status_events].reverse()" :key="event.id" class="relative flex gap-3 pb-5 last:pb-0">
-                <span v-if="index < item.status_events.length - 1" class="absolute bottom-0 left-[5px] top-3 w-px bg-hairline" />
-                <span class="relative z-10 mt-1.5 h-[11px] w-[11px] flex-none rounded-full ring-4 ring-surface" :class="eventTone(event)" />
-                <div class="min-w-0"><p class="text-[13.5px] font-semibold text-ink">{{ eventTitle(event) }}</p><p class="mt-0.5 text-[12.5px] leading-5 text-ink-soft">{{ event.note || 'Status updated.' }}</p><p class="mt-1 text-[11.5px] text-ink-faint">{{ event.actor_name || 'System' }} · <span class="tabular">{{ dateTimeLabel(event.created_at) }}</span></p></div>
-              </li>
-            </ol>
+            <div class="h-72 overflow-hidden rounded-b-lg xl:h-[300px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
           </Card>
 
-          <Card class="min-h-[440px] lg:col-span-2 xl:min-h-[480px]" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`">
-          <template #actions>
-            <Badge :variant="item.photos?.some(photo => photo.is_gps_verified) ? 'success' : 'warning'">
-              {{ item.photos?.some(photo => photo.is_gps_verified) ? 'Verified' : 'Needs verified photo' }}
-            </Badge>
-          </template>
-          <EmptyState v-if="!item.photos?.length" icon="camera" message="No site photos have been uploaded yet." />
-          <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-3">
-            <a
-              v-for="photo in item.photos"
-              :key="photo.id"
-              :href="photo.url"
-              target="_blank"
-              rel="noreferrer"
-              class="group overflow-hidden rounded-md border border-hairline bg-surface-sunken transition-colors hover:border-primary/40"
-            >
-              <div class="aspect-[4/3] overflow-hidden bg-surface">
-                <img :src="photo.url" :alt="`Site photo captured ${shortDateTimeLabel(photo.captured_at)}`" class="h-full w-full object-cover transition-transform duration-fast group-hover:scale-[1.02]" loading="lazy" />
-              </div>
-              <div class="flex items-start justify-between gap-2 p-3">
-                <div class="min-w-0">
-                  <p class="truncate text-[12.5px] font-semibold text-ink">{{ shortDateTimeLabel(photo.captured_at) }}</p>
-                  <p class="mt-0.5 truncate text-[11.5px] text-ink-faint">{{ photoDistanceLabel(photo.distance_from_case_m) }}</p>
+          <Card class="min-h-[360px] xl:flex-1" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`">
+            <template #actions>
+              <Badge :variant="item.photos?.some(photo => photo.is_gps_verified) ? 'success' : 'warning'">
+                {{ item.photos?.some(photo => photo.is_gps_verified) ? 'Verified' : 'Needs verified photo' }}
+              </Badge>
+            </template>
+            <EmptyState v-if="!item.photos?.length" icon="camera" message="No site photos have been uploaded yet." />
+            <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <a
+                v-for="photo in item.photos"
+                :key="photo.id"
+                :href="photo.url"
+                target="_blank"
+                rel="noreferrer"
+                class="group overflow-hidden rounded-md border border-hairline bg-surface-sunken transition-colors hover:border-primary/40"
+              >
+                <div class="aspect-[4/3] overflow-hidden bg-surface">
+                  <img :src="photo.url" :alt="`Site photo captured ${shortDateTimeLabel(photo.captured_at)}`" class="h-full w-full object-cover transition-transform duration-fast group-hover:scale-[1.02]" loading="lazy" />
                 </div>
-                <span class="grid h-7 w-7 flex-none place-items-center rounded-full" :class="photo.is_gps_verified ? 'bg-state-success-soft text-state-success' : 'bg-state-danger-soft text-state-danger'">
-                  <Icon :name="photo.is_gps_verified ? 'check-circle' : 'alert-triangle'" class="h-4 w-4" />
-                </span>
-              </div>
-            </a>
-          </div>
-        </Card>
+                <div class="flex items-start justify-between gap-2 p-3">
+                  <div class="min-w-0">
+                    <p class="truncate text-[12.5px] font-semibold text-ink">{{ shortDateTimeLabel(photo.captured_at) }}</p>
+                    <p class="mt-0.5 truncate text-[11.5px] text-ink-faint">{{ photoDistanceLabel(photo.distance_from_case_m) }}</p>
+                  </div>
+                  <span class="grid h-7 w-7 flex-none place-items-center rounded-full" :class="photo.is_gps_verified ? 'bg-state-success-soft text-state-success' : 'bg-state-danger-soft text-state-danger'">
+                    <Icon :name="photo.is_gps_verified ? 'check-circle' : 'alert-triangle'" class="h-4 w-4" />
+                  </span>
+                </div>
+              </a>
+            </div>
+          </Card>
         </div>
+
+        <Card class="min-h-[420px] lg:min-h-0" icon="history" title="Status timeline" subtitle="Every lifecycle change, in order" scroll>
+          <EmptyState v-if="!item.status_events?.length" icon="history" message="No status activity yet." />
+          <ol v-else class="relative space-y-0">
+            <li v-for="(event, index) in [...item.status_events].reverse()" :key="event.id" class="relative flex gap-3 pb-5 last:pb-0">
+              <span v-if="index < item.status_events.length - 1" class="absolute bottom-0 left-[5px] top-3 w-px bg-hairline" />
+              <span class="relative z-10 mt-1.5 h-[11px] w-[11px] flex-none rounded-full ring-4 ring-surface" :class="eventTone(event)" />
+              <div class="min-w-0"><p class="text-[13.5px] font-semibold text-ink">{{ eventTitle(event) }}</p><p class="mt-0.5 text-[12.5px] leading-5 text-ink-soft">{{ event.note || 'Status updated.' }}</p><p class="mt-1 text-[11.5px] text-ink-faint">{{ event.actor_name || 'System' }} · <span class="tabular">{{ dateTimeLabel(event.created_at) }}</span></p></div>
+            </li>
+          </ol>
+        </Card>
 
         <Card class="min-h-[560px] xl:min-h-0" icon="users" :title="canAssign ? (item.status === 'rejected' ? 'Reassign surveyor' : 'Assign surveyor') : 'Assignment'" subtitle="Location, availability and workload in one decision" flush>
           <template #actions><Badge v-if="canAssign" variant="success">{{ surveyorChoices.length }} available</Badge><Badge v-else :variant="assignment?.variant">{{ assignment?.label }}</Badge></template>
