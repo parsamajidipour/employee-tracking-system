@@ -45,12 +45,14 @@ class TrackingTaskHandler extends TaskHandler {
 
   bool _hadWindow = false;
   bool _everReconciled = false;
+  bool _notificationCheckBusy = false;
   DateTime? _lastNotificationCheck;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     _acquisition.start();
     await _reconcileWindow();
+    unawaited(_checkForAssignedCaseNotificationsIfBackgrounded());
   }
 
   @override
@@ -64,7 +66,7 @@ class TrackingTaskHandler extends TaskHandler {
     });
 
     _upload.runUploadCycle();
-    _checkForAssignedCaseNotificationsIfBackgrounded();
+    unawaited(_checkForAssignedCaseNotificationsIfBackgrounded());
   }
 
   Future<void> _onPointRecorded() async {
@@ -94,13 +96,16 @@ class TrackingTaskHandler extends TaskHandler {
   }
 
   Future<void> _checkForAssignedCaseNotificationsIfBackgrounded() async {
+    if (_notificationCheckBusy) return;
+
     final now = DateTime.now();
     final lastCheck = _lastNotificationCheck;
     if (lastCheck != null &&
-        now.difference(lastCheck) < const Duration(seconds: 30)) {
+        now.difference(lastCheck) < const Duration(seconds: 10)) {
       return;
     }
     _lastNotificationCheck = now;
+    _notificationCheckBusy = true;
 
     try {
       final onForeground = await FlutterForegroundTask.isAppOnForeground;
@@ -128,7 +133,10 @@ class TrackingTaskHandler extends TaskHandler {
       if (changed) {
         await _storage.saveBackgroundNotifiedNotifications(notified);
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _notificationCheckBusy = false;
+    }
   }
 
   @override

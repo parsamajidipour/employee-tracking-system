@@ -173,16 +173,28 @@ class LiveUpdates extends ChangeNotifier {
     final title = AppNotification.titleFor(type);
     final message =
         (event.payload['message'] as String?) ?? 'Open the app for details.';
+    final rawMandatory = event.payload['is_mandatory'];
+    final notification = AppNotification(
+      id: key,
+      type: type,
+      title: title,
+      message: message,
+      caseId: caseId,
+      referenceNo: event.payload['reference_no'] as String?,
+      versionCode: versionCode,
+      versionName: event.payload['version_name'] as String?,
+      isMandatoryUpdate: rawMandatory == true || rawMandatory == 1,
+      createdAt: DateTime.now(),
+      read: false,
+    );
+
+    if (!_arrivals.isClosed) _arrivals.add(notification);
 
     unawaited(LocalNotificationService.show(
       id: key.hashCode & 0x7fffffff,
       title: title,
       body: message,
-      payload: jsonEncode({
-        'type': type,
-        if (caseId != null) 'case_id': caseId,
-        if (versionCode != null) 'version_code': versionCode,
-      }),
+      payload: jsonEncode(notification.toPayload()),
     ));
   }
 
