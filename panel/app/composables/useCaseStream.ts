@@ -9,6 +9,7 @@ export type CaseChangeAction =
   | 'completed'
   | 'cancelled'
   | 'overdue'
+  | 'photo_uploaded'
   | 'deleted'
 
 export interface CaseChangedPayload {

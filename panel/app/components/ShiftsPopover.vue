@@ -16,14 +16,14 @@ function updatePosition() {
 
   const rect = trigger.getBoundingClientRect()
   const width = Math.min(272, window.innerWidth - MARGIN * 2)
-  const estimatedHeight = Math.min(320, props.shifts.length * 30 + 44)
+  const panelHeight = Math.min(popoverRef.value?.scrollHeight ?? props.shifts.length * 30 + 44, 320)
 
   let left = rect.right - width
   left = Math.max(MARGIN, Math.min(left, window.innerWidth - width - MARGIN))
 
   let top = rect.bottom + 6
-  if (top + estimatedHeight > window.innerHeight - MARGIN) {
-    top = Math.max(MARGIN, rect.top - estimatedHeight - 6)
+  if (top + panelHeight > window.innerHeight - MARGIN) {
+    top = Math.max(MARGIN, rect.top - panelHeight - 6)
   }
 
   position.value = { top, left }

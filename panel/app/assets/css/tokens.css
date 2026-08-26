@@ -199,6 +199,14 @@
     height: var(--row-h);
   }
 
+  .maplibregl-marker {
+    transition: none !important;
+  }
+
+  .maplibregl-marker * {
+    transition-property: background-color, border-color, box-shadow, color, opacity !important;
+  }
+
   .enter {
     animation: enter var(--motion-base) var(--ease) both;
   }

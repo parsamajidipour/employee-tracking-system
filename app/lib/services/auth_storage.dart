@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
@@ -8,6 +10,8 @@ class AuthStorage {
   static const _cachedWindowSyncedAtKey = 'cached_window_synced_at';
   static const _onboardingCompletedKey = 'permission_onboarding_completed';
   static const _lastUploadAtKey = 'last_upload_at';
+  static const _backgroundNotifiedNotificationsKey =
+      'background_notified_notifications';
 
   final FlutterSecureStorage _storage;
 
@@ -57,5 +61,27 @@ class AuthStorage {
   Future<DateTime?> lastUploadAt() async {
     final raw = await _storage.read(key: _lastUploadAtKey);
     return raw == null ? null : DateTime.parse(raw);
+  }
+
+  Future<Set<String>> backgroundNotifiedNotifications() async {
+    final raw = await _storage.read(key: _backgroundNotifiedNotificationsKey);
+    if (raw == null) return <String>{};
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List<dynamic>) {
+        return decoded.whereType<String>().toSet();
+      }
+    } catch (_) {}
+
+    return <String>{};
+  }
+
+  Future<void> saveBackgroundNotifiedNotifications(Set<String> ids) {
+    final recent = ids.take(100).toList(growable: false);
+    return _storage.write(
+      key: _backgroundNotifiedNotificationsKey,
+      value: jsonEncode(recent),
+    );
   }
 }

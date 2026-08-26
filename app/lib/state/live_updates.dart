@@ -155,9 +155,7 @@ class LiveUpdates extends ChangeNotifier {
 
   void _announceRealtime(RealtimeEvent event) {
     final type = event.type;
-    if (type != 'case.assigned' &&
-        type != 'case.created' &&
-        type != 'app-release.published') {
+    if (type != 'case.assigned' && type != 'app-release.published') {
       return;
     }
 
@@ -194,9 +192,7 @@ class LiveUpdates extends ChangeNotifier {
     int? versionCode,
     Object? fallback,
   }) {
-    if (type != 'case.assigned' &&
-        type != 'case.created' &&
-        type != 'app-release.published') {
+    if (type != 'case.assigned' && type != 'app-release.published') {
       return null;
     }
     return 'realtime:$type:${caseId ?? versionCode ?? fallback ?? ''}';

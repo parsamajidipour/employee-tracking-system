@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\Capability;
 use App\Enums\CaseStatus;
+use App\Events\CaseChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureCapability;
 use App\Http\Requests\StoreCasePhotoRequest;
@@ -29,6 +30,8 @@ class CasePhotoController extends Controller
             'accuracy_m' => $request->validated('accuracy_m'),
             'captured_at' => $request->validated('captured_at'),
         ]);
+
+        event(CaseChanged::for('photo_uploaded', $case));
 
         return CasePhotoResource::make($photo)->response()->setStatusCode(201);
     }

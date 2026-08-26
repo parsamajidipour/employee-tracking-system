@@ -123,7 +123,7 @@ class CaseControllerTest extends TestCase
         $this->assertTrue($case->assigned_at->equalTo($event->created_at));
     }
 
-    public function test_creating_a_case_notifies_every_active_employee(): void
+    public function test_creating_a_case_does_not_notify_employees_until_assignment(): void
     {
         $admin = User::factory()->admin()->create();
         $activeEmployee = User::factory()->create(['is_active' => true]);
@@ -138,7 +138,7 @@ class CaseControllerTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $this->assertDatabaseHas('notifications', ['notifiable_id' => $activeEmployee->id]);
+        $this->assertDatabaseMissing('notifications', ['notifiable_id' => $activeEmployee->id]);
         $this->assertDatabaseMissing('notifications', ['notifiable_id' => $inactiveEmployee->id]);
     }
 

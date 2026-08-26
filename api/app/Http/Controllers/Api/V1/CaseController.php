@@ -10,16 +10,13 @@ use App\Http\Requests\StoreCaseRequest;
 use App\Http\Resources\CaseResource;
 use App\Models\InspectionCase;
 use App\Models\User;
-use App\Notifications\CaseCreatedNotification;
 use App\Services\CaseAssignmentService;
 use App\Services\CaseLifecycleService;
-use App\Services\NotificationAudience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use LogicException;
 
@@ -50,15 +47,9 @@ class CaseController extends Controller
         );
     }
 
-    public function store(StoreCaseRequest $request, CaseLifecycleService $lifecycle, NotificationAudience $audience): JsonResponse
+    public function store(StoreCaseRequest $request, CaseLifecycleService $lifecycle): JsonResponse
     {
         $case = $lifecycle->create($request->validated(), $request->user());
-
-        $employees = $audience->activeEmployees();
-
-        if ($employees->isNotEmpty()) {
-            Notification::send($employees, new CaseCreatedNotification($case));
-        }
 
         return CaseResource::make(
             InspectionCase::query()->withLatLng()->with('assignee')->findOrFail($case->id),

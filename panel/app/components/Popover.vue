@@ -24,9 +24,10 @@ function updatePosition() {
   const below = window.innerHeight - rect.bottom - MARGIN * 2
   const above = rect.top - MARGIN * 2
   const placeAbove = below < 200 && above > below
+  const panelHeight = Math.min(panelRef.value?.scrollHeight ?? 320, placeAbove ? above : below)
 
   position.value = {
-    top: placeAbove ? MARGIN : rect.bottom + 6,
+    top: placeAbove ? Math.max(MARGIN, rect.top - panelHeight - 6) : rect.bottom + 6,
     left,
     maxHeight: placeAbove ? above : below,
   }

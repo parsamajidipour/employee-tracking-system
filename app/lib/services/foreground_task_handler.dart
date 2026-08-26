@@ -12,6 +12,7 @@ import 'auth_storage.dart';
 import 'live_position_ping_service.dart';
 import 'local_notification_service.dart';
 import 'location_acquisition_service.dart';
+import 'notification_repository.dart';
 import 'track_upload_service.dart';
 import 'window_sync_service.dart';
 
@@ -26,16 +27,25 @@ class TrackingTaskHandler extends TaskHandler {
   Timer? _stopTimer;
   final TrackUploadService _upload = TrackUploadService();
   final LivePositionPingService _livePosition = LivePositionPingService();
+  final AuthStorage _storage = AuthStorage();
   late final AppUpdateService _updateService = AppUpdateService(
-    apiClient: ApiClient(baseUrl: apiBaseUrl, storage: AuthStorage(), onUnauthorized: () async {}),
+    apiClient: ApiClient(
+        baseUrl: apiBaseUrl, storage: _storage, onUnauthorized: () async {}),
   );
-  late final LocationAcquisitionService _acquisition = LocationAcquisitionService(
+  late final NotificationRepository _notificationRepository =
+      NotificationRepository(
+    apiClient: ApiClient(
+        baseUrl: apiBaseUrl, storage: _storage, onUnauthorized: () async {}),
+  );
+  late final LocationAcquisitionService _acquisition =
+      LocationAcquisitionService(
     onPointRecorded: _onPointRecorded,
     onPositionPolled: _livePosition.ping,
   );
 
   bool _hadWindow = false;
   bool _everReconciled = false;
+  DateTime? _lastNotificationCheck;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -54,6 +64,7 @@ class TrackingTaskHandler extends TaskHandler {
     });
 
     _upload.runUploadCycle();
+    _checkForAssignedCaseNotificationsIfBackgrounded();
   }
 
   Future<void> _onPointRecorded() async {
@@ -79,8 +90,45 @@ class TrackingTaskHandler extends TaskHandler {
         title: 'Update available',
         body: 'Version ${info.versionName} is ready to install.',
       );
-    } catch (_) {
+    } catch (_) {}
+  }
+
+  Future<void> _checkForAssignedCaseNotificationsIfBackgrounded() async {
+    final now = DateTime.now();
+    final lastCheck = _lastNotificationCheck;
+    if (lastCheck != null &&
+        now.difference(lastCheck) < const Duration(seconds: 30)) {
+      return;
     }
+    _lastNotificationCheck = now;
+
+    try {
+      final onForeground = await FlutterForegroundTask.isAppOnForeground;
+      if (onForeground) return;
+
+      final notified = await _storage.backgroundNotifiedNotifications();
+      final inbox = await _notificationRepository.fetchInbox();
+      var changed = false;
+
+      for (final notification in inbox.notifications.reversed) {
+        if (notification.read || notification.type != 'case.assigned') continue;
+        if (!notified.add(notification.id)) continue;
+        changed = true;
+
+        await LocalNotificationService.show(
+          id: notification.id.hashCode & 0x7fffffff,
+          title: notification.title,
+          body: notification.message.isEmpty
+              ? 'Open the app for details.'
+              : notification.message,
+          payload: jsonEncode(notification.toPayload()),
+        );
+      }
+
+      if (changed) {
+        await _storage.saveBackgroundNotifiedNotifications(notified);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -95,8 +143,7 @@ class TrackingTaskHandler extends TaskHandler {
     try {
       final json = jsonDecode(data) as Map<String, dynamic>;
       _applyFetchedWindow(ShiftWindow.fromJson(json));
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   @override
@@ -116,8 +163,7 @@ class TrackingTaskHandler extends TaskHandler {
     try {
       final window = await fetchCurrentWindow();
       await _applyFetchedWindow(window);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _applyFetchedWindow(ShiftWindow? window) async {

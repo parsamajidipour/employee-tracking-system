@@ -242,8 +242,9 @@ onMounted(refreshAll)
         </div>
       </section>
 
-      <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,.72fr)] xl:grid-cols-[minmax(0,.95fr)_minmax(280px,.62fr)_minmax(360px,.9fr)]">
-        <div class="flex min-h-fit flex-col gap-4 lg:min-h-0 xl:grid xl:grid-rows-[auto_minmax(240px,1fr)]">
+      <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(0,1fr)_minmax(360px,.48fr)]">
+        <div class="grid min-h-fit grid-cols-1 gap-4 lg:min-h-0 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,.95fr)]">
+          <div class="flex min-h-fit flex-col gap-4 lg:min-h-0 xl:grid xl:grid-rows-[auto_minmax(260px,1fr)]">
           <Card icon="briefcase" title="Case & assignment" subtitle="The operational facts at a glance">
             <dl class="grid grid-cols-1 gap-x-4 gap-y-3 text-[13px] min-[420px]:grid-cols-2">
               <div><dt class="eyebrow mb-1">Assigned Surveyor</dt><dd class="font-medium text-ink">{{ item.assignee_name || 'No one yet' }}</dd></div>
@@ -257,27 +258,27 @@ onMounted(refreshAll)
           <Card icon="map-pin" title="Property location" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
             <div class="h-64 overflow-hidden rounded-b-lg xl:h-full xl:min-h-[240px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
           </Card>
-        </div>
+          </div>
 
-        <Card class="min-h-[420px] xl:min-h-0" icon="history" title="Status timeline" subtitle="Every lifecycle change, in order" scroll>
-          <EmptyState v-if="!item.status_events?.length" icon="history" message="No status activity yet." />
-          <ol v-else class="relative space-y-0">
-            <li v-for="(event, index) in [...item.status_events].reverse()" :key="event.id" class="relative flex gap-3 pb-5 last:pb-0">
-              <span v-if="index < item.status_events.length - 1" class="absolute bottom-0 left-[5px] top-3 w-px bg-hairline" />
-              <span class="relative z-10 mt-1.5 h-[11px] w-[11px] flex-none rounded-full ring-4 ring-surface" :class="eventTone(event)" />
-              <div class="min-w-0"><p class="text-[13.5px] font-semibold text-ink">{{ eventTitle(event) }}</p><p class="mt-0.5 text-[12.5px] leading-5 text-ink-soft">{{ event.note || 'Status updated.' }}</p><p class="mt-1 text-[11.5px] text-ink-faint">{{ event.actor_name || 'System' }} · <span class="tabular">{{ dateTimeLabel(event.created_at) }}</span></p></div>
-            </li>
-          </ol>
-        </Card>
+          <Card class="min-h-[420px] lg:min-h-0" icon="history" title="Status timeline" subtitle="Every lifecycle change, in order" scroll>
+            <EmptyState v-if="!item.status_events?.length" icon="history" message="No status activity yet." />
+            <ol v-else class="relative space-y-0">
+              <li v-for="(event, index) in [...item.status_events].reverse()" :key="event.id" class="relative flex gap-3 pb-5 last:pb-0">
+                <span v-if="index < item.status_events.length - 1" class="absolute bottom-0 left-[5px] top-3 w-px bg-hairline" />
+                <span class="relative z-10 mt-1.5 h-[11px] w-[11px] flex-none rounded-full ring-4 ring-surface" :class="eventTone(event)" />
+                <div class="min-w-0"><p class="text-[13.5px] font-semibold text-ink">{{ eventTitle(event) }}</p><p class="mt-0.5 text-[12.5px] leading-5 text-ink-soft">{{ event.note || 'Status updated.' }}</p><p class="mt-1 text-[11.5px] text-ink-faint">{{ event.actor_name || 'System' }} · <span class="tabular">{{ dateTimeLabel(event.created_at) }}</span></p></div>
+              </li>
+            </ol>
+          </Card>
 
-        <Card icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`" scroll>
+          <Card class="min-h-[440px] lg:col-span-2 xl:min-h-[480px]" icon="camera" title="Site photos" :subtitle="`${item.photos?.length ?? 0} uploaded`">
           <template #actions>
             <Badge :variant="item.photos?.some(photo => photo.is_gps_verified) ? 'success' : 'warning'">
               {{ item.photos?.some(photo => photo.is_gps_verified) ? 'Verified' : 'Needs verified photo' }}
             </Badge>
           </template>
           <EmptyState v-if="!item.photos?.length" icon="camera" message="No site photos have been uploaded yet." />
-          <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <div v-else class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-3">
             <a
               v-for="photo in item.photos"
               :key="photo.id"
@@ -301,6 +302,7 @@ onMounted(refreshAll)
             </a>
           </div>
         </Card>
+        </div>
 
         <Card class="min-h-[560px] xl:min-h-0" icon="users" :title="canAssign ? (item.status === 'rejected' ? 'Reassign surveyor' : 'Assign surveyor') : 'Assignment'" subtitle="Location, availability and workload in one decision" flush>
           <template #actions><Badge v-if="canAssign" variant="success">{{ surveyorChoices.length }} available</Badge><Badge v-else :variant="assignment?.variant">{{ assignment?.label }}</Badge></template>
