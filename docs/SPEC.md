@@ -120,9 +120,9 @@ Version prefix `/api/v1`. Mobile authenticates with a device-bound token.
   captured. Chosen for battery/data cost over trail fidelity, while keeping the
   live map itself near-real-time via the ping.
 - Points queue in local SQLite. Flush every ~30s when connected.
-- Points older than 48h are discarded by the client without sending.
-- Schedule resync on: push notification, app foreground, before session start, and
-  every 4 hours.
+- Points older than 72h are discarded by the client without sending.
+- Schedule resync on: push notification, app foreground, a daily 08:00 local
+  background wake for starting tracking, and periodic background checks.
 - Home screen always shows: today's window, tracking state, last sync time.
 - A schedule change produces a push notification and an in-app banner showing the
   previous and new window, who changed it, and when.

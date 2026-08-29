@@ -10,7 +10,7 @@ const unauthorizedMarker = '__unauthorized__';
 
 class TrackUploadService {
   static const _batchLimit = 500;
-  static const _maxPointAge = Duration(hours: 48);
+  static const _maxPointAge = Duration(hours: 72);
 
   final LocationQueueRepository _repository;
   final AuthStorage _storage;
