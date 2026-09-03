@@ -129,6 +129,11 @@ declared explicitly in `build.gradle` rather than left to manifest merging —
 check it against the built APK's `sdkVersion`, they must agree. Release builds
 are signed with the real key and minified; the keystore and `key.properties` are
 git-ignored and must be backed up, since losing them blocks every future upgrade.
+`scripts/build-apk.sh` builds natively when a Flutter SDK is on `PATH`, at
+`$FLUTTER_ROOT`, or in `~/sdks/flutter`, and only falls back to the Windows/WSL
+bridge (`/mnt/e`) when none is found. It refuses to start a release build
+without `app/android/key.properties` rather than shipping an unsigned or
+differently-signed APK.
 Cleartext HTTP is permitted only for the specific hosts in
 `network_security_config.xml`, never globally.
 
