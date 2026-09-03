@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\CasePhotoController;
 use App\Http\Controllers\Api\V1\DeviceAuthController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EmployeeHistoryController;
+use App\Http\Controllers\Api\V1\EmployeeLeaveController;
 use App\Http\Controllers\Api\V1\EmployeeShiftController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MyCaseController;
@@ -72,6 +73,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/employees/{employee}/device', [EmployeeController::class, 'revokeDevice']);
             Route::put('/employees/{employee}/shifts', [EmployeeController::class, 'syncShifts']);
             Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy']);
+
+            Route::get('/employees/{employee}/leaves', [EmployeeLeaveController::class, 'index']);
+            Route::post('/employees/{employee}/leaves', [EmployeeLeaveController::class, 'store']);
+            Route::delete('/employee-leaves/{employeeLeave}', [EmployeeLeaveController::class, 'destroy']);
 
             Route::apiResource('shift-templates', ShiftTemplateController::class)->except('show');
             Route::apiResource('shift-exceptions', ShiftExceptionController::class)->except('show');

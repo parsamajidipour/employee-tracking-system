@@ -86,6 +86,7 @@ function openActivity(employee: Employee) {
   activityEmployeeId.value = employee.id
   activityEmployeeName.value = employee.name
   assignedCases.value = []
+  visibleCaseCount.value = PAGE_SIZE
   activityDrawerOpen.value = true
   loadActivityDetail()
 }
@@ -233,6 +234,156 @@ async function removeEmployee(employee: Employee) {
   }
 }
 
+interface EmployeeLeave {
+  id: number
+  employee_id: number
+  starts_at: string
+  ends_at: string
+  note: string | null
+  created_by: string | null
+  created_at: string | null
+}
+
+const PAGE_SIZE = 15
+
+function toLocalInput(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const leaveModalOpen = ref(false)
+const leaveTarget = ref<Employee | null>(null)
+const leaveSaving = ref(false)
+const leaveError = ref<string | null>(null)
+const leaveForm = reactive({ starts_at: '', ends_at: '', note: '' })
+
+function openRecordLeave(employee: Employee) {
+  const start = new Date()
+  start.setMinutes(0, 0, 0)
+  start.setHours(start.getHours() + 1)
+  const end = new Date(start)
+  end.setHours(end.getHours() + 8)
+
+  leaveTarget.value = employee
+  leaveForm.starts_at = toLocalInput(start)
+  leaveForm.ends_at = toLocalInput(end)
+  leaveForm.note = ''
+  leaveError.value = null
+  leaveModalOpen.value = true
+}
+
+async function submitLeave() {
+  if (!leaveTarget.value) return
+
+  if (!leaveForm.starts_at || !leaveForm.ends_at) {
+    leaveError.value = 'Pick when the leave starts and when it ends.'
+    return
+  }
+
+  const starts = new Date(leaveForm.starts_at)
+  const ends = new Date(leaveForm.ends_at)
+
+  if (ends <= starts) {
+    leaveError.value = 'The leave must end after it starts.'
+    return
+  }
+
+  leaveSaving.value = true
+  leaveError.value = null
+  try {
+    await apiFetch(`/api/v1/employees/${leaveTarget.value.id}/leaves`, {
+      method: 'POST',
+      body: {
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+        note: leaveForm.note.trim() === '' ? null : leaveForm.note.trim(),
+      },
+    })
+    toast.success('Leave recorded — tracking stays off for that whole range.')
+    leaveModalOpen.value = false
+
+    if (leaveHistoryTarget.value?.id === leaveTarget.value.id) {
+      await loadLeaves(1)
+    }
+  } catch (err) {
+    leaveError.value = apiErrorMessage(err, 'Could not record the leave.')
+  } finally {
+    leaveSaving.value = false
+  }
+}
+
+const leaveHistoryOpen = ref(false)
+const leaveHistoryTarget = ref<Employee | null>(null)
+const leaves = ref<EmployeeLeave[]>([])
+const leavesPage = ref(1)
+const leavesLastPage = ref(1)
+const leavesTotal = ref(0)
+const leavesLoading = ref(false)
+const leavesError = ref<string | null>(null)
+
+async function loadLeaves(page: number) {
+  if (!leaveHistoryTarget.value) return
+
+  leavesLoading.value = true
+  leavesError.value = null
+  try {
+    const response = await apiFetch<{ data: EmployeeLeave[], meta: { current_page: number, last_page: number, total: number } }>(
+      `/api/v1/employees/${leaveHistoryTarget.value.id}/leaves?page=${page}&per_page=${PAGE_SIZE}`,
+    )
+    leaves.value = page === 1 ? response.data : [...leaves.value, ...response.data]
+    leavesPage.value = response.meta.current_page
+    leavesLastPage.value = response.meta.last_page
+    leavesTotal.value = response.meta.total
+  } catch (err) {
+    leavesError.value = apiErrorMessage(err, 'Could not load this employee\'s leaves.')
+  } finally {
+    leavesLoading.value = false
+  }
+}
+
+function openLeaveHistory(employee: Employee) {
+  leaveHistoryTarget.value = employee
+  leaves.value = []
+  leavesPage.value = 1
+  leavesLastPage.value = 1
+  leavesTotal.value = 0
+  leaveHistoryOpen.value = true
+  loadLeaves(1)
+}
+
+const hasOlderLeaves = computed(() => leavesPage.value < leavesLastPage.value)
+
+async function cancelLeave(leave: EmployeeLeave) {
+  const confirmed = await confirm(
+    'Cancel this leave? Tracking goes back to the employee\'s normal shift for that range.',
+    { title: 'Cancel leave', variant: 'danger' },
+  )
+  if (!confirmed) return
+
+  try {
+    await apiFetch(`/api/v1/employee-leaves/${leave.id}`, { method: 'DELETE' })
+    toast.success('Leave cancelled.')
+    await loadLeaves(1)
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Could not cancel the leave.'))
+  }
+}
+
+function leaveRangeLabel(leave: EmployeeLeave): string {
+  return `${dateTimeLabel(leave.starts_at)} → ${dateTimeLabel(leave.ends_at)}`
+}
+
+function leaveState(leave: EmployeeLeave): { label: string, variant: 'success' | 'warning' | 'neutral' } {
+  const now = Date.now()
+  if (new Date(leave.ends_at).getTime() <= now) return { label: 'Past', variant: 'neutral' }
+  if (new Date(leave.starts_at).getTime() <= now) return { label: 'On leave now', variant: 'warning' }
+  return { label: 'Upcoming', variant: 'success' }
+}
+
+const visibleCaseCount = ref(PAGE_SIZE)
+const visibleCases = computed(() => assignedCases.value.slice(0, visibleCaseCount.value))
+const hasOlderCases = computed(() => assignedCases.value.length > visibleCaseCount.value)
+
 onMounted(() => Promise.all([load(), loadWorkload()]))
 </script>
 
@@ -337,6 +488,8 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
                       <template #default="{ close }">
                         <MenuItem icon="pencil" @click="close(); openEdit(employee)">Edit details</MenuItem>
                         <MenuItem icon="key" @click="close(); openChangePassword(employee)">Change password</MenuItem>
+                        <MenuItem icon="calendar" @click="close(); openRecordLeave(employee)">Record leave</MenuItem>
+                        <MenuItem icon="history" @click="close(); openLeaveHistory(employee)">Leave history</MenuItem>
                         <MenuItem icon="power" :tone="employee.is_active ? 'danger' : 'default'" @click="close(); toggleActive(employee)">
                           {{ employee.is_active ? 'Deactivate' : 'Activate' }}
                         </MenuItem>
@@ -399,6 +552,8 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
                       <template #default="{ close }">
                         <MenuItem icon="pencil" @click="close(); openEdit(employee)">Edit details</MenuItem>
                         <MenuItem icon="key" @click="close(); openChangePassword(employee)">Change password</MenuItem>
+                        <MenuItem icon="calendar" @click="close(); openRecordLeave(employee)">Record leave</MenuItem>
+                        <MenuItem icon="history" @click="close(); openLeaveHistory(employee)">Leave history</MenuItem>
                         <MenuItem icon="power" :tone="employee.is_active ? 'danger' : 'default'" @click="close(); toggleActive(employee)">
                           {{ employee.is_active ? 'Deactivate' : 'Activate' }}
                         </MenuItem>
@@ -432,7 +587,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
         />
 
         <NuxtLink
-          v-for="caseItem in assignedCases"
+          v-for="caseItem in visibleCases"
           v-else
           :key="caseItem.id"
           :to="`/cases/${caseItem.id}`"
@@ -454,6 +609,12 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
             <span class="tabular text-[11.5px] text-ink-faint">Assigned {{ dateTimeLabel(caseItem.assigned_at) }}</span>
           </div>
         </NuxtLink>
+
+        <div v-if="hasOlderCases" class="flex justify-center pt-1">
+          <Button variant="secondary" size="sm" @click="visibleCaseCount += PAGE_SIZE">
+            Show older
+          </Button>
+        </div>
       </div>
     </Drawer>
 
@@ -494,6 +655,87 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
           {{ passwordSaving ? 'Changing…' : 'Change password' }}
         </Button>
       </template>
+    </Modal>
+
+    <Modal v-model="leaveModalOpen" title="Record leave">
+      <form class="space-y-3.5" @submit.prevent="submitLeave">
+        <p class="mb-1">
+          <span class="font-medium text-ink">{{ leaveTarget?.name }}</span> is off for one continuous range. Their shift
+          does not open inside it, no location is recorded, and nothing about them appears on the live map until it ends.
+        </p>
+
+        <InlineAlert v-if="leaveError">{{ leaveError }}</InlineAlert>
+
+        <TextInput
+          v-model="leaveForm.starts_at"
+          type="datetime-local"
+          label="Leave starts"
+          required
+          hint="A leave can only start from now on — it never changes what was already recorded."
+        />
+        <TextInput v-model="leaveForm.ends_at" type="datetime-local" label="Leave ends" required />
+        <TextInput v-model="leaveForm.note" label="Note" placeholder="Optional — e.g. annual leave" />
+      </form>
+
+      <template #footer>
+        <Button variant="secondary" @click="leaveModalOpen = false">Cancel</Button>
+        <Button :loading="leaveSaving" @click="submitLeave">
+          {{ leaveSaving ? 'Saving…' : 'Record leave' }}
+        </Button>
+      </template>
+    </Modal>
+
+    <Modal v-model="leaveHistoryOpen" :title="`${leaveHistoryTarget?.name ?? 'Employee'} · leave history`">
+      <div class="space-y-2.5">
+        <InlineAlert v-if="leavesError" class="!mb-0">{{ leavesError }}</InlineAlert>
+
+        <div v-if="leavesLoading && leaves.length === 0" class="space-y-2">
+          <Skeleton v-for="i in 4" :key="i" class="h-16" rounded="md" />
+        </div>
+
+        <EmptyState
+          v-else-if="leaves.length === 0"
+          icon="calendar"
+          message="No leave has been recorded for this employee."
+        />
+
+        <template v-else>
+          <p class="text-[11.5px] text-ink-faint">
+            Showing {{ leaves.length }} of {{ leavesTotal }}, newest first.
+          </p>
+
+          <div
+            v-for="leave in leaves"
+            :key="leave.id"
+            class="rounded-md border border-hairline bg-surface p-3"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <p class="tabular text-[13px] font-medium text-ink">{{ leaveRangeLabel(leave) }}</p>
+              <Badge :variant="leaveState(leave).variant">{{ leaveState(leave).label }}</Badge>
+            </div>
+            <p v-if="leave.note" class="mt-1.5 text-[12.5px] text-ink-soft">{{ leave.note }}</p>
+            <div class="mt-2 flex items-center justify-between gap-3">
+              <span class="text-[11.5px] text-ink-faint">
+                Recorded {{ dateTimeLabel(leave.created_at) }}<template v-if="leave.created_by"> by {{ leave.created_by }}</template>
+              </span>
+              <Button
+                v-if="leaveState(leave).label !== 'Past'"
+                variant="ghost"
+                size="sm"
+                @click="cancelLeave(leave)"
+              >
+                Cancel leave
+              </Button>
+            </div>
+          </div>
+
+          <div v-if="hasOlderLeaves" class="flex justify-center pt-1">
+            <Button variant="secondary" size="sm" :loading="leavesLoading" @click="loadLeaves(leavesPage + 1)">
+              Show older
+            </Button>
+          </div>
+        </template>
+      </div>
     </Modal>
   </AppShell>
 </template>

@@ -3,17 +3,22 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\CasePhoto;
 use App\Models\InspectionCase;
 use App\Models\User;
 use App\Services\CaseLifecycleService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class CaseSeeder extends Seeder
 {
     private const SYNTHETIC_ORIGIN_LAT = 23.55;
 
     private const SYNTHETIC_ORIGIN_LNG = 58.35;
+
+    private const PLACEHOLDER_JPEG = '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
 
     public function __construct(private readonly CaseLifecycleService $lifecycle) {}
 
@@ -102,7 +107,31 @@ class CaseSeeder extends Seeder
         $case = $this->lifecycle->assign($case, $employee, $admin);
         $case = $this->lifecycle->accept($case, $employee, CarbonImmutable::now()->subHours(3));
         $case = $this->lifecycle->start($case, $employee);
+        $this->sitePhoto($case, $employee, $seed);
         $this->lifecycle->complete($case, $employee, 'Report submitted.');
+    }
+
+    private function sitePhoto(InspectionCase $case, User $employee, int $seed): void
+    {
+        $path = "case-photos/{$case->id}/seed-{$seed}.jpg";
+        Storage::disk('local')->put($path, base64_decode(self::PLACEHOLDER_JPEG));
+
+        $point = $this->point($seed);
+
+        CasePhoto::create([
+            'inspection_case_id' => $case->id,
+            'employee_id' => $employee->id,
+            'disk_path' => $path,
+            'location' => new Expression(sprintf(
+                'ST_SetSRID(ST_MakePoint(%.8F, %.8F), 4326)::geography',
+                $point['lng'],
+                $point['lat'],
+            )),
+            'accuracy_m' => 6.0,
+            'distance_from_case_m' => 0.0,
+            'is_gps_verified' => true,
+            'captured_at' => CarbonImmutable::now()->subHour(),
+        ]);
     }
 
     private function rejected(User $admin, User $employee, int $seed): void

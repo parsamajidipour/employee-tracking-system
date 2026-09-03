@@ -26,6 +26,18 @@ final readonly class ShiftWindow
         return $this->end->addMinutes($this->graceAfterMin);
     }
 
+    public function clippedTo(CarbonImmutable $start, CarbonImmutable $end): ?self
+    {
+        $clippedStart = $this->effectiveStart()->max($start);
+        $clippedEnd = $this->effectiveEnd()->min($end);
+
+        if ($clippedEnd->lessThanOrEqualTo($clippedStart)) {
+            return null;
+        }
+
+        return new self($clippedStart, $clippedEnd, $this->source, 0, 0);
+    }
+
     public function contains(CarbonInterface $instant): bool
     {
         return $instant->greaterThanOrEqualTo($this->effectiveStart())

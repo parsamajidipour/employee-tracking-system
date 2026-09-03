@@ -12,9 +12,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('template_id')->constrained('shift_templates')->restrictOnDelete();
+            $table->timestamp('effective_from');
+            $table->timestamp('effective_to')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
-            $table->unique(['employee_id', 'template_id']);
+            $table->index(['employee_id', 'effective_from']);
         });
     }
 

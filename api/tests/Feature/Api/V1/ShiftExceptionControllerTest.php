@@ -121,7 +121,7 @@ class ShiftExceptionControllerTest extends TestCase
         $response = $this->deleteJson("/api/v1/shift-exceptions/{$exception->id}");
 
         $response->assertNoContent();
-        $this->assertDatabaseMissing('shift_exceptions', ['id' => $exception->id]);
+        $this->assertSoftDeleted('shift_exceptions', ['id' => $exception->id]);
 
         $log = ScheduleChangeLog::first();
         $this->assertNotNull($log->before);

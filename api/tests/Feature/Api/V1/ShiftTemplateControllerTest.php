@@ -75,7 +75,7 @@ class ShiftTemplateControllerTest extends TestCase
 
         $destroy = $this->deleteJson("/api/v1/shift-templates/{$template->id}");
         $destroy->assertNoContent();
-        $this->assertDatabaseMissing('shift_templates', ['id' => $template->id]);
+        $this->assertSoftDeleted('shift_templates', ['id' => $template->id]);
     }
 
     public function test_destroy_removes_assigned_employees_shifts_and_logs_each_one(): void
@@ -91,8 +91,8 @@ class ShiftTemplateControllerTest extends TestCase
         $destroy = $this->deleteJson("/api/v1/shift-templates/{$template->id}");
 
         $destroy->assertNoContent();
-        $this->assertDatabaseMissing('shift_templates', ['id' => $template->id]);
-        $this->assertDatabaseMissing('employee_shifts', ['id' => $shift->id]);
+        $this->assertSoftDeleted('shift_templates', ['id' => $template->id]);
+        $this->assertSoftDeleted('employee_shifts', ['id' => $shift->id]);
 
         $log = ScheduleChangeLog::where('target_employee_id', $employee->id)->first();
         $this->assertNotNull($log);

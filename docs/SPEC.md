@@ -57,9 +57,19 @@ Roles: `admin`, `hr`, `supervisor`, `employee`.
 - `employee_shifts` — id, employee_id, template_id, effective_from, effective_to
 - `shift_exceptions` — id, employee_id, date, type, start_at, end_at, note
   - type: `leave` | `holiday` | `overtime` | `early_end`
+- `employee_leaves` — id, employee_id, starts_at, ends_at, note, created_by
+  - one continuous timestamp range, not a per-day row: a leave from Sunday 12:00
+    to Tuesday 12:00 denies every instant between those two moments.
+  - `starts_at` cannot be in the past (invariant 6).
+  - soft-deleted when cancelled; a cancelled leave stops governing immediately.
 
 Resolution order for a given (employee, instant):
-`shift_exceptions` → `employee_shifts` → team `shift_templates` → deny.
+`employee_leaves` (deny) → `shift_exceptions` → `employee_shifts` → deny.
+
+A leave that covers only part of a day's window clips that window (start moved
+forward, or end moved back); a leave that covers it entirely removes the window
+for that day. A leave that falls strictly inside a window leaves the window's
+bounds alone and is enforced instant-by-instant by the gate.
 
 ### Tracking
 - `tracking_sessions` — id, employee_id, started_at, ended_at, end_reason

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\ShiftExceptionType;
 use App\Enums\UserRole;
+use App\Models\EmployeeLeave;
 use App\Models\EmployeeShift;
 use App\Models\ShiftException;
 use App\Models\ShiftTemplate;
@@ -19,15 +20,15 @@ class ScheduleSeeder extends Seeder
     {
         $actor = User::where('role', UserRole::Hr)->first() ?? User::where('role', UserRole::Admin)->firstOrFail();
 
-        $night = ShiftTemplate::where('name', 'Night Shift')->firstOrFail();
-        $halfDay = ShiftTemplate::where('name', 'Weekend Half Day')->firstOrFail();
+        $default = ShiftTemplate::where('name', 'Default')->firstOrFail();
+        $ramadan = ShiftTemplate::where('name', 'Ramadan')->firstOrFail();
 
         $employees = User::employees()->orderBy('id')->get()->keyBy('username');
 
         $assignments = [
-            ['username' => 'yusuf', 'template' => $night],
-            ['username' => 'khalid', 'template' => $night],
-            ['username' => 'aisha', 'template' => $halfDay],
+            ['username' => 'yusuf', 'template' => $default],
+            ['username' => 'khalid', 'template' => $default],
+            ['username' => 'aisha', 'template' => $ramadan],
         ];
 
         foreach ($assignments as $assignment) {
@@ -75,6 +76,42 @@ class ScheduleSeeder extends Seeder
             $this->logger->record($actor, $employee->id, null, $row->only([
                 'employee_id', 'date', 'type', 'start_at', 'end_at', 'note',
             ]), null, 'Seeded exception');
+        }
+
+        $this->seedLeaves($employees, $actor);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<string, User>  $employees
+     */
+    private function seedLeaves($employees, User $actor): void
+    {
+        $leaves = [
+            ['username' => 'yusuf', 'starts_at' => now()->addDays(3)->setTime(8, 0), 'ends_at' => now()->addDays(5)->setTime(17, 0), 'note' => 'Family leave'],
+            ['username' => 'khalid', 'starts_at' => now()->addDays(1)->setTime(12, 0), 'ends_at' => now()->addDays(1)->setTime(17, 0), 'note' => 'Half day off'],
+        ];
+
+        foreach ($leaves as $leave) {
+            $employee = $employees->get($leave['username']);
+
+            if ($employee === null || EmployeeLeave::where('employee_id', $employee->id)->exists()) {
+                continue;
+            }
+
+            $row = EmployeeLeave::create([
+                'employee_id' => $employee->id,
+                'starts_at' => $leave['starts_at'],
+                'ends_at' => $leave['ends_at'],
+                'note' => $leave['note'],
+                'created_by' => $actor->id,
+            ]);
+
+            $this->logger->record($actor, $employee->id, null, [
+                'type' => 'leave',
+                'starts_at' => $row->starts_at->toISOString(),
+                'ends_at' => $row->ends_at->toISOString(),
+                'note' => $row->note,
+            ], $row->starts_at, 'Seeded leave');
         }
     }
 }

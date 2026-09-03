@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services;
 
 use App\Events\EmployeePositionUpdated;
+use App\Models\EmployeeLeave;
 use App\Models\EmployeeShift;
 use App\Models\LocationPoint;
 use App\Models\ShiftTemplate;
@@ -64,6 +65,49 @@ class TrackingGateTest extends TestCase
             'is_mocked' => false,
             'recorded_at' => $recordedAt->toISOString(),
         ], $overrides);
+    }
+
+    public function test_a_point_recorded_during_a_leave_is_rejected_and_never_stored(): void
+    {
+        EmployeeLeave::create([
+            'employee_id' => $this->employee->id,
+            'starts_at' => $this->sunday->setTime(0, 0)->utc(),
+            'ends_at' => $this->sunday->addDay()->setTime(0, 0)->utc(),
+            'note' => 'Annual leave',
+        ]);
+
+        CarbonImmutable::setTestNow($this->sunday->setTime(10, 5));
+
+        $result = $this->gate->process($this->employee, [$this->point($this->sunday->setTime(10, 0))]);
+
+        $this->assertSame(0, $result->accepted);
+        $this->assertSame(1, $result->rejected);
+        $this->assertSame(0, LocationPoint::where('employee_id', $this->employee->id)->count());
+    }
+
+    public function test_a_live_ping_during_a_leave_publishes_no_position(): void
+    {
+        Event::fake();
+
+        EmployeeLeave::create([
+            'employee_id' => $this->employee->id,
+            'starts_at' => $this->sunday->setTime(0, 0)->utc(),
+            'ends_at' => $this->sunday->addDay()->setTime(0, 0)->utc(),
+            'note' => 'Annual leave',
+        ]);
+
+        CarbonImmutable::setTestNow($this->sunday->setTime(10, 5));
+
+        $accepted = $this->gate->ping($this->employee, [
+            'lat' => 23.5,
+            'lng' => 58.4,
+            'accuracy_m' => 5.0,
+            'battery_pct' => 80,
+            'recorded_at' => $this->sunday->setTime(10, 0)->toISOString(),
+        ]);
+
+        $this->assertFalse($accepted);
+        Event::assertNotDispatched(EmployeePositionUpdated::class);
     }
 
     public function test_batch_mixing_in_window_and_out_of_window_points_stores_only_in_window_ones(): void

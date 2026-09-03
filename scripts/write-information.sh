@@ -100,10 +100,10 @@ Employees authenticate with username, not email.
 Username   Name                 Status
 ahmed      Ahmed Al Saadi       active, NO device paired
 fatma      Fatma Al Kindi       active, NO device paired
-yusuf      Yusuf Al Harthy      active   (night shift)
+yusuf      Yusuf Al Harthy      active   (Default shift, leave in 3 days)
 noura      Noura Al Amri        active   (overtime today)
-khalid     Khalid Al Rawahi     active   (night shift)
-aisha      Aisha Al Zadjali     active   (weekend half day)
+khalid     Khalid Al Rawahi     active   (Default shift, half-day leave tomorrow)
+aisha      Aisha Al Zadjali     active   (Ramadan shift)
 omar       Omar Al Maskari      active   (early end today)
 layla      Layla Al Habsi       INACTIVE (login is refused)
 

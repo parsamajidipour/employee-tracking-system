@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ShiftWindowSource;
+use App\Models\EmployeeLeave;
 use App\Models\EmployeeShift;
 use App\Models\ShiftException;
 use App\Models\ShiftTemplate;
@@ -22,6 +23,10 @@ final class ShiftWindowResolver
     {
         $instant = CarbonImmutable::instance($instant)->utc();
 
+        if ($this->isOnLeave($employee, $instant)) {
+            return null;
+        }
+
         $timezone = $this->timezone();
         $localInstant = $instant->setTimezone($timezone);
         $today = $localInstant->toDateString();
@@ -29,17 +34,17 @@ final class ShiftWindowResolver
 
         $level = $this->resolveFromExceptions($employee, $instant, $today, $yesterday, $timezone);
         if ($level !== null) {
-            return $level === false ? null : $level;
+            return $level === false ? null : $this->withoutLeaves($employee, $level);
         }
 
         $level = $this->resolveFromEmployeeShifts($employee, $instant, $today, $yesterday, $timezone);
 
-        return $level === false ? null : $level;
+        return $level === false ? null : $this->withoutLeaves($employee, $level);
     }
 
     public function resolveForDate(User $employee, string $localDate): ?ShiftWindow
     {
-        return $this->resolveGoverningWindowForDate($employee, $localDate, $this->timezone());
+        return $this->withoutLeaves($employee, $this->resolveGoverningWindowForDate($employee, $localDate, $this->timezone()));
     }
 
     public function resolveAllForDate(User $employee, string $localDate): Collection
@@ -49,6 +54,7 @@ final class ShiftWindowResolver
 
         if ($exception !== null) {
             $window = $exception->type->isDeny() ? null : $this->buildExceptionWindow($exception, $localDate, $timezone);
+            $window = $this->withoutLeaves($employee, $window);
 
             return $window === null ? collect() : collect([$window]);
         }
@@ -61,6 +67,7 @@ final class ShiftWindowResolver
         if ($shifts->isNotEmpty()) {
             return $shifts
                 ->map(fn ($shift) => $this->buildTemplateWindow($shift->template, $localDate, $timezone, ShiftWindowSource::EmployeeShift))
+                ->map(fn (?ShiftWindow $window) => $this->withoutLeaves($employee, $window))
                 ->filter()
                 ->sortBy(fn (ShiftWindow $window) => $window->effectiveStart()->getTimestamp())
                 ->values();
@@ -78,7 +85,7 @@ final class ShiftWindowResolver
 
         for ($offset = 0; $offset <= self::NEXT_WINDOW_LOOKAHEAD_DAYS; $offset++) {
             $anchorDate = $localAfter->addDays($offset)->toDateString();
-            $window = $this->resolveGoverningWindowForDate($employee, $anchorDate, $timezone);
+            $window = $this->withoutLeaves($employee, $this->resolveGoverningWindowForDate($employee, $anchorDate, $timezone));
 
             if ($window !== null && $window->effectiveStart()->greaterThan($after)) {
                 return $window;
@@ -86,6 +93,50 @@ final class ShiftWindowResolver
         }
 
         return null;
+    }
+
+    private function isOnLeave(User $employee, CarbonImmutable $instant): bool
+    {
+        return EmployeeLeave::where('employee_id', $employee->id)
+            ->where('starts_at', '<=', $instant)
+            ->where('ends_at', '>', $instant)
+            ->exists();
+    }
+
+    private function withoutLeaves(User $employee, ?ShiftWindow $window): ?ShiftWindow
+    {
+        if ($window === null) {
+            return null;
+        }
+
+        $leaves = EmployeeLeave::where('employee_id', $employee->id)
+            ->overlapping($window->effectiveStart(), $window->effectiveEnd())
+            ->orderBy('starts_at')
+            ->get();
+
+        foreach ($leaves as $leave) {
+            $leaveStart = CarbonImmutable::instance($leave->starts_at)->utc();
+            $leaveEnd = CarbonImmutable::instance($leave->ends_at)->utc();
+
+            $coversStart = $leaveStart->lessThanOrEqualTo($window->effectiveStart());
+            $coversEnd = $leaveEnd->greaterThanOrEqualTo($window->effectiveEnd());
+
+            if ($coversStart && $coversEnd) {
+                return null;
+            }
+
+            if ($coversStart) {
+                $window = $window->clippedTo($leaveEnd, $window->effectiveEnd());
+            } elseif ($coversEnd) {
+                $window = $window->clippedTo($window->effectiveStart(), $leaveStart);
+            }
+
+            if ($window === null) {
+                return null;
+            }
+        }
+
+        return $window;
     }
 
     private function timezone(): string

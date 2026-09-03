@@ -57,6 +57,41 @@ config.write_text(f'''<?xml version="1.0" encoding="utf-8"?>
 print(f"    cleartext allowed for: localhost, 10.0.2.2, {host}")
 PY
 
+find_flutter() {
+    if command -v flutter >/dev/null 2>&1; then
+        command -v flutter
+    elif [ -x "${FLUTTER_ROOT:-}/bin/flutter" ]; then
+        echo "${FLUTTER_ROOT}/bin/flutter"
+    elif [ -x "$HOME/sdks/flutter/bin/flutter" ]; then
+        echo "$HOME/sdks/flutter/bin/flutter"
+    fi
+}
+
+FLUTTER="$(find_flutter)"
+
+if [ -n "$FLUTTER" ]; then
+    echo "==> Building release APK with $FLUTTER"
+
+    export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+    export ANDROID_SDK_ROOT="$ANDROID_HOME"
+
+    if [ ! -f "$APP/android/key.properties" ]; then
+        echo "!! android/key.properties is missing — release signing needs the production keystore" >&2
+        exit 1
+    fi
+
+    (cd "$APP" && "$FLUTTER" pub get)
+    (cd "$APP" && "$FLUTTER" build apk --release \
+        --dart-define=API_BASE_URL="$API_BASE" \
+        --dart-define=REVERB_APP_KEY="$REVERB_KEY" \
+        --dart-define=REVERB_PORT="$REVERB_PUBLIC_PORT" \
+        --target-platform android-arm,android-arm64)
+
+    OUT="$APP/build/app/outputs/flutter-apk/app-release.apk"
+else
+
+echo "==> No local Flutter SDK found; building through the Windows toolchain"
+
 echo "==> Stopping any Gradle daemon holding locks on the build directory"
 (cd /mnt/c && cmd.exe /c 'taskkill /F /IM java.exe' >/dev/null 2>&1) || true
 sleep 2
@@ -82,6 +117,7 @@ echo "==> Building release APK"
 (cd /mnt/c && cmd.exe /c 'E:\Android\_build_apk.bat') 2>&1 | tr '\r' '\n' | tail -20
 
 OUT="$WIN_COPY/build/app/outputs/flutter-apk/app-release.apk"
+fi
 if [ ! -f "$OUT" ]; then
     echo "!! Build failed: $OUT not found" >&2
     exit 1

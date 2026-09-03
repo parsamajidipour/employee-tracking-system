@@ -21,8 +21,8 @@ class UpdateEmployeeRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($employee)],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($employee)],
+            'phone' => ['required', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($employee)->whereNull('deleted_at')],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($employee)->whereNull('deleted_at')],
         ];
     }
 }

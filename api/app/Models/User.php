@@ -71,6 +71,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<EmployeeLeave, $this>
+     */
+    public function leaves(): HasMany
+    {
+        return $this->hasMany(EmployeeLeave::class, 'employee_id');
+    }
+
+    /**
      * @return HasMany<Device, $this>
      */
     public function devices(): HasMany

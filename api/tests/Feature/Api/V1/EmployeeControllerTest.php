@@ -356,10 +356,11 @@ class EmployeeControllerTest extends TestCase
         $response->assertNoContent();
         $this->assertSoftDeleted('users', ['id' => $employee->id]);
         $this->assertFalse($employee->refresh()->is_active);
-        $this->assertDatabaseCount('employee_shifts', 0);
+        $this->assertSoftDeleted('employee_shifts', ['employee_id' => $employee->id]);
         $this->assertDatabaseCount('personal_access_tokens', 0);
-        $this->assertNotSame('gone@example.com', $employee->email);
-        $this->assertNotSame('91119999', $employee->phone);
+        $this->assertSame('gone@example.com', $employee->email);
+        $this->assertSame('91119999', $employee->phone);
+        $this->assertNotNull($employee->devices()->first()->revoked_at);
 
         $index = $this->getJson('/api/v1/employees');
         $index->assertOk();

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -17,9 +18,10 @@ return new class extends Migration
             $table->time('end_at')->nullable();
             $table->text('note')->nullable();
             $table->timestamps();
-
-            $table->unique(['employee_id', 'date']);
+            $table->softDeletes();
         });
+
+        DB::statement('CREATE UNIQUE INDEX shift_exceptions_employee_id_date_unique ON shift_exceptions (employee_id, date) WHERE deleted_at IS NULL');
     }
 
     public function down(): void

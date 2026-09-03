@@ -56,7 +56,7 @@ const { data: employeesData, load: loadEmployees } = useEmployees()
 const employee = computed(() => employeesData.value?.find((item) => item.id === employeeId) ?? null)
 
 const selectedDate = ref(todayLocalDate())
-const selectedShift = ref<number | null>(null)
+const selectedShift = ref<number | 'all' | null>(null)
 const trail = ref<Trail | null>(null)
 const trailLoading = ref(false)
 const mapError = ref<string | null>(null)
@@ -169,6 +169,7 @@ function clearOverlays() {
 
 function visiblePoints(): TrailPoint[] {
   if (selectedShift.value === null) return []
+  if (selectedShift.value === 'all') return trail.value?.points ?? []
   return (trail.value?.points ?? []).filter((point) => point.shift_index === selectedShift.value)
 }
 
@@ -239,8 +240,12 @@ async function loadTrail() {
   try {
     trail.value = await apiFetch<Trail>(`/api/v1/employees/${employeeId}/trail?date=${encodeURIComponent(selectedDate.value)}`)
     const shifts = trail.value.shifts
-    if (selectedShift.value === null || !shifts.some((shift) => shift.index === selectedShift.value)) {
-      selectedShift.value = shifts[0]?.index ?? null
+    const stillSelectable = selectedShift.value === 'all'
+      ? shifts.length > 1
+      : shifts.some((shift) => shift.index === selectedShift.value)
+
+    if (!stillSelectable) {
+      selectedShift.value = shifts.length > 1 ? 'all' : (shifts[0]?.index ?? null)
     }
     error.value = null
     renderTrail()
@@ -253,6 +258,7 @@ async function loadTrail() {
 
 const selectedDistanceM = computed(() => {
   if (!trail.value || selectedShift.value === null) return 0
+  if (selectedShift.value === 'all') return trail.value.distance_m
   return trail.value.shifts.find((shift) => shift.index === selectedShift.value)?.distance_m ?? 0
 })
 
@@ -359,6 +365,16 @@ onUnmounted(() => map?.remove())
           role="radiogroup"
           aria-label="Shift"
         >
+          <label
+            v-if="trail.shifts.length > 1"
+            class="flex h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 text-[13.5px] transition-colors duration-fast"
+            :class="selectedShift === 'all' ? 'border-primary bg-primary-soft text-primary-strong' : 'border-hairline bg-surface text-ink-soft hover:border-primary/60'"
+          >
+            <input v-model="selectedShift" type="radio" name="shift" class="sr-only" value="all" />
+            <span class="font-medium">All shifts</span>
+            <span class="tabular text-ink-faint">{{ formatDistance(trail.distance_m) }}</span>
+          </label>
+
           <label
             v-for="shift in trail.shifts"
             :key="shift.index"

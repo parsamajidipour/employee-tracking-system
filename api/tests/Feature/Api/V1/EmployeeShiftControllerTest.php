@@ -168,7 +168,7 @@ class EmployeeShiftControllerTest extends TestCase
         $response = $this->deleteJson("/api/v1/employee-shifts/{$shift->id}?reason=".urlencode('No longer needed'));
 
         $response->assertNoContent();
-        $this->assertDatabaseMissing('employee_shifts', ['id' => $shift->id]);
+        $this->assertSoftDeleted('employee_shifts', ['id' => $shift->id]);
 
         $log = ScheduleChangeLog::first();
         $this->assertNotNull($log);

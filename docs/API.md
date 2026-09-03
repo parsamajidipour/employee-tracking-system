@@ -72,6 +72,19 @@ ingest time), not a re-derivation from `ShiftWindowResolver`. This means a
 day's trail stays readable even if the `employee_shifts` row that governed it
 is later changed or deleted.
 
+### GET/POST /api/v1/employees/{id}/leaves, DELETE /api/v1/employee-leaves/{id}
+
+`capability:manage-schedules`. A leave is one continuous range
+(`starts_at`, `ends_at`, optional `note`), not a per-day row. Inside it the
+employee's shift never opens: no point is persisted, no live ping is published,
+nothing about them reaches the map. `starts_at` must not be in the past and the
+range may not overlap an existing leave for that employee.
+
+`GET` returns the employee's leaves newest first, paginated (`page`,
+`per_page`, default 15) with the usual `data` / `meta` envelope. `DELETE`
+cancels a leave — a soft delete, so the row survives for the audit trail — and
+both writes append a `schedule_change_log` row.
+
 ### PUT /api/v1/employees/{id}/schedule
 
 ### GET/POST /api/v1/app-releases, DELETE /api/v1/app-releases/{id}

@@ -136,7 +136,7 @@ class EmployeeController extends Controller
         return response()->noContent();
     }
 
-    public function destroy(User $employee): Response
+    public function destroy(User $employee, DeviceService $devices): Response
     {
         abort_unless($employee->role === UserRole::Employee, 404);
 
@@ -151,17 +151,19 @@ class EmployeeController extends Controller
             "{$employee->name} still has {$openCases} open case".($openCases === 1 ? '' : 's').' — reassign or cancel them first.',
         );
 
-        $suffix = hash('crc32b', (string) now()->getTimestampMs()).'_parsa';
+        DB::transaction(function () use ($employee, $devices): void {
+            $employee->tokens()->delete();
 
-        $employee->tokens()->delete();
-        $employee->employeeShifts()->delete();
-        $employee->update([
-            'is_active' => false,
-            'username' => $suffix,
-            'phone' => $employee->phone === null ? null : "{$employee->phone}_{$suffix}",
-            'email' => $employee->email === null ? null : "{$suffix}_{$employee->email}",
-        ]);
-        $employee->delete();
+            if ($employee->activeDevice !== null) {
+                $devices->revoke($employee->activeDevice);
+            }
+
+            $employee->employeeShifts()->delete();
+            $employee->shiftExceptions()->delete();
+            $employee->leaves()->delete();
+            $employee->update(['is_active' => false]);
+            $employee->delete();
+        });
 
         return response()->noContent();
     }

@@ -898,3 +898,64 @@ exactly that — generalising it cost less than a dependency and keeps the
 "reach for the boring option" rule intact. A library would have been the
 right call if focus trapping, virtualised listboxes or combobox semantics
 were needed; they are not.
+
+## Leave is a continuous range in its own table, not a day-keyed shift exception
+
+**Decision.** Recorded leave lives in `employee_leaves` (`starts_at`,
+`ends_at`, `note`, `created_by`, `deleted_at`) and is consulted by
+`ShiftWindowResolver` before anything else: an instant inside a leave resolves
+to `null`, so the gate rejects the point and the live ping publishes nothing.
+`shift_exceptions` keeps its `leave` type for the existing day-level flow, but
+the panel's "Record leave" action writes the new table.
+
+**Why.** `shift_exceptions` is keyed `(employee_id, date)` with `time` columns,
+so a leave from Sunday noon to Tuesday noon could only be expressed as three
+rows and a convention about what the times on the middle row mean. What the
+product actually needs is one continuous privacy window, and a range column
+pair says exactly that — overlap checks, clipping and "is this instant inside a
+leave" all become one comparison instead of a per-day reconstruction.
+
+A leave that covers only the head or tail of a day's window clips it, so the
+app's window (and the foreground service) starts late or ends early rather than
+running against a gate that rejects everything. A leave strictly inside a
+window does not split it — the window keeps its bounds and the gate denies
+instant by instant, because a split window would need a second window shape
+throughout the API and the app for a case that changes nothing about what is
+stored.
+
+## Deleting employee data soft-deletes it, and unique indexes are scoped to live rows
+
+**Decision.** `employee_shifts`, `shift_exceptions`, `shift_templates` and
+`employee_leaves` use `SoftDeletes` alongside `users`. `DELETE
+/employees/{id}` now revokes the device, deletes the tokens, soft-deletes the
+employee's schedule rows and soft-deletes the user — it no longer scrambles
+`username`, `phone` and `email` to free up the unique indexes. Those indexes
+(`users_email_unique`, `users_username_unique`, `shift_exceptions_employee_id_date_unique`)
+are partial: `WHERE ... deleted_at IS NULL`, matching `users_phone_unique`,
+which was already scoped that way. The `unique:` validation rules that back
+them carry the same `whereNull('deleted_at')`.
+
+**Why.** Mangling identity to satisfy a global unique index destroys the record
+it is meant to preserve — a deleted employee's audit trail then points at
+`a1b2c3d4_parsa` instead of a person. Scoping the index to live rows keeps the
+row readable and still lets the same phone or email be re-registered. Soft
+deletes on `shift_templates` came with the same change out of necessity, not
+taste: `employee_shifts.template_id` is `restrictOnDelete`, so once the shift
+rows survive deletion, hard-deleting the template they point at fails.
+
+## The dev API container must not leave a cached config behind, or tests eat the dev database
+
+**Decision.** `api/docker/start-container` still runs `php artisan config:cache`
+as its "configuration valid" check, but immediately runs `config:clear` when
+`SEED_FAKE_DATA=true` (the development stack; the production compose file sets
+it to `false`).
+
+**Why.** `phpunit.xml` points the suite at `api_testing` with
+`<env name="DB_DATABASE" value="api_testing" force="true"/>`. A cached
+`bootstrap/cache/config.php` is read before any of that: it had
+`database.connections.pgsql.database => inspection` baked in from `api/.env`,
+so `php artisan test` inside the container ran the whole suite against the
+development database — and `RefreshDatabase`'s first `migrate:fresh` dropped
+it. This is the same failure mode CLAUDE.md already warns about for compose
+environment variables; a config cache is a second way in, and it silently
+turned 13 tests into failures that looked like flaky data pollution.

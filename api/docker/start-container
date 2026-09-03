@@ -51,6 +51,11 @@ fi
 
 check "Route registration valid" php artisan route:list --except-vendor
 check "Configuration valid" php artisan config:cache
+
+if [ "${SEED_FAKE_DATA:-false}" = "true" ]; then
+    check "Configuration cache dropped so tests keep their own database" php artisan config:clear
+fi
+
 check "Event cache generated" php artisan event:cache
 check "API-only build contains no server views" test ! -d resources/views
 

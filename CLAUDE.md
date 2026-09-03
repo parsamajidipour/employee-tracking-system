@@ -47,6 +47,11 @@ instead of finding a way around it.
 
 - Window resolution: one class, `App\Services\ShiftWindowResolver`. Everything
   else calls it. Controllers, jobs, commands, the app-facing endpoint, all of it.
+- Recorded leave (`employee_leaves`) is one continuous `starts_at`/`ends_at`
+  range and is consulted inside that same resolver, before shift exceptions and
+  assignments. Nothing else may read the table to decide whether tracking is on.
+  A leave denies the instant outright; it also clips a window it overlaps at the
+  head or the tail. See `DECISIONS.md`.
 - The gate: `App\Services\TrackingGate`, which calls the resolver. The ingest
   controller does not decide anything itself.
 - History reads (`EmployeeHistoryController::trail`) never call the resolver.
@@ -146,6 +151,19 @@ A real process environment variable beats `phpunit.xml`'s `<env>` (even with
 development database and wipes it on every run. The container reads `api/.env`
 itself through the bind mount; only the values that must differ inside the
 container (`DB_HOST`, `DB_PORT`, credentials, Redis, CORS) belong in compose.
+
+A cached config is the second way in: `bootstrap/cache/config.php` is read
+before `phpunit.xml`'s `<env>` block, so a config cache built from `api/.env`
+points `RefreshDatabase` at the development database just as surely. The dev
+container therefore runs `config:clear` right after its `config:cache` check
+(`api/docker/start-container`, gated on `SEED_FAKE_DATA=true`). Never leave a
+cached config in a container where `php artisan test` is run.
+
+Deleting employee data is a soft delete (`users`, `employee_shifts`,
+`shift_exceptions`, `shift_templates`, `employee_leaves`), so every uniqueness
+rule over those tables — index and `unique:` validation alike — must be scoped
+to `deleted_at IS NULL`. Never free up a unique index by rewriting a deleted
+row's identity.
 
 Sanity check after touching any of this: seed, run the suite, and confirm `api`
 still has rows while `api_testing` has the migrations.

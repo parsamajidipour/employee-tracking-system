@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('grace_after_min')->default(0);
             $table->unsignedSmallInteger('max_daily_minutes')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
