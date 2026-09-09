@@ -1,0 +1,32 @@
+{
+	# Keep certificate management automatic. Caddy obtains and renews the
+	# certificate after SERVER_HOST resolves to this server and ports 80/443
+	# are reachable.
+	admin off
+}
+
+{$SERVER_HOST} {
+	encode zstd gzip
+
+	# Reverb speaks the Pusher protocol on /app/{key}. Caddy's reverse_proxy
+	# handles the WebSocket upgrade automatically.
+	route {
+		@reverb path /app/*
+		reverse_proxy @reverb api:8080
+
+		# Laravel endpoints used by the panel and the mobile application.
+		@backend path /api /api/* /sanctum/* /broadcasting/* /up
+		reverse_proxy @backend api:8000
+
+		# Everything else belongs to the Nuxt panel.
+		reverse_proxy panel:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}

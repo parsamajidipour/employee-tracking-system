@@ -10,12 +10,15 @@ read_env() {
 
 if [ "$MODE" = "prod" ]; then
     API_HOST="$(read_env SERVER_HOST)"
-    API_PORT="$(read_env API_PORT)"
     API_SCHEME="$(read_env SERVER_SCHEME)"
+    API_BASE="${API_SCHEME}://${API_HOST}"
+    REVERB_PUBLIC_PORT=443
 else
     API_HOST="$(read_env LAN_HOST)"
     API_PORT="$(read_env API_PORT)"
     API_SCHEME="http"
+    API_BASE="${API_SCHEME}://${API_HOST}:${API_PORT}"
+    REVERB_PUBLIC_PORT="$(read_env REVERB_PORT)"
 fi
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,9 +29,7 @@ FLUTTER_DOS='e:\flutter\bin\flutter.bat'
 JDK_DOS='E:\Android\jdk-17.0.20+8'
 SDK_DOS='E:\Android\sdk'
 
-API_BASE="${API_SCHEME}://${API_HOST}:${API_PORT}"
 REVERB_KEY="$(read_env REVERB_APP_KEY)"
-REVERB_PUBLIC_PORT="$(read_env REVERB_PORT)"
 
 echo "==> API base baked into the APK: $API_BASE"
 echo "==> Reverb websocket baked into the APK: ${API_HOST}:${REVERB_PUBLIC_PORT}"

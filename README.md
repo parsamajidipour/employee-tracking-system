@@ -72,9 +72,38 @@ if you want to run `api/` outside Docker too.
    goes to the browser.
 
 Docker does **not** run the panel in dev — see `DECISIONS.md`.
-`docker-compose.prod.unfinished.yml` sketches a containerized panel service
-for production, but is not usable yet (`panel/Dockerfile` still runs the dev
-server, not a production build) and is not used in dev.
+
+## Production deployment
+
+Production uses `docker-compose.prod.yml`. Caddy is the only public-facing
+service and automatically obtains and renews TLS certificates. The public
+routes on the single configured domain are:
+
+- `/` for the Nuxt panel
+- `/api/*`, `/sanctum/*`, `/broadcasting/*`, and `/up` for Laravel
+- `/app/*` for Reverb WebSockets
+
+Before the first deployment, create an `A` record for `SERVER_HOST` pointing
+to the VPS and leave it DNS-only until the certificate has been issued. Ports
+80/TCP, 443/TCP, and 443/UDP must reach the VPS. Application ports 3000, 8000,
+and 8080 are loopback-only in production.
+
+On a new Ubuntu VPS, run the bootstrap once as root and then deploy as the
+deployment user:
+
+```bash
+sudo ./scripts/bootstrap-vps.sh "$USER"
+./scripts/deploy.sh
+```
+
+For the current deployment, `SERVER_HOST=manaba.mouj.om`. The resulting panel,
+API, and WebSocket endpoints all use `https://manaba.mouj.om` (WebSockets use
+`wss://`). A production APK must be rebuilt after changing this host because
+the endpoint is compiled into the application:
+
+```bash
+./scripts/build-apk.sh prod
+```
 
 ### Code changes and rebuilding
 

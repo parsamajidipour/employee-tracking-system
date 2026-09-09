@@ -28,8 +28,11 @@ usermod -aG docker "$DEPLOY_USER"
 
 if command -v ufw >/dev/null 2>&1; then
   ufw allow 22/tcp
-  ufw allow 3000/tcp
-  ufw allow 8000/tcp
-  ufw allow 8080/tcp
+  ufw allow 80/tcp
+  ufw allow 443/tcp
+  ufw allow 443/udp
+  ufw --force delete allow 3000/tcp >/dev/null 2>&1 || true
+  ufw --force delete allow 8000/tcp >/dev/null 2>&1 || true
+  ufw --force delete allow 8080/tcp >/dev/null 2>&1 || true
   ufw --force enable
 fi

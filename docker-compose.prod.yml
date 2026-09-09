@@ -1,4 +1,24 @@
 services:
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      panel:
+        condition: service_healthy
+    environment:
+      SERVER_HOST: ${SERVER_HOST:?SERVER_HOST is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt: [no-new-privileges:true]
+
   postgres:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
@@ -46,7 +66,8 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: ${APP_KEY:?APP_KEY is required}
-      APP_URL: "${SERVER_SCHEME:-https}://${SERVER_HOST:?SERVER_HOST is required}:${API_PORT:-8000}"
+      APP_URL: "https://${SERVER_HOST:?SERVER_HOST is required}"
+      TRUSTED_PROXIES: "*"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -68,9 +89,9 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID is required}
       REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY is required}
       REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET is required}
-      SANCTUM_STATEFUL_DOMAINS: "${SERVER_HOST}:${PANEL_PORT:-3000}"
-      CORS_ALLOWED_ORIGINS: "${SERVER_SCHEME:-https}://${SERVER_HOST}:${PANEL_PORT:-3000}"
-      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      SANCTUM_STATEFUL_DOMAINS: "${SERVER_HOST}"
+      CORS_ALLOWED_ORIGINS: "https://${SERVER_HOST}"
+      SESSION_SECURE_COOKIE: "true"
       TRACKING_RETENTION_DAYS: ${TRACKING_RETENTION_DAYS:-7}
       SEED_FAKE_DATA: "false"
       RUN_STARTUP_TESTS: "false"
@@ -80,8 +101,8 @@ services:
     volumes:
       - api_storage:/var/www/html/storage/app/private
     ports:
-      - "${API_PORT:-8000}:8000"
-      - "${REVERB_PORT:-8080}:8080"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+      - "127.0.0.1:${REVERB_PORT:-8080}:8080"
     security_opt: [no-new-privileges:true]
 
   panel:
@@ -92,14 +113,14 @@ services:
       api:
         condition: service_healthy
     environment:
-      NUXT_PUBLIC_API_BASE: "${SERVER_SCHEME:-https}://${SERVER_HOST}:${API_PORT:-8000}"
-      NUXT_PUBLIC_API_PORT: ${API_PORT:-8000}
+      NUXT_PUBLIC_API_BASE: "https://${SERVER_HOST}"
+      NUXT_PUBLIC_API_PORT: 443
       NUXT_PUBLIC_REVERB_HOST: ${SERVER_HOST}
-      NUXT_PUBLIC_REVERB_PORT: ${REVERB_PORT:-8080}
-      NUXT_PUBLIC_REVERB_SCHEME: ${SERVER_SCHEME:-https}
+      NUXT_PUBLIC_REVERB_PORT: 443
+      NUXT_PUBLIC_REVERB_SCHEME: https
       NUXT_PUBLIC_REVERB_APP_KEY: ${REVERB_APP_KEY}
     ports:
-      - "${PANEL_PORT:-3000}:3000"
+      - "127.0.0.1:${PANEL_PORT:-3000}:3000"
     read_only: true
     tmpfs: ["/tmp:size=32m,mode=1777"]
     cap_drop: [ALL]
@@ -115,3 +136,5 @@ volumes:
   postgres_data:
   redis_data:
   api_storage:
+  caddy_data:
+  caddy_config:

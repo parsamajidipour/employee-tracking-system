@@ -5,7 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 readonly COMPOSE_FILE=docker-compose.prod.yml
 readonly ENV_FILE=.env
-readonly SERVER_IP=164.90.163.27
+readonly DEFAULT_SERVER_HOST=manaba.mouj.om
 
 docker_compose() {
   if docker info >/dev/null 2>&1; then
@@ -30,8 +30,8 @@ REDIS_PORT=6379
 API_PORT=8000
 REVERB_PORT=8080
 PANEL_PORT=3000
-SERVER_HOST=$SERVER_IP
-SERVER_SCHEME=http
+SERVER_HOST=$DEFAULT_SERVER_HOST
+SERVER_SCHEME=https
 APP_KEY=base64:$(openssl rand -base64 32 | tr -d '\n')
 REVERB_APP_ID=$(random_hex 12)
 REVERB_APP_KEY=$(random_hex 16)
@@ -39,7 +39,7 @@ REVERB_APP_SECRET=$(random_hex 32)
 SEED_ADMIN_NAME=Administrator
 SEED_ADMIN_EMAIL=admin@inspection.local
 SEED_ADMIN_PASSWORD=$(random_hex 20)
-SESSION_SECURE_COOKIE=false
+SESSION_SECURE_COOKIE=true
 TRACKING_RETENTION_DAYS=7
 EOF
   chmod 600 "$ENV_FILE"
@@ -74,4 +74,4 @@ curl --fail --silent --show-error --retry 12 --retry-delay 5 "http://127.0.0.1:8
 curl --fail --silent --show-error --retry 12 --retry-delay 5 "http://127.0.0.1:3000/" >/dev/null
 
 docker_compose ps
-echo "Deployment completed successfully."
+echo "Deployment completed successfully: https://$(grep '^SERVER_HOST=' "$ENV_FILE" | cut -d= -f2-)"

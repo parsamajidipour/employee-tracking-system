@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ['middleware' => [EnsureFrontendRequestsAreStateful::class, 'auth:sanctum']],
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Production traffic reaches Laravel through the Caddy container.
+        // Development keeps the framework default unless explicitly opted in.
+        if ($trustedProxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $trustedProxies);
+        }
         $middleware->statefulApi();
         $middleware->append(SecurityHeaders::class);
         $middleware->alias(['capability' => EnsureCapability::class]);
