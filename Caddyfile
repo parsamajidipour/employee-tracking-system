@@ -26,7 +26,9 @@
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
-		Referrer-Policy "no-referrer"
+		# Sanctum identifies same-origin SPA requests from Origin/Referer. Keep
+		# that signal for this host without leaking a referrer cross-origin.
+		Referrer-Policy "same-origin"
 		-Server
 	}
 }
