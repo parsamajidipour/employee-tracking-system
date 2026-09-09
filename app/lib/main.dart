@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -31,6 +33,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
     with WidgetsBindingObserver {
   final _authController = AuthController();
   final _trackingServiceController = TrackingServiceController();
+  Timer? _casePhotoFlushTimer;
 
   @override
   void initState() {
@@ -43,6 +46,11 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
     registerPeriodicWindowCheck();
 
     FlutterForegroundTask.addTaskDataCallback(_onTaskData);
+
+    _casePhotoFlushTimer = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => _authController.casePhotoUploadService.runUploadCycle(),
+    );
   }
 
   void _onTaskData(Object data) {
@@ -55,6 +63,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
+    _casePhotoFlushTimer?.cancel();
     _authController.dispose();
     super.dispose();
   }
@@ -63,6 +72,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _authController.recheckRequiredPermissions();
+      unawaited(_authController.casePhotoUploadService.runUploadCycle());
     }
   }
 

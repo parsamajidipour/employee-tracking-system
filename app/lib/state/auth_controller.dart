@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import '../config.dart';
 import '../services/api_client.dart';
 import '../services/auth_storage.dart';
+import '../services/case_photo_capture_service.dart';
+import '../services/case_photo_queue_repository.dart';
+import '../services/case_photo_upload_service.dart';
 import '../services/case_repository.dart';
 import '../services/me_repository.dart';
 import '../services/notification_repository.dart';
@@ -19,6 +22,9 @@ class AuthController extends ChangeNotifier {
   late final CaseRepository caseRepository;
   late final NotificationRepository notificationRepository;
   late final LiveUpdates liveUpdates;
+  late final CasePhotoQueueRepository casePhotoQueueRepository;
+  late final CasePhotoUploadService casePhotoUploadService;
+  late final CasePhotoCaptureService casePhotoCaptureService;
 
   AuthStatus status = AuthStatus.loading;
 
@@ -35,6 +41,15 @@ class AuthController extends ChangeNotifier {
     meRepository = MeRepository(apiClient: apiClient, storage: this.storage);
     caseRepository = CaseRepository(apiClient: apiClient);
     notificationRepository = NotificationRepository(apiClient: apiClient);
+    casePhotoQueueRepository = CasePhotoQueueRepository();
+    casePhotoUploadService = CasePhotoUploadService(
+      repository: casePhotoQueueRepository,
+      caseRepository: caseRepository,
+    );
+    casePhotoCaptureService = CasePhotoCaptureService(
+      queueRepository: casePhotoQueueRepository,
+      uploadService: casePhotoUploadService,
+    );
     liveUpdates = LiveUpdates(
       meRepository: meRepository,
       notificationRepository: notificationRepository,

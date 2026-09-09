@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/inspection_case.dart';
+import '../models/queued_case_photo.dart';
 import 'case_location_screen.dart';
 import '../services/api_exception.dart';
 import '../state/auth_controller.dart';
@@ -38,6 +39,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   String? _error;
   bool _loading = false;
   bool _busy = false;
+  List<QueuedCasePhoto> _queuedPhotos = [];
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -52,13 +54,28 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   void initState() {
     super.initState();
     startLiveRefresh();
+    widget.authController.casePhotoUploadService.addListener(_onPhotoQueueChanged);
     _fetch();
+    _loadQueuedPhotos();
   }
 
   @override
   void dispose() {
     stopLiveRefresh();
+    widget.authController.casePhotoUploadService.removeListener(_onPhotoQueueChanged);
     super.dispose();
+  }
+
+  void _onPhotoQueueChanged() {
+    _loadQueuedPhotos();
+    _fetch();
+  }
+
+  Future<void> _loadQueuedPhotos() async {
+    final queued = await widget.authController.casePhotoQueueRepository
+        .allForCase(widget.caseId);
+    if (!mounted) return;
+    setState(() => _queuedPhotos = queued);
   }
 
   Future<void> _fetch() async {
@@ -309,9 +326,9 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         ),
       );
 
-      final uploaded = await widget.authController.caseRepository.uploadPhoto(
-        widget.caseId,
-        filePath: photo.path,
+      await widget.authController.casePhotoCaptureService.enqueue(
+        caseId: widget.caseId,
+        tempFilePath: photo.path,
         lat: position.latitude,
         lng: position.longitude,
         accuracyM: position.accuracy,
@@ -320,25 +337,26 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
 
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack(uploaded.isGpsVerified
-          ? 'Photo uploaded — location verified'
-          : 'Photo uploaded — location could not be verified, make sure GPS is on');
-      _fetch();
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      _showError(e.message);
+      _showSnack('Photo saved — uploading in the background');
+      _loadQueuedPhotos();
     } on TimeoutException {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError(
-          'The upload timed out. Keep the app open and try again when the connection is stronger.');
+      _showError('Could not get a GPS fix. Move to an open area and retake.');
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError(
-          'The photo could not be uploaded. Check GPS and internet, then try again.');
+      _showError('Could not get a GPS fix. Move to an open area and retake.');
     }
+  }
+
+  Future<void> _discardQueuedPhoto(QueuedCasePhoto photo) async {
+    await widget.authController.casePhotoQueueRepository.deleteId(photo.id!);
+    try {
+      final file = File(photo.filePath);
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+    _loadQueuedPhotos();
   }
 
   void _openMap(InspectionCase inspectionCase) {
@@ -406,10 +424,20 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
               child: _TimelineCard(events: inspectionCase.statusEvents!),
             ),
           ],
-          if ((inspectionCase.photos ?? []).isNotEmpty) ...[
+          if (_queuedPhotos.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.cardGap),
             FadeSlideIn(
               index: 4,
+              child: _QueuedPhotosCard(
+                queuedPhotos: _queuedPhotos,
+                onDiscard: _discardQueuedPhoto,
+              ),
+            ),
+          ],
+          if ((inspectionCase.photos ?? []).isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.cardGap),
+            FadeSlideIn(
+              index: 5,
               child: _PhotosCard(
                 photos: inspectionCase.photos!,
                 authController: widget.authController,
@@ -771,6 +799,122 @@ class _TimelineCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _QueuedPhotosCard extends StatelessWidget {
+  const _QueuedPhotosCard({
+    required this.queuedPhotos,
+    required this.onDiscard,
+  });
+
+  final List<QueuedCasePhoto> queuedPhotos;
+  final void Function(QueuedCasePhoto photo) onDiscard;
+
+  Future<void> _showFailureDialog(
+    BuildContext context,
+    QueuedCasePhoto photo,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Photo could not be uploaded'),
+        content: Text(photo.failureReason ??
+            'This case was closed before your photo could be uploaded.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onDiscard(photo);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Uploading', style: context.text.titleMedium),
+          const SizedBox(height: AppSpacing.lg),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: [
+              for (final photo in queuedPhotos)
+                _QueuedPhotoThumb(
+                  photo: photo,
+                  onTap: photo.isFailedPermanent
+                      ? () => _showFailureDialog(context, photo)
+                      : null,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QueuedPhotoThumb extends StatelessWidget {
+  const _QueuedPhotoThumb({required this.photo, this.onTap});
+
+  final QueuedCasePhoto photo;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 96,
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: AppRadii.smallRadius,
+              child: SizedBox(
+                width: 96,
+                height: 96,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(File(photo.filePath), fit: BoxFit.cover),
+                    Container(color: Colors.black.withValues(alpha: 0.25)),
+                    Center(
+                      child: photo.isFailedPermanent
+                          ? Icon(Icons.error_outline, color: colors.danger)
+                          : const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              photo.isFailedPermanent ? 'Failed — tap for details' : 'Uploading…',
+              textAlign: TextAlign.center,
+              style: context.text.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -9,6 +9,9 @@ import '../models/shift_window.dart';
 import 'api_client.dart';
 import 'app_update_service.dart';
 import 'auth_storage.dart';
+import 'case_photo_queue_repository.dart';
+import 'case_photo_upload_service.dart';
+import 'case_repository.dart';
 import 'live_position_ping_service.dart';
 import 'local_notification_service.dart';
 import 'location_acquisition_service.dart';
@@ -36,6 +39,13 @@ class TrackingTaskHandler extends TaskHandler {
       NotificationRepository(
     apiClient: ApiClient(
         baseUrl: apiBaseUrl, storage: _storage, onUnauthorized: () async {}),
+  );
+  late final CasePhotoUploadService _casePhotoUpload = CasePhotoUploadService(
+    repository: CasePhotoQueueRepository(),
+    caseRepository: CaseRepository(
+      apiClient: ApiClient(
+          baseUrl: apiBaseUrl, storage: _storage, onUnauthorized: () async {}),
+    ),
   );
   late final LocationAcquisitionService _acquisition =
       LocationAcquisitionService(
@@ -66,6 +76,7 @@ class TrackingTaskHandler extends TaskHandler {
     });
 
     _upload.runUploadCycle();
+    _casePhotoUpload.runUploadCycle();
     unawaited(_checkForAssignedCaseNotificationsIfBackgrounded());
   }
 
