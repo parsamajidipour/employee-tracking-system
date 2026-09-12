@@ -6,6 +6,10 @@ const toast = useToast()
 
 const submitting = ref(false)
 const formError = ref<string | null>(null)
+const locationLookupState = ref<'idle' | 'loading' | 'error'>('idle')
+const locationManuallyEdited = ref(false)
+let locationLookupTimer: ReturnType<typeof setTimeout> | undefined
+let locationLookupSequence = 0
 
 const form = reactive({
   reference_no: '',
@@ -20,16 +24,62 @@ const form = reactive({
 const hasLocation = computed(() => form.lat !== null && form.lng !== null)
 
 const canSubmit = computed(() => form.reference_no.trim() !== '' && form.title.trim() !== '' && hasLocation.value)
+const locationHint = computed(() => {
+  if (locationLookupState.value === 'loading') return 'Finding the location from the map…'
+  if (locationLookupState.value === 'error') return 'Address not found — move the map again or enter it manually.'
+  return 'Filled automatically from the map; you can edit it.'
+})
 
-function setLat(value: number) {
-  form.lat = value
+async function lookupLocation(position: { lat: number; lng: number }, sequence: number) {
+  try {
+    const query = new URLSearchParams({
+      lat: String(position.lat),
+      lng: String(position.lng),
+    })
+    const response = await apiFetch<{ location: string | null }>(`/api/v1/reverse-geocode?${query}`)
+
+    if (sequence !== locationLookupSequence || locationManuallyEdited.value) return
+
+    if (response.location) {
+      form.property_address = response.location
+      locationLookupState.value = 'idle'
+    } else {
+      locationLookupState.value = 'error'
+    }
+  } catch {
+    if (sequence === locationLookupSequence && !locationManuallyEdited.value) {
+      locationLookupState.value = 'error'
+    }
+  }
 }
 
-function setLng(value: number) {
-  form.lng = value
+function selectLocation(position: { lat: number; lng: number }) {
+  form.lat = position.lat
+  form.lng = position.lng
+  form.property_address = ''
+  formError.value = null
+  locationManuallyEdited.value = false
+  locationLookupState.value = 'loading'
+
+  locationLookupSequence += 1
+  const sequence = locationLookupSequence
+  if (locationLookupTimer) clearTimeout(locationLookupTimer)
+  locationLookupTimer = setTimeout(() => {
+    void lookupLocation(position, sequence)
+  }, 1100)
+}
+
+function markLocationManuallyEdited() {
+  locationManuallyEdited.value = true
+  locationLookupState.value = 'idle'
 }
 
 async function submit() {
+  if (locationLookupState.value === 'loading') {
+    formError.value = 'Wait for the location lookup to finish.'
+    return
+  }
+
   if (!canSubmit.value) {
     formError.value = 'Report number, customer name, and a location on the map are required.'
     return
@@ -57,6 +107,10 @@ async function submit() {
     submitting.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  if (locationLookupTimer) clearTimeout(locationLookupTimer)
+})
 </script>
 
 <template>
@@ -80,7 +134,13 @@ async function submit() {
           <form class="space-y-3.5" @submit.prevent="submit">
             <TextInput v-model="form.reference_no" label="Report no." placeholder="e.g. RPT-1042" required />
             <TextInput v-model="form.title" label="Customer name" placeholder="e.g. Ahmed Al Balushi" required />
-            <TextInput v-model="form.property_address" label="Site address" placeholder="e.g. Al Seeb, Muscat" />
+            <TextInput
+              v-model="form.property_address"
+              label="Location"
+              :placeholder="locationLookupState === 'loading' ? 'Finding location…' : 'Move the map to fill this automatically'"
+              :hint="locationHint"
+              @update:model-value="markLocationManuallyEdited"
+            />
 
             <Select v-model="form.priority" label="Priority">
               <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">
@@ -126,7 +186,7 @@ async function submit() {
           </Badge>
         </template>
         <div class="h-[360px] min-h-[360px] sm:h-[420px] sm:min-h-[420px] lg:h-full">
-          <LocationPicker :lat="form.lat" :lng="form.lng" @update:lat="setLat" @update:lng="setLng" />
+          <LocationPicker :lat="form.lat" :lng="form.lng" @location-selected="selectLocation" />
         </div>
       </Card>
     </div>

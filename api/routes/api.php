@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MyCaseController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PositionController;
+use App\Http\Controllers\Api\V1\ReverseGeocodeController;
 use App\Http\Controllers\Api\V1\ShiftExceptionController;
 use App\Http\Controllers\Api\V1\ShiftTemplateController;
 use App\Http\Controllers\Api\V1\TrackController;
@@ -94,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::middleware('capability:manage-cases')->group(function () {
+            Route::get('/reverse-geocode', ReverseGeocodeController::class);
             Route::post('/cases', [CaseController::class, 'store']);
             Route::post('/cases/{case}/assign', [CaseController::class, 'assign']);
             Route::post('/cases/{case}/cancel', [CaseController::class, 'cancel']);

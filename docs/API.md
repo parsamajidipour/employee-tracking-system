@@ -107,6 +107,9 @@ valid, the case's current state just doesn't allow it.
 
 ### Panel (`capability:view-cases` / `capability:manage-cases`)
 
+- `GET /api/v1/reverse-geocode?lat={lat}&lng={lng}` (`manage-cases`) —
+  returns `{location}` for a user-selected case position. Provider requests
+  are cached for 30 days and globally limited to one per second.
 - `GET /api/v1/cases` — paginated, filterable by `status` and `assigned_to`.
 - `GET /api/v1/cases/{case}` — includes `status_events` and `photos`.
 - `GET /api/v1/cases/{case}/nearest-surveyors` — ranked by live-position

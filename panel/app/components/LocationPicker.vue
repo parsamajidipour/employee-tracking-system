@@ -14,6 +14,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'update:lat', value: number): void
   (e: 'update:lng', value: number): void
+  (e: 'location-selected', value: { lat: number; lng: number }): void
 }>()
 
 const DEFAULT_CENTER: [number, number] = [58.5922, 23.6144]
@@ -25,8 +26,13 @@ let map: MapLibreMap | undefined
 function emitCenter() {
   if (!map) return
   const center = map.getCenter()
-  emit('update:lat', Number(center.lat.toFixed(6)))
-  emit('update:lng', Number(center.lng.toFixed(6)))
+  const position = {
+    lat: Number(center.lat.toFixed(6)),
+    lng: Number(center.lng.toFixed(6)),
+  }
+  emit('update:lat', position.lat)
+  emit('update:lng', position.lng)
+  emit('location-selected', position)
 }
 
 onMounted(() => {

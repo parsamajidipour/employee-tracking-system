@@ -898,3 +898,25 @@ exactly that — generalising it cost less than a dependency and keeps the
 "reach for the boring option" rule intact. A library would have been the
 right call if focus trapping, virtualised listboxes or combobox semantics
 were needed; they are not.
+
+## Case locations are reverse-geocoded through the API
+
+**Decision.** A user-driven move of the case-location map calls the authenticated
+`GET /api/v1/reverse-geocode` endpoint after a 1.1-second debounce. The API uses
+Nominatim's reverse endpoint, limits uncached provider traffic to one request per
+second across the deployment, and caches each coordinate rounded to five decimal
+places for 30 days. `NOMINATIM_REVERSE_URL` keeps the provider replaceable through
+deployment configuration. The returned display name fills the editable
+`Location` field; lookup failure never prevents manual entry.
+
+**Why.** Reverse geocoding is a shared external dependency with an aggregate
+rate limit, so calling it independently from every browser would make compliance
+and caching accidental. The internal endpoint gives the panel one stable contract
+and keeps provider rules in one place.
+
+**Consequences.** The selected case coordinates are sent to the configured
+geocoder after the administrator moves the map. This is case-site data, not an
+employee location, but it is still a third-party privacy boundary. Nominatim is a
+best-effort service with no availability guarantee; the field remains editable
+because coverage can be incomplete and the lookup can be unavailable or
+rate-limited.

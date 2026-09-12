@@ -93,6 +93,7 @@ services:
       CORS_ALLOWED_ORIGINS: "https://${SERVER_HOST}"
       SESSION_SECURE_COOKIE: "true"
       TRACKING_RETENTION_DAYS: ${TRACKING_RETENTION_DAYS:-7}
+      NOMINATIM_REVERSE_URL: ${NOMINATIM_REVERSE_URL:-https://nominatim.openstreetmap.org/reverse}
       SEED_FAKE_DATA: "false"
       RUN_STARTUP_TESTS: "false"
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
