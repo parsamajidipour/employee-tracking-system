@@ -69,9 +69,11 @@ fi
 docker_compose config --quiet
 docker_compose build --pull
 docker_compose up -d --remove-orphans --wait
+docker_compose restart proxy
 
 curl --fail --silent --show-error --retry 12 --retry-delay 5 "http://127.0.0.1:8000/up" >/dev/null
 curl --fail --silent --show-error --retry 12 --retry-delay 5 "http://127.0.0.1:3000/" >/dev/null
+curl --fail --silent --show-error --retry 12 --retry-delay 5 "https://$(grep '^SERVER_HOST=' "$ENV_FILE" | cut -d= -f2-)/up" >/dev/null
 
 docker_compose ps
 echo "Deployment completed successfully: https://$(grep '^SERVER_HOST=' "$ENV_FILE" | cut -d= -f2-)"
