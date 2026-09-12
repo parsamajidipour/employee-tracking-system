@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 
 enum TrackingDisplayState { active, off, unknownOffline }
@@ -17,20 +18,20 @@ class TrackingStatusBanner extends StatelessWidget {
       TrackingDisplayState.active => (
           colors.success,
           Icons.location_on_outlined,
-          'Tracking active',
-          'You are inside your working-hours window.',
+          context.l10n.trackingActive,
+          context.l10n.insideWorkingWindow,
         ),
       TrackingDisplayState.off => (
           colors.neutral,
           Icons.location_off_outlined,
-          'Tracking off',
-          'Outside working hours. No location is being recorded.',
+          context.l10n.trackingOff,
+          context.l10n.outsideWorkingHours,
         ),
       TrackingDisplayState.unknownOffline => (
           colors.warning,
           Icons.wifi_off_outlined,
-          'Tracking state unknown',
-          'Offline. Cannot confirm whether tracking is on right now.',
+          context.l10n.trackingUnknown,
+          context.l10n.trackingUnknownOffline,
         ),
     };
 

@@ -128,7 +128,7 @@ final class CaseLifecycleService
     public function markOverdue(InspectionCase $case): InspectionCase
     {
         if ($case->status !== CaseStatus::Accepted || $case->planned_at === null || $case->planned_at->isFuture()) {
-            throw new LogicException('Only a scheduled case past its planned time can become overdue.');
+            throw new LogicException(__('messages.case.overdue_invalid'));
         }
 
         DB::transaction(function () use ($case) {
@@ -150,7 +150,7 @@ final class CaseLifecycleService
         $this->guardActor($case, $employee);
 
         if (! $case->photos()->where('is_gps_verified', true)->exists()) {
-            throw new LogicException('Add at least one GPS-verified site photo before completing the inspection.');
+            throw new LogicException(__('messages.case.photo_required'));
         }
 
         $now = $this->transition($case, CaseStatus::Completed, $employee, $note ?? 'Inspection completed.');
@@ -200,29 +200,32 @@ final class CaseLifecycleService
     private function guardActor(InspectionCase $case, User $employee): void
     {
         if ($case->assigned_to !== $employee->id) {
-            throw new LogicException('This case is not assigned to this employee.');
+            throw new LogicException(__('messages.case.not_assigned'));
         }
     }
 
     private function guardAssignable(InspectionCase $case, User $employee): void
     {
         if (! $employee->is_active) {
-            throw new LogicException("{$employee->name} is deactivated and cannot be assigned a case.");
+            throw new LogicException(__('messages.case.employee_inactive', ['name' => $employee->name]));
         }
 
         if (! in_array($case->status, [CaseStatus::Pending, CaseStatus::Rejected], true)) {
-            throw new LogicException('Only a pending or rejected case can be assigned or reassigned.');
+            throw new LogicException(__('messages.case.not_assignable'));
         }
 
         if ($case->status === CaseStatus::Pending && $case->assigned_to !== null) {
-            throw new LogicException('This assignment is awaiting the surveyor response and cannot be replaced yet.');
+            throw new LogicException(__('messages.case.awaiting_response'));
         }
     }
 
     private function transition(InspectionCase $case, CaseStatus $to, User $actor, string $note): CarbonImmutable
     {
         if (! $case->status->canTransitionTo($to)) {
-            throw new LogicException("Cannot move case from {$case->status->value} to {$to->value}.");
+            throw new LogicException(__('messages.case.transition_invalid', [
+                'from' => __('messages.case.status.'.$case->status->value),
+                'to' => __('messages.case.status.'.$to->value),
+            ]));
         }
 
         return DB::transaction(function () use ($case, $to, $actor, $note) {

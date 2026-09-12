@@ -22,7 +22,7 @@ class ReverseGeocodeController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => 'Location lookup is temporarily unavailable.',
+                'message' => __('messages.location_unavailable'),
             ], 503);
         }
 

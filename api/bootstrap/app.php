@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureCapability;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: $trustedProxies);
         }
         $middleware->statefulApi();
+        $middleware->prepend(SetLocale::class);
         $middleware->append(SecurityHeaders::class);
         $middleware->alias(['capability' => EnsureCapability::class]);
 

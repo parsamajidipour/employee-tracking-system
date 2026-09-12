@@ -1,0 +1,210 @@
+{
+  "app": { "name": "الفحص الذكي" },
+  "language": { "label": "اللغة", "english": "الإنجليزية", "arabic": "العربية" },
+  "common": {
+    "active": "نشط", "inactive": "غير نشط", "all": "الكل", "yes": "نعم", "no": "لا", "none": "لا يوجد", "unknown": "غير معروف",
+    "loading": "جارٍ التحميل…", "refresh": "تحديث", "retry": "حاول مجددًا", "save": "حفظ", "saving": "جارٍ الحفظ…", "saved": "تم الحفظ.",
+    "cancel": "إلغاء", "confirm": "تأكيد", "close": "إغلاق", "delete": "حذف", "edit": "تعديل", "discard": "تجاهل التغييرات",
+    "search": "بحث", "status": "الحالة", "date": "التاريخ", "name": "الاسم", "email": "البريد الإلكتروني", "phone": "الهاتف", "password": "كلمة المرور",
+    "back": "رجوع", "next": "التالي", "previous": "السابق", "notAvailable": "غير متاح", "optional": "اختياري",
+    "showPassword": "إظهار كلمة المرور", "hidePassword": "إخفاء كلمة المرور", "copyPassword": "نسخ كلمة المرور", "passwordCopied": "تم نسخ كلمة المرور", "copied": "تم النسخ",
+    "removeFile": "إزالة الملف", "clickToUpload": "انقر للرفع", "orDragDrop": "أو اسحب الملف وأفلته", "moreActions": "إجراءات إضافية", "live": "مباشر", "offline": "غير متصل", "loadFailed": "تعذر تحميل البيانات.", "nothingHere": "لا يوجد شيء هنا بعد."
+  },
+  "nav": {
+    "liveMap": "الخريطة المباشرة", "shiftTemplates": "قوالب المناوبات", "employees": "الموظفون", "cases": "الحالات", "appReleases": "إصدارات التطبيق",
+    "adminProfile": "ملف المشرف", "collapse": "طي", "expand": "توسيع", "openMenu": "فتح القائمة", "closeMenu": "إغلاق القائمة",
+    "signedIn": "تم تسجيل الدخول", "signOut": "تسجيل الخروج"
+  },
+  "auth": {
+    "signIn": "تسجيل الدخول", "signingIn": "جارٍ تسجيل الدخول…", "workEmail": "استخدم بريد العمل الإلكتروني.",
+    "emailPlaceholder": "مثل admin{'@'}inspection.local", "passwordPlaceholder": "أدخل كلمة مرور العمل",
+    "failed": "فشل تسجيل الدخول — تحقق من البيانات وحاول مجددًا.",
+    "privacy": "لا تظهر بيانات الموقع إلا خلال ساعات عمل الموظف."
+  },
+  "notifications": {
+    "title": "الإشعارات", "unread": "الإشعارات، {count} غير مقروء", "markAllRead": "تعليم الكل كمقروء", "empty": "لا توجد إشعارات جديدة.", "loadFailed": "تعذر تحميل الإشعارات."
+  },
+  "case": {
+    "statuses": {
+      "pending": "غير مسندة / بانتظار القبول", "accepted": "مجدولة", "overdue": "متأخرة", "in_progress": "قيد التنفيذ",
+      "completed": "مكتملة", "rejected": "مرفوضة", "cancelled": "ملغاة", "unassigned": "غير مسندة", "awaiting_acceptance": "بانتظار القبول"
+    },
+    "priorities": { "normal": "عادية", "high": "عالية", "urgent": "عاجلة" },
+    "assignmentStatuses": {
+      "unassigned": "غير مسندة", "awaiting_acceptance": "بانتظار القبول", "scheduled": "مجدولة", "in_progress": "قيد التنفيذ",
+      "completed": "مكتملة", "rejected": "مرفوضة", "cancelled": "ملغاة", "overdue": "متأخرة"
+    }
+  },
+  "cases": {
+    "fields": {
+      "reportNumber": "رقم التقرير", "customerName": "اسم العميل", "location": "الموقع", "locationOnMap": "الموقع على الخريطة",
+      "priority": "الأولوية", "notes": "ملاحظات", "assignee": "المكلف", "created": "تاريخ الإنشاء"
+    },
+    "placeholders": {
+      "reportNumber": "مثل RPT-1042", "customerName": "مثل أحمد البلوشي",
+      "notes": "أي معلومات يجب أن يعرفها المساح قبل قبول الحالة"
+    },
+    "new": {
+      "title": "حالة جديدة", "subtitle": "إنشاء حالة فحص", "cancelCreation": "إلغاء إنشاء الحالة", "create": "إنشاء الحالة", "creating": "جارٍ الإنشاء…",
+      "details": "تفاصيل الحالة", "detailsSubtitle": "معلومات التقرير والعميل والأولوية", "findingLocation": "جارٍ تحديد الموقع…",
+      "moveMapToFill": "حرّك الخريطة لتعبئة الموقع تلقائيًا", "locationFindingHint": "جارٍ استخراج الموقع من الخريطة…",
+      "locationNotFound": "لم يتم العثور على العنوان — حرّك الخريطة مجددًا أو أدخله يدويًا.", "locationFilledHint": "تمت التعبئة تلقائيًا من الخريطة؛ ويمكنك التعديل.",
+      "waitForLocation": "انتظر حتى يكتمل تحديد الموقع.", "requiredFields": "رقم التقرير واسم العميل والموقع على الخريطة حقول مطلوبة.",
+      "created": "تم إنشاء الحالة. يمكنك الآن إسنادها إلى مساح.", "createFailed": "تعذر إنشاء الحالة — تحقق من الحقول.",
+      "whatNext": "ماذا يحدث بعد ذلك", "nextStep1": "يتلقى كل موظف نشط إشعارًا بوجود هذه الحالة فور إنشائها.",
+      "nextStep2": "تسندها إلى مساح من صفحة الحالة، ويتم ترتيب المساحين الأقرب والمناوبين تلقائيًا.",
+      "nextStep3": "يقبل المساح الحالة ويجدولها، وتتحدث صفحة الحالة مباشرة.",
+      "dragPin": "اسحب الدبوس لضبط الموقع", "dropPin": "مطلوب — انقر على الخريطة لوضع الدبوس", "notSet": "غير محدد", "adjustMap": "حرّك الخريطة لضبط الدبوس.", "placeOnProperty": "حرّك الخريطة لوضع الدبوس على العقار — مطلوب."
+    },
+    "assignmentMap": { "propertyLocation": "موقع العقار", "caseLocation": "موقع الحالة", "propertyToInspect": "العقار المطلوب فحصه", "away": "يبعد {distance}", "openCases": "الحالات المفتوحة: {count}", "assignTo": "إسناد إلى {name}", "online": "متصل", "lastKnown": "آخر موقع معروف" },
+    "histories": {
+      "title": "سجلات {name}", "employee": "الموظف", "subtitle": "المسارات اليومية حسب المناوبة", "refresh": "تحديث سجل المسار", "employeeShifts": "مناوبات الموظف", "shift": "المناوبة",
+      "loadFailed": "تعذر تحميل نشاط هذا اليوم.", "mapFailed": "تعذر تحميل الخريطة.", "points": "{count} نقطة", "empty": "لا يوجد نشاط متتبع لهذا اليوم.",
+      "interruptions": "انقطاعات التتبع", "ongoing": "مستمر", "start": "البداية", "end": "النهاية", "startShort": "ب", "endShort": "ن",
+      "reasons": { "gps_disabled": "GPS غير متاح", "network_disabled": "لا توجد شبكة", "flight_mode": "وضع الطيران", "permission_revoked": "تم إلغاء الإذن", "service_interrupted": "انقطعت خدمة التتبع" }
+    },
+    "detail": {
+      "workspace": "مساحة عمل الحالة", "refresh": "تحديث الحالة", "loadFailed": "تعذر تحميل هذه الحالة.", "rankingUnavailable": "ترتيب المواقع المباشرة غير متاح مؤقتًا.",
+      "selectFirst": "اختر مسّاحًا متاحًا أولًا.", "assignedNotice": "تم إسناد الحالة إلى {name} وهي بانتظار القبول.", "assignFailed": "تعذر إكمال الإسناد ولم يتغير شيء.",
+      "cancelledNotice": "تم إلغاء الحالة وإشعار المستخدمين المعنيين.", "cancelFailed": "تعذر إلغاء الحالة ولم يتغير شيء.",
+      "deleteConfirm": "هل تريد حذف حالة «{name}» نهائيًا مع مخططها الزمني وصور الموقع؟ لا يمكن التراجع عن ذلك.", "deleteTitle": "حذف الحالة نهائيًا", "deleted": "تم حذف الحالة وكل بيانات الفحص المرتبطة نهائيًا.", "deleteFailed": "تعذر حذف الحالة.",
+      "notSetYet": "لم يحدد بعد", "notSet": "غير محدد", "distanceUnavailable": "المسافة غير متاحة", "fromProperty": "يبعد {distance} عن العقار",
+      "steps": { "received": "مستلمة", "new": "جديدة", "assigned": "مسندة", "scheduled": "مجدولة", "plan": "الخطة", "inspection": "الفحص", "inspect": "فحص", "completed": "مكتملة", "done": "تمت" },
+      "events": { "assigned": "تم إسناد المسّاح", "received": "تم استلام الحالة", "accepted": "تم قبول الإسناد وجدولته", "started": "بدأ الفحص", "overdue": "أصبح الفحص متأخرًا", "completed": "اكتمل الفحص", "rejected": "رُفض الإسناد", "cancelled": "أُلغيت الحالة", "updated": "تحدثت الحالة", "statusUpdated": "تم تحديث الحالة.", "system": "النظام", "createdNote": "تم إنشاء الحالة.", "assignedNote": "تم الإسناد إلى {name}.", "reassignedNote": "تمت إعادة الإسناد من {from} إلى {to}.", "acceptedNote": "قبِل المسّاح المهمة.", "rejectedNote": "رفض المسّاح المهمة.", "startedNote": "بدأ الفحص.", "overdueNote": "تجاوز موعد الفحص المخطط.", "completedNote": "اكتمل الفحص.", "cancelledNote": "ألغت الإدارة الحالة." },
+      "deletedElsewhere": "تم حذف هذه الحالة في جلسة أخرى.", "priority": "أولوية {priority}", "addressMissing": "لم يتم توفير عنوان الموقع",
+      "sitePhotos": "صور الموقع", "uploaded": "تم رفع {count}", "verified": "موثقة", "needsVerified": "تحتاج صورة موثقة", "noPhotos": "لم يتم رفع صور للموقع بعد.", "photoAlt": "صورة للموقع ملتقطة في {date}",
+      "timeline": "المخطط الزمني للحالة", "timelineSubtitle": "كل تغييرات دورة العمل بالترتيب", "noActivity": "لا يوجد نشاط للحالة بعد.",
+      "reassign": "إعادة إسناد المسّاح", "assign": "إسناد مسّاح", "assignment": "الإسناد", "assignmentSubtitle": "الموقع والتوفر وعبء العمل في قرار واحد", "available": "{count} متاح",
+      "previousRejected": "رفض {name} هذا الإسناد. اختر بديلًا.", "previousSurveyor": "المسّاح السابق", "assignByWorkload": "ما زال بإمكانك الإسناد حسب عبء العمل.",
+      "surveyor": "المسّاح", "cases": "الحالات", "workload": "عبء العمل", "noneAvailable": "لا يوجد مسّاح نشط متاح للإسناد.", "offShift": "خارج المناوبة / لا يوجد موقع مباشر",
+      "pending": "{count} معلقة", "scheduled": "{count} مجدولة", "overdue": "{count} متأخرة", "assigning": "جارٍ الإسناد…", "assignTo": "إسناد الحالة إلى {name}", "selectToAssign": "اختر مسّاحًا للإسناد",
+      "assignmentHint": "سيتلقى المسّاح إشعارًا ويجب أن يقبل قبل الجدولة.", "unassigned": "غير مسندة", "noSurveyor": "لا يوجد مسّاح مسند", "assignedAt": "وقت الإسناد", "acceptedAt": "وقت القبول", "inspectionPlan": "خطة الفحص",
+      "waitingAcceptance": "بانتظار قبول المسّاح وتحديد تاريخ الفحص ووقته.", "cancelCase": "إلغاء الحالة", "cancelExplanation": "يوقف الإلغاء هذا الفحص ويشعر المسّاح المسند والإدارة.",
+      "reasonOptional": "السبب (اختياري)", "reasonPlaceholder": "مثل تراجع العميل عن طلب الفحص", "keepCase": "الإبقاء على الحالة", "confirmCancellation": "تأكيد الإلغاء"
+    },
+    "list": {
+      "title": "الحالات", "total": "الإجمالي {count}", "refresh": "تحديث الحالات", "allStatuses": "جميع الحالات", "allEmployees": "جميع الموظفين",
+      "clearDate": "مسح التاريخ", "empty": "لا توجد حالات تطابق هذه الفلاتر.", "view": "عرض", "page": "الصفحة {current} من {last} — {total} حالة", "loadFailed": "تعذر تحميل الحالات."
+    }
+  },
+  "employees": {
+    "placeholders": { "name": "مثل أحمد السعدي", "phone": "مثل 92000001", "email": "name{'@'}example.com", "password": "8 أحرف على الأقل" },
+    "create": {
+      "title": "إضافة موظف", "subtitle": "إنشاء حساب وتحديد جدول عمله", "cancelCreation": "إلغاء إنشاء الموظف",
+      "create": "إنشاء الموظف", "creating": "جارٍ الإنشاء…", "requiredFields": "الاسم والهاتف والبريد الإلكتروني وكلمة مرور من 8 أحرف على الأقل حقول مطلوبة.",
+      "created": "تم إنشاء الموظف وإرسال رسالة ترحيب تتضمن بيانات الدخول.",
+      "failed": "فشل الحفظ — تحقق من الحقول (يجب أن يكون الهاتف والبريد فريدين، وكلمة المرور 8 أحرف على الأقل).",
+      "accountDetails": "تفاصيل الحساب", "accountDetailsSubtitle": "طريقة تسجيل هذا الشخص للدخول في تطبيق الهاتف",
+      "phoneHint": "يُستخدم للدخول في تطبيق الهاتف ويجب أن يكون فريدًا.", "emailHint": "يُستخدم للدخول وإرسال رسالة الترحيب.",
+      "inactiveHint": "لا يمكن للحسابات غير النشطة تسجيل الدخول أو إسناد حالة إليها.", "shiftAssignment": "إسناد المناوبات",
+      "selectedShifts": "تم اختيار {count}", "shiftOptional": "اختياري — يمكن تعيينه لاحقًا",
+      "trackingExplanation": "لا يتم تسجيل الموقع إلا ضمن نافذة مناوبة محددة. إذا تركت كل المناوبات بدون اختيار، فلن يتم تتبع هذا الموظف."
+    },
+    "activity": { "inspecting": "يقوم بالفحص", "overdue": "عمل متأخر", "awaiting": "بانتظار الرد", "available": "متاح" },
+    "location": { "offShift": "خارج المناوبة / لا يوجد موقع مباشر", "unavailable": "الموقع غير متاح" },
+    "connection": { "online": "متصل", "stale": "غير محدّث", "offline": "غير متصل" },
+    "list": {
+      "title": "الموظفون", "subtitle": "التوفر وعبء العمل والجداول والوصول في مكان واحد", "refresh": "تحديث الموظفين",
+      "loadFailed": "تعذر تحميل الموظفين. سجل الدخول وحاول مجددًا.", "workforce": "القوة العاملة وعبء العمل",
+      "shown": "يظهر {shown} من {total} · الطاقة التشغيلية المباشرة", "searchPlaceholder": "البحث بالاسم أو الهاتف أو البريد",
+      "allStatuses": "جميع الحالات", "activeOnly": "النشطون فقط", "inactiveOnly": "غير النشطين فقط", "shiftCoverage": "تغطية المناوبات",
+      "anyCoverage": "أي تغطية", "hasShift": "لديه مناوبة", "noShift": "لا توجد مناوبة مسندة", "clear": "مسح",
+      "employee": "الموظف", "activityLocation": "النشاط والموقع", "activeCases": "الحالات النشطة", "pendingScheduled": "معلقة / مجدولة", "workload": "عبء العمل",
+      "emptyFiltered": "لا يوجد موظف يطابق هذه الفلاتر.", "empty": "لا يوجد موظفون بعد — أضف موظفًا للبدء.", "noEmail": "لا يوجد بريد",
+      "activity": "النشاط", "schedule": "الجدول", "histories": "السجلات", "editDetails": "تعديل التفاصيل", "changePassword": "تغيير كلمة المرور",
+      "deactivate": "إلغاء التفعيل", "activate": "تفعيل", "revokeDevice": "إلغاء اعتماد الجهاز", "deleteEmployee": "حذف الموظف",
+      "pendingCount": "{count} معلقة", "scheduledCount": "{count} مجدولة", "overdueCount": "{count} متأخرة",
+      "assignedCasesTitle": "{name} · الحالات المسندة", "noAssignedCases": "لم يتم إسناد أي حالة إلى هذا الموظف بعد.",
+      "addressMissing": "لم يتم توفير عنوان الموقع", "priorityValue": "أولوية {priority}", "assignedAt": "تم الإسناد {date}", "notSet": "غير محدد",
+      "assignedCasesFailed": "تعذر تحميل الحالات المسندة إلى هذا الموظف.", "updated": "تم تحديث الموظف.",
+      "updateFailed": "فشل التحديث — تحقق من الحقول (يجب أن يكون الهاتف والبريد فريدين).", "passwordLength": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين.", "passwordChanged": "تم تغيير كلمة المرور.", "passwordChangeFailed": "فشل تغيير كلمة المرور.",
+      "activateConfirm": "هل تريد تفعيل {name}؟ سيتمكن من تسجيل الدخول وإسناد الحالات إليه مجددًا.",
+      "deactivateConfirm": "هل تريد إلغاء تفعيل {name}؟ سيتم إلغاء رموز الدخول فورًا ولن يمكن إسناد حالات إليه.",
+      "activateTitle": "تفعيل الموظف", "deactivateTitle": "إلغاء تفعيل الموظف", "activated": "تم تفعيل الموظف.", "deactivated": "تم إلغاء تفعيل الموظف.",
+      "genericUpdateFailed": "فشل التحديث.", "revokeConfirm": "هل تريد إلغاء اعتماد جهاز {name}؟ سيحتاج إلى تسجيل الدخول مجددًا على هاتف جديد.",
+      "deviceRevoked": "تم إلغاء اعتماد الجهاز.", "revokeFailed": "فشل إلغاء اعتماد الجهاز.",
+      "deleteConfirm": "هل تريد حذف {name}؟ سيتم إزالته من القائمة وإلغاء وصول جهازه ومسح مناوباته.",
+      "deleted": "تم حذف الموظف.", "deleteFailed": "فشل الحذف.", "editEmployee": "تعديل الموظف",
+      "fullNamePlaceholder": "الاسم الكامل كما يظهر في القائمة", "phoneLoginHint": "يُستخدم للدخول في تطبيق الهاتف.",
+      "emailLoginHint": "يُستخدم للدخول ولتلقي رسائل الحساب.", "saveChanges": "حفظ التغييرات",
+      "passwordIntro": "عيّن كلمة مرور جديدة لـ {name}. سيحتاجها في مرة الدخول القادمة، وستُرسل إليه عبر البريد إذا كان لديه بريد مسجل.",
+      "newPassword": "كلمة المرور الجديدة", "confirmPassword": "تأكيد كلمة المرور الجديدة", "repeatPassword": "أعد إدخال كلمة المرور الجديدة", "changing": "جارٍ التغيير…"
+    },
+    "detail": {
+      "schedule": "جدول العمل", "refresh": "تحديث الموظف", "loadFailed": "تعذر تحميل مناوبات الموظف.", "saved": "تم حفظ مناوبات العمل.",
+      "saveFailed": "فشل حفظ المناوبات.", "noDevice": "لا يوجد جهاز مقترن", "noEmail": "لا يوجد بريد مسجل", "device": "الجهاز",
+      "shiftsAssigned": "المناوبات المسندة", "tracked": "التتبع", "inShiftWindows": "داخل نوافذ المناوبات", "never": "لا يتم أبدًا",
+      "deactivatedHint": "هذا الموظف غير نشط. أعد تفعيله من القائمة قبل تغيير جدوله.",
+      "workingShifts": "مناوبات العمل", "selected": "تم اختيار {selected} من {total}", "saveShifts": "حفظ المناوبات",
+      "trackingExplanation": "لا يتم تسجيل الموقع إلا داخل نافذة مناوبة محددة. مسح كل المناوبات يوقف تتبع هذا الموظف بالكامل، ولا تُحفظ أي نقطة خارج هذه الأوقات.",
+      "missing": "لم يعد هذا الموظف موجودًا في القائمة."
+    }
+  },
+  "shifts": {
+    "title": "قوالب المناوبات", "subtitle": "تعريفات المناوبات على مستوى المؤسسة وإسنادها لكل موظف", "refresh": "تحديث قوالب المناوبات",
+    "loadFailed": "تعذر تحميل قوالب المناوبات. سجل الدخول وحاول مجددًا.", "new": "قالب جديد", "edit": "تعديل القالب", "newSubtitle": "قابل لإعادة الاستخدام واختياري، وإنشاؤه وحده لا يتتبع أحدًا",
+    "namePlaceholder": "مثل المناوبة النهارية", "daysOfWeek": "أيام الأسبوع", "days": ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+    "noDays": "لا توجد أيام", "everyDay": "كل يوم", "window": "النافذة", "start": "البداية", "end": "النهاية", "crossesMidnight": "تمتد هذه النافذة بعد منتصف الليل وتنتهي في اليوم التالي.",
+    "graceCap": "السماح والحد", "graceBefore": "السماح قبلها (دقيقة)", "graceAfter": "السماح بعدها (دقيقة)", "maxDaily": "الحد اليومي بالدقائق", "noCap": "اتركه فارغًا بلا حد", "capHint": "يحدد أقصى مدة يمكن أن تبقى فيها نافذة اليوم مفتوحة.",
+    "add": "إضافة القالب", "saveChanges": "حفظ التغييرات", "cancelEdit": "إلغاء التعديل", "templates": "القوالب", "defined": "تم تعريف {count}",
+    "headers": ["الاسم", "الأيام", "الساعات", "السماح", "مسند إلى", ""], "empty": "لا توجد قوالب مناوبات بعد — أضف واحدًا بالنموذج.",
+    "hours": "الساعات", "grace": "السماح", "assigned": "مسند إلى {count}", "employees": "عدد الموظفين: {count}", "minutes": "{before}/{after} د",
+    "nameRequired": "أدخل اسمًا للقالب.", "dayRequired": "اختر يومًا واحدًا على الأقل، فالقالب بلا أيام لا يفتح نافذة أبدًا.",
+    "created": "تم إنشاء قالب المناوبة.", "saved": "تم حفظ قالب المناوبة.", "saveFailed": "فشل الحفظ — تحقق من الحقول.",
+    "deleteAffected": "هل تريد حذف قالب المناوبة «{name}»؟ سيفقد {count} موظفين هذه المناوبة ويصبحون بلا جدول: {employees}.",
+    "deleteConfirm": "هل تريد حذف قالب المناوبة «{name}»؟ لا يمكن التراجع عن ذلك.", "deleteTitle": "حذف القالب", "deleted": "تم حذف قالب المناوبة.", "deleteFailed": "فشل الحذف.",
+    "noneExist": "لا توجد مناوبات. أنشئ مناوبة أولًا.", "shiftCount": "عدد المناوبات: {count}", "assignedCount": "المناوبات المسندة: {count}", "showDetails": "عرض تفاصيل المناوبات"
+  },
+  "releases": {
+    "title": "إصدارات التطبيق", "subtitle": "الإصدارات المتاحة لمسار تحديث تطبيق أندرويد", "refresh": "تحديث إصدارات التطبيق",
+    "new": "إصدار جديد", "newSubtitle": "يؤدي النشر إلى إشعار كل موظف نشط", "apkFile": "ملف APK", "apkHint": "إصدار شامل — arm64-v8a وarmeabi-v7a وx86_64",
+    "versionCode": "رمز الإصدار", "versionCodePlaceholder": "مثل 7", "versionName": "اسم الإصدار", "versionNamePlaceholder": "مثل 1.1.0",
+    "versionHint": "يجب أن يطابق رمز الإصدار versionCode / pubspec +build، ويتم افتراضيًا اختيار الرقم التالي غير المستخدم.",
+    "mandatory": "تحديث إلزامي", "mandatoryHint": "يحظر التطبيق حتى يثبّت الموظف التحديث.", "notes": "ملاحظات الإصدار (اختياري)", "notesPlaceholder": "ما الذي تغير في هذا الإصدار",
+    "uploading": "جارٍ الرفع…", "publish": "نشر الإصدار", "chooseApk": "اختر ملف ‎.apk للرفع.", "nameRequired": "أدخل اسمًا للإصدار، مثل 1.1.0.",
+    "publishedNotice": "تم نشر الإصدار وإشعار كل الموظفين النشطين.", "uploadFailed": "فشل الرفع — تحقق من أن رمز الإصدار فريد وأن الملف بصيغة ‎.apk صالحة.",
+    "retractConfirm": "هل تريد سحب الإصدار {name} ({code})؟ ستحتفظ الأجهزة المحدثة به، وسيتوقف عرضه فقط.", "retractTitle": "سحب الإصدار",
+    "retracted": "تم سحب الإصدار.", "retractFailed": "تعذر سحب هذا الإصدار.", "loadFailed": "تعذر تحميل الإصدارات. سجل الدخول وحاول مجددًا.",
+    "currentVersion": "الإصدار الحالي", "publishedBuilds": "الإصدارات المنشورة", "storageUsed": "التخزين المستخدم", "publishedReleases": "الإصدارات المنشورة", "available": "{count} متاح للأجهزة",
+    "headers": ["الإصدار", "الملاحظات", "الحجم", "النوع", "تاريخ النشر", ""], "empty": "لم يتم نشر أي إصدار بعد — ارفع الإصدار الأول.",
+    "versionCodeShort": "الرمز {code}", "mandatoryShort": "إلزامي", "optionalShort": "اختياري", "size": "الحجم", "published": "تاريخ النشر", "download": "تنزيل", "retract": "سحب", "current": "الحالي"
+  },
+  "workload": {
+    "title": "عبء العمل", "subtitle": "العمل المفتوح والوقت المستغرق لكل مسّاح", "refresh": "تحديث عبء العمل", "listLoadFailed": "تعذر تحميل عبء العمل.",
+    "liveTitle": "يتم التحديث مباشرة عبر الاتصال الفوري", "offlineTitle": "التحديث المباشر غير متاح — استخدم زر التحديث",
+    "surveyorsTracked": "المسّاحون المتابعون", "openOrg": "الحالات المفتوحة في المؤسسة", "overdueOrg": "المتأخرة في المؤسسة", "completedToday": "المكتملة اليوم",
+    "bySurveyor": "حسب المسّاح", "shown": "يظهر {shown} من {total}", "searchPlaceholder": "ابحث عن مسّاح بالاسم", "sortBy": "الترتيب حسب",
+    "sortOverdue": "الأكثر تأخرًا أولًا", "sortOpen": "الأكثر حالات مفتوحة أولًا", "sortCompleted": "الأكثر إكمالًا هذا الأسبوع", "sortName": "الاسم (أ–ي)",
+    "empty": "لا يوجد موظفون نشطون للعرض.", "emptySearch": "لا يوجد مسّاح يطابق البحث.", "noShiftToday": "لا توجد نافذة مناوبة اليوم", "travelledToday": "قطع {distance} اليوم",
+    "open": "مفتوحة", "pendingShort": "معلقة", "scheduledShort": "مجدولة", "late": "متأخرة", "weekShort": "أسبوع", "monthShort": "شهر",
+    "inspectingTime": "فحص {duration}", "travellingTime": "تنقل {duration}", "inspecting": "الفحص", "travelling": "التنقل", "idle": "خمول",
+    "overdueCount": "{count} متأخرة", "noOpenWork": "لا يوجد عمل مفتوح", "onTrack": "حسب الخطة", "loadDayFailed": "تعذر تحميل نشاط هذا اليوم.",
+    "activityDate": "تاريخ النشاط", "pickDate": "اختر تاريخًا", "caseLoad": "حمل الحالات", "pending": "معلقة", "scheduled": "مجدولة", "overdue": "متأخرة",
+    "timeOnTask": "الوقت المستغرق", "travelled": "تم قطع {distance}", "noWindow": "لم يتم تحديد نافذة مناوبة لهذا اليوم، لذلك لم يتم تسجيل شيء.",
+    "openHistory": "فتح سجل المسار", "durationMinutes": "{minutes} د", "durationHoursMinutes": "{hours} س {minutes} د"
+  },
+  "map": {
+    "loadFailed": "تعذر تحميل الخريطة.", "onlineNow": "متصل الآن", "lastUpdate": "آخر تحديث", "viewHistories": "عرض السجلات",
+    "inWindow": "ضمن النافذة ({count})", "empty": "لا يوجد موظفون حاليًا ضمن نافذة العمل."
+  },
+  "profile": {
+    "subtitle": "تفاصيل حسابك وبيانات تسجيل الدخول", "refresh": "تحديث الملف", "signedInAs": "مسجل الدخول باسم", "role": "الدور",
+    "roles": { "admin": "المشرف", "hr": "الموارد البشرية", "supervisor": "المراقب", "employee": "الموظف" },
+    "details": "تفاصيل الملف", "detailsSubtitle": "تظهر في لوحة التحكم وسجلات التدقيق", "fullName": "اسمك الكامل",
+    "emailPlaceholder": "you{'@'}example.com", "emailHint": "تسجل الدخول بهذا العنوان.", "save": "حفظ الملف", "noChanges": "لا توجد تغييرات للحفظ.",
+    "passwordSubtitle": "يسجل الخروج من جميع الجلسات الأخرى التي تستخدم هذا الحساب", "currentPassword": "كلمة المرور الحالية", "currentPasswordPlaceholder": "كلمة مرورك الحالية",
+    "newPasswordPlaceholder": "10 أحرف على الأقل", "twoPasswordsMismatch": "كلمتا المرور غير متطابقتين.",
+    "updated": "تم تحديث الملف.", "updateFailed": "فشل التحديث. تحقق من عنوان البريد وحاول مجددًا.",
+    "passwordMismatch": "كلمة المرور الجديدة وتأكيدها غير متطابقين.", "passwordFailed": "فشل التغيير. تحقق من كلمة المرور الحالية ومتطلبات كلمة المرور."
+  },
+  "errors": {
+    "notFoundTitle": "الصفحة غير موجودة",
+    "serverTitle": "حدث خطأ ما",
+    "notFoundMessage": "الصفحة المطلوبة غير موجودة أو تم نقلها.",
+    "serverMessage": "تعذر على التطبيق إكمال هذا الطلب. حاول مجددًا.",
+    "backHome": "العودة إلى الصفحة الرئيسية",
+    "retry": "المحاولة مجددًا"
+  },
+  "units": { "meter": "{value} م", "kilometer": "{value} كم", "kilometersPerHour": "{value} كم/س", "kilobyte": "{value} كيلوبايت", "megabyte": "{value} ميغابايت" }
+}

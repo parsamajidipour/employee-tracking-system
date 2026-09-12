@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../models/app_notification.dart';
+import '../l10n/l10n.dart';
 import '../services/app_update_service.dart';
 import '../services/local_notification_service.dart';
 import '../services/tracking_service_controller.dart';
@@ -138,6 +139,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
 
     return Scaffold(
       body: IndexedStack(
@@ -183,21 +185,21 @@ class _MainShellState extends State<MainShell> {
             if (i == 1 && _index != 1) _casesFilter = null;
             _index = i;
           }),
-          destinations: const [
+          destinations: [
             NavigationDestination(
               icon: Icon(Icons.today_outlined),
               selectedIcon: Icon(Icons.today),
-              label: 'Today',
+              label: l10n.today,
             ),
             NavigationDestination(
               icon: Icon(Icons.assignment_outlined),
               selectedIcon: Icon(Icons.assignment),
-              label: 'Inspections',
+              label: l10n.inspections,
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
-              label: 'Me',
+              label: l10n.me,
             ),
           ],
         ),

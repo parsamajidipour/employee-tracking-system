@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
+import 'l10n/app_localizations.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/permission_onboarding_screen.dart';
@@ -13,6 +14,7 @@ import 'services/track_upload_service.dart';
 import 'services/tracking_service_controller.dart';
 import 'services/workmanager_bridge.dart';
 import 'state/auth_controller.dart';
+import 'state/locale_controller.dart';
 import 'theme/app_theme.dart';
 import 'widgets/brand_logo.dart';
 
@@ -33,6 +35,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
     with WidgetsBindingObserver {
   final _authController = AuthController();
   final _trackingServiceController = TrackingServiceController();
+  final _localeController = LocaleController();
   Timer? _casePhotoFlushTimer;
 
   @override
@@ -40,7 +43,8 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _authController.initialize();
-    _trackingServiceController.init();
+    _localeController.initialize();
+    unawaited(_trackingServiceController.init());
     LocalNotificationService.initialize();
 
     registerPeriodicWindowCheck();
@@ -65,6 +69,7 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
     FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     _casePhotoFlushTimer?.cancel();
     _authController.dispose();
+    _localeController.dispose();
     super.dispose();
   }
 
@@ -78,36 +83,47 @@ class _SmartInspectionAppState extends State<SmartInspectionApp>
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Smart Inspection',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      scrollBehavior: const _AppScrollBehavior(),
-      builder: (context, child) {
-        final media = MediaQuery.of(context);
+    return ListenableBuilder(
+      listenable: _localeController,
+      builder: (context, _) {
+        return MaterialApp(
+          onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: ThemeMode.system,
+          locale: _localeController.locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          scrollBehavior: const _AppScrollBehavior(),
+          builder: (context, child) {
+            final media = MediaQuery.of(context);
 
-        return MediaQuery(
-          data: media.copyWith(
-            textScaler: media.textScaler.clamp(
-              minScaleFactor: 0.9,
-              maxScaleFactor: 2.0,
-            ),
+            return LocaleControllerScope(
+              controller: _localeController,
+              child: MediaQuery(
+                data: media.copyWith(
+                  textScaler: media.textScaler.clamp(
+                    minScaleFactor: 0.9,
+                    maxScaleFactor: 2.0,
+                  ),
+                ),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+          home: ListenableBuilder(
+            listenable: _authController,
+            builder: (context, _) {
+              return AnimatedSwitcher(
+                duration: context.motion(AppDurations.slow),
+                switchInCurve: Curves.easeOutCubic,
+                child: _screenFor(_authController.status),
+              );
+            },
           ),
-          child: child ?? const SizedBox.shrink(),
         );
       },
-      home: ListenableBuilder(
-        listenable: _authController,
-        builder: (context, _) {
-          return AnimatedSwitcher(
-            duration: context.motion(AppDurations.slow),
-            switchInCurve: Curves.easeOutCubic,
-            child: _screenFor(_authController.status),
-          );
-        },
-      ),
     );
   }
 

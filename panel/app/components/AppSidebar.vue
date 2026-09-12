@@ -1,28 +1,29 @@
 <script setup lang="ts">
 const route = useRoute()
+const { t, locale } = useI18n()
 const { user, refresh } = useAuthUser()
 const { isOpen, close } = useSidebar()
 const railExpanded = useState('rail-expanded', () => true)
 
-const links = [
-  { to: '/map', label: 'Live map', icon: 'map-pin' },
-  { to: '/shift-templates', label: 'Shift templates', icon: 'calendar' },
-  { to: '/employees', label: 'Employees', icon: 'users' },
-]
+const links = computed(() => [
+  { to: '/map', label: t('nav.liveMap'), icon: 'map-pin' },
+  { to: '/shift-templates', label: t('nav.shiftTemplates'), icon: 'calendar' },
+  { to: '/employees', label: t('nav.employees'), icon: 'users' },
+])
 
-const caseLinks = [
-  { to: '/cases', label: 'Cases', icon: 'briefcase' },
-]
+const caseLinks = computed(() => [
+  { to: '/cases', label: t('nav.cases'), icon: 'briefcase' },
+])
 
-const adminLinks = [{ to: '/app-releases', label: 'App releases', icon: 'download' }]
+const adminLinks = computed(() => [{ to: '/app-releases', label: t('nav.appReleases'), icon: 'download' }])
 
-const trailingLinks = [{ to: '/profile', label: 'Admin profile', icon: 'user-circle' }]
+const trailingLinks = computed(() => [{ to: '/profile', label: t('nav.adminProfile'), icon: 'user-circle' }])
 
 const visibleLinks = computed(() => [
-  ...links,
-  ...(user.value?.role === 'admin' || user.value?.role === 'supervisor' ? caseLinks : []),
-  ...(user.value?.role === 'admin' ? adminLinks : []),
-  ...trailingLinks,
+  ...links.value,
+  ...(user.value?.role === 'admin' || user.value?.role === 'supervisor' ? caseLinks.value : []),
+  ...(user.value?.role === 'admin' ? adminLinks.value : []),
+  ...trailingLinks.value,
 ])
 
 onMounted(() => {
@@ -53,21 +54,24 @@ async function signOut() {
   </Teleport>
 
   <aside
-    class="fixed inset-y-0 left-0 z-50 flex w-full flex-none -translate-x-full flex-col bg-surface-dark text-ink-dark
+    class="fixed inset-y-0 start-0 z-50 flex w-full flex-none flex-col bg-surface-dark text-ink-dark
            transition-transform duration-base ease-soft
-           sm:w-80 lg:static lg:z-auto lg:translate-x-0"
-    :class="[isOpen ? 'translate-x-0 shadow-dark-key' : '', railExpanded ? 'lg:w-72' : 'lg:w-[84px]']"
+           sm:w-80 lg:static lg:z-auto lg:!translate-x-0"
+    :class="[
+      isOpen ? '!translate-x-0 shadow-dark-key' : locale === 'ar' ? 'translate-x-full' : '-translate-x-full',
+      railExpanded ? 'lg:w-72' : 'lg:w-[84px]',
+    ]"
     style="transition-property: transform, width"
   >
     <div class="flex h-[72px] flex-none items-center gap-3 px-5">
       <span class="grid h-9 w-9 flex-none place-items-center rounded-sm bg-primary text-white">
         <Icon name="map-pin" class="h-5 w-5" />
       </span>
-      <span v-if="railExpanded" class="truncate text-[15px] font-semibold tracking-tight">Smart Inspection</span>
+      <span v-if="railExpanded" class="truncate text-[15px] font-semibold tracking-tight">{{ t('app.name') }}</span>
       <button
         type="button"
-        class="ml-auto grid h-9 w-9 flex-none place-items-center rounded-sm text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:hidden"
-        aria-label="Close menu"
+        class="ms-auto grid h-9 w-9 flex-none place-items-center rounded-sm text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:hidden"
+        :aria-label="t('nav.closeMenu')"
         @click="close"
       >
         <Icon name="close" class="h-5 w-5" />
@@ -98,8 +102,8 @@ async function signOut() {
         class="hidden h-11 w-full items-center gap-3.5 rounded-sm px-3.5 text-[13.5px] font-medium text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:flex"
         @click="railExpanded = !railExpanded"
       >
-        <Icon name="forward" class="h-[22px] w-[22px] flex-none transition-transform duration-base" :class="railExpanded ? 'rotate-180' : ''" />
-        <span v-if="railExpanded" class="truncate">Collapse</span>
+        <Icon name="forward" class="directional-icon h-[22px] w-[22px] flex-none transition-transform duration-base" :class="railExpanded ? 'rotate-180' : ''" />
+        <span v-if="railExpanded" class="truncate">{{ t('nav.collapse') }}</span>
       </button>
 
       <div class="flex items-center gap-3 px-3.5 py-2">
@@ -107,9 +111,9 @@ async function signOut() {
           {{ (user?.name ?? '?').charAt(0).toUpperCase() }}
         </span>
         <div v-if="railExpanded" class="min-w-0">
-          <p class="truncate text-[13.5px] font-semibold text-ink-dark">{{ user?.name ?? 'Signed in' }}</p>
+          <p class="truncate text-[13.5px] font-semibold text-ink-dark">{{ user?.name ?? t('nav.signedIn') }}</p>
           <button type="button" class="min-h-10 text-[12px] font-medium text-ink-dark-soft transition-colors hover:text-state-danger" @click="signOut">
-            Sign out
+            {{ t('nav.signOut') }}
           </button>
         </div>
       </div>

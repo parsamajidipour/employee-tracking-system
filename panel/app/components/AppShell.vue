@@ -4,6 +4,7 @@ withDefaults(defineProps<{ title: string; subtitle?: string; fullBleed?: boolean
 })
 
 const { open } = useSidebar()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -16,7 +17,7 @@ const { open } = useSidebar()
         v-if="!backTo"
         type="button"
         class="grid h-10 w-10 flex-none place-items-center rounded-sm text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink lg:hidden"
-        aria-label="Open menu"
+        :aria-label="t('nav.openMenu')"
         @click="open"
       >
         <Icon name="menu" class="h-5 w-5" />
@@ -24,10 +25,10 @@ const { open } = useSidebar()
       <NuxtLink
         v-if="backTo"
         :to="backTo"
-        aria-label="Back"
+        :aria-label="t('common.back')"
         class="grid h-10 w-10 flex-none place-items-center rounded-sm text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink"
       >
-        <Icon name="back" class="h-5 w-5" />
+        <Icon name="back" class="directional-icon h-5 w-5" />
       </NuxtLink>
       <div class="min-w-0">
         <h1 class="truncate text-[17px] leading-tight sm:text-[20px] lg:text-[24px] lg:leading-[30px]">{{ title }}</h1>
@@ -41,6 +42,7 @@ const { open } = useSidebar()
       <slot name="actions" />
     </div>
     <span v-if="$slots.actions" class="mx-0.5 hidden h-6 w-px bg-hairline sm:block" />
+    <div class="flex-none text-ink-soft"><LanguageSwitcher /></div>
     <div class="flex-none"><NotificationBell /></div>
   </header>
 

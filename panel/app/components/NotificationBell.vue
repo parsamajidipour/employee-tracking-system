@@ -3,6 +3,8 @@ import type { InboxNotification } from '~/composables/useNotifications'
 
 const { items, unreadCount, loading, error, load, markRead, markAllRead, subscribe } = useNotifications()
 const { user, refresh } = useAuthUser()
+const { t } = useI18n()
+const { relative, number } = useLocalizedFormat()
 
 const ICON_FOR_TYPE: Record<string, string> = {
   'case.created': 'briefcase',
@@ -15,16 +17,6 @@ const ICON_FOR_TYPE: Record<string, string> = {
 
 function iconFor(notification: InboxNotification): string {
   return ICON_FOR_TYPE[notification.type] ?? 'inbox'
-}
-
-function timeAgo(value: string): string {
-  const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000))
-  if (seconds < 60) return 'just now'
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return new Date(value).toLocaleDateString()
 }
 
 function linkFor(notification: InboxNotification): string | undefined {
@@ -46,33 +38,33 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Popover :width="380" label="Notifications">
+  <Popover :width="380" :label="t('notifications.title')">
     <template #trigger="{ open: isOpen, toggle }">
       <button
         type="button"
         class="relative grid h-10 w-10 place-items-center rounded-sm text-ink-soft transition-colors duration-fast ease-soft hover:bg-surface-sunken hover:text-ink"
         :class="isOpen ? 'bg-surface-sunken text-ink' : ''"
-        :aria-label="unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'"
+        :aria-label="unreadCount > 0 ? t('notifications.unread', { count: unreadCount }) : t('notifications.title')"
         @click.stop="open(toggle)"
       >
         <Icon name="bell" class="h-5 w-5" />
         <span
           v-if="unreadCount > 0"
-          class="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-pill bg-state-danger px-1 text-[10px] font-bold leading-none text-white"
-        >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+          class="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-pill bg-state-danger px-1 text-[10px] font-bold leading-none text-white"
+        >{{ unreadCount > 9 ? `${number(9)}+` : number(unreadCount) }}</span>
       </button>
     </template>
 
     <template #default="{ close }">
       <div class="flex items-center justify-between gap-2 px-2 pb-1.5 pt-1">
-        <p class="eyebrow">Notifications</p>
+        <p class="eyebrow">{{ t('notifications.title') }}</p>
         <button
           v-if="unreadCount > 0"
           type="button"
           class="min-h-9 rounded-sm px-2.5 py-1 text-[12px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
           @click="markAllRead"
         >
-          Mark all read
+          {{ t('notifications.markAllRead') }}
         </button>
       </div>
 
@@ -82,7 +74,7 @@ onMounted(async () => {
 
       <InlineAlert v-else-if="error" class="!mb-1">{{ error }}</InlineAlert>
 
-      <EmptyState v-else-if="items.length === 0" icon="bell" message="Nothing to catch up on yet." class="py-6" />
+      <EmptyState v-else-if="items.length === 0" icon="bell" :message="t('notifications.empty')" class="py-6" />
 
       <ul v-else class="space-y-0.5">
         <li v-for="notification in items" :key="notification.id">
@@ -103,7 +95,7 @@ onMounted(async () => {
               <span class="block text-[13px] leading-snug" :class="notification.read_at ? 'text-ink-soft' : 'font-medium text-ink'">
                 {{ notification.message ?? notification.type }}
               </span>
-              <span class="mt-0.5 block text-[11.5px] tabular text-ink-faint">{{ timeAgo(notification.created_at) }}</span>
+              <span class="mt-0.5 block text-[11.5px] tabular text-ink-faint">{{ relative(notification.created_at) }}</span>
             </span>
             <span v-if="!notification.read_at" class="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-primary"></span>
           </component>

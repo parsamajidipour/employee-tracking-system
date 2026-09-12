@@ -5,7 +5,19 @@ function readCookie(name: string): string | null {
 }
 
 export async function ensureCsrfCookie(): Promise<void> {
-  await $fetch('/sanctum/csrf-cookie', { baseURL: apiOrigin(), credentials: 'include' })
+  await $fetch('/sanctum/csrf-cookie', {
+    baseURL: apiOrigin(),
+    credentials: 'include',
+    headers: { 'Accept-Language': currentLocale() },
+  })
+}
+
+function currentLocale(): 'en' | 'ar' {
+  try {
+    return useNuxtApp().$i18n.locale.value === 'ar' ? 'ar' : 'en'
+  } catch {
+    return 'en'
+  }
 }
 
 export function apiErrorMessage(err: unknown, fallback: string): string {
@@ -22,6 +34,7 @@ export async function apiFetch<T>(path: string, opts: Record<string, any> = {}):
     ...opts,
     headers: {
       Accept: 'application/json',
+      'Accept-Language': currentLocale(),
       ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
       ...(opts.headers || {}),
     },

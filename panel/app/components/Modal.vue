@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const open = defineModel<boolean>({ default: false })
 defineProps<{ title?: string }>()
+const { t } = useI18n()
 
 function close() {
   open.value = false
@@ -27,7 +28,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           <div class="surface max-h-[calc(100dvh-24px)] w-full max-w-md overflow-y-auto p-4 sm:max-h-[calc(100dvh-32px)] sm:p-5" role="dialog" aria-modal="true">
             <div class="mb-3.5 flex items-center justify-between">
               <h2 class="text-[14px] font-semibold text-ink">{{ title }}</h2>
-              <button type="button" @click="close" class="grid h-7 w-7 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink" aria-label="Close">
+              <button type="button" @click="close" class="grid h-7 w-7 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink" :aria-label="t('common.close')">
                 <Icon name="close" class="h-4 w-4" />
               </button>
             </div>

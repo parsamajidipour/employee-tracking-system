@@ -4,6 +4,8 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { createEmployeeMarker, type EmployeeMarkerOverlayInstance } from '~/utils/mapMarker'
 
 const { positions, now, stalenessBucket } = usePositions()
+const { t, locale } = useI18n()
+const { number, date } = useLocalizedFormat()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 const mapError = ref<string | null>(null)
@@ -125,7 +127,7 @@ onMounted(() => {
   })
 
   map.on('error', (e) => {
-    if (!mapError.value) mapError.value = 'The map could not be loaded.'
+    if (!mapError.value) mapError.value = t('map.loadFailed')
     console.error('MapLibre error', e.error)
   })
 
@@ -154,26 +156,32 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AppShell title="Live map" full-bleed>
+  <AppShell :title="t('nav.liveMap')" full-bleed>
     <div ref="mapContainer" class="!absolute !inset-0 bg-surface-sunken"></div>
 
-    <div v-if="mapError" class="absolute left-4 right-4 top-4 z-10 sm:right-auto sm:w-[min(400px,calc(100%-2rem))]">
+    <div v-if="mapError" class="absolute inset-x-4 top-4 z-10 sm:end-auto sm:w-[min(400px,calc(100%-2rem))]">
       <InlineAlert>{{ mapError }}</InlineAlert>
     </div>
 
-    <div class="surface absolute left-4 top-4 z-10 flex items-center gap-2 px-3.5 py-2.5 text-[13px]">
+    <div class="surface absolute start-4 top-4 z-10 flex items-center gap-2 px-3.5 py-2.5 text-[13px]">
       <span class="relative flex h-2 w-2">
         <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-success opacity-75"></span>
         <span class="relative inline-flex h-2 w-2 rounded-full bg-state-success"></span>
       </span>
-      <span class="font-semibold text-ink">{{ onlineCount }}</span>
-      <span class="text-ink-soft">online now</span>
+      <span class="font-semibold text-ink">{{ number(onlineCount) }}</span>
+      <span class="text-ink-soft">{{ t('map.onlineNow') }}</span>
     </div>
 
     <aside
-      class="surface absolute right-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(340px,calc(100%-2rem))] flex-col overflow-hidden
+      class="surface absolute end-4 top-4 flex max-h-[calc(100%-2rem)] w-[min(340px,calc(100%-2rem))] flex-col overflow-hidden
              transition-transform duration-base ease-soft"
-      :class="panelOpenMobile ? '' : 'max-sm:translate-x-[calc(100%+1rem)]'"
+      :class="
+        panelOpenMobile
+          ? 'max-sm:!translate-x-0'
+          : locale === 'ar'
+            ? 'max-sm:-translate-x-[calc(100%+1rem)]'
+            : 'max-sm:translate-x-[calc(100%+1rem)]'
+      "
     >
       <div v-if="selectedEmployeeId !== null" class="flex-none border-b border-hairline p-4">
         <div class="flex items-start justify-between gap-2">
@@ -184,12 +192,12 @@ onUnmounted(() => {
             >
               {{ initial(selectedPosition?.name ?? '?') }}
             </span>
-            <h2 class="truncate font-semibold text-ink">{{ selectedPosition?.name ?? 'Employee' }}</h2>
+            <h2 class="truncate font-semibold text-ink">{{ selectedPosition?.name ?? t('employees.list.employee') }}</h2>
           </div>
           <button
             type="button"
-            class="-mr-1 -mt-1 grid h-8 w-8 flex-none place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink"
-            aria-label="Close"
+            class="-me-1 -mt-1 grid h-8 w-8 flex-none place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink"
+            :aria-label="t('common.close')"
             @click="closeDetail(); panelOpenMobile = false"
           >
             <Icon name="close" class="h-4 w-4" />
@@ -198,16 +206,16 @@ onUnmounted(() => {
 
         <dl class="mt-3.5 space-y-2 text-[13px]">
           <div class="flex items-center justify-between gap-3">
-            <dt class="text-ink-soft">Status</dt>
+            <dt class="text-ink-soft">{{ t('common.status') }}</dt>
             <dd>
               <Badge :variant="selectedPosition && stalenessBucket(selectedPosition.recorded_at) === 'online' ? 'success' : 'warning'">
-                {{ selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline' }}
+                {{ t(`employees.connection.${selectedPosition ? stalenessBucket(selectedPosition.recorded_at) : 'offline'}`) }}
               </Badge>
             </dd>
           </div>
           <div v-if="selectedPosition" data-testid="detail-last-update" class="flex items-baseline justify-between gap-3">
-            <dt class="text-ink-soft">Last update</dt>
-            <dd class="tabular text-ink">{{ new Date(selectedPosition.recorded_at).toLocaleTimeString() }}</dd>
+            <dt class="text-ink-soft">{{ t('map.lastUpdate') }}</dt>
+            <dd class="tabular text-ink">{{ date(selectedPosition.recorded_at, { timeStyle: 'medium' }) }}</dd>
           </div>
         </dl>
 
@@ -218,21 +226,21 @@ onUnmounted(() => {
           class="mt-3.5 w-full justify-center"
           :to="`/employees/${selectedPosition.employee_id}/histories`"
         >
-          View histories
+          {{ t('map.viewHistories') }}
         </Button>
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col">
         <h2 class="eyebrow flex-none px-4 pb-2 pt-4">
-          In window ({{ positions.length }})
+          {{ t('map.inWindow', { count: number(positions.length) }) }}
         </h2>
-        <EmptyState v-if="positions.length === 0" icon="map-pin" message="No employees currently in window." class="px-4 pb-4" />
+        <EmptyState v-if="positions.length === 0" icon="map-pin" :message="t('map.empty')" class="px-4 pb-4" />
         <ul v-else class="min-h-0 flex-1 overflow-y-auto pb-2">
           <li v-for="position in positions" :key="position.employee_id">
             <button
               type="button"
               :data-employee-id="position.employee_id"
-              class="flex h-10 w-full items-center gap-2.5 px-4 text-left text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken"
+              class="flex h-10 w-full items-center gap-2.5 px-4 text-start text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken"
               :class="{ 'bg-surface-sunken font-medium !text-ink': selectedEmployeeId === position.employee_id }"
               @click="focusEmployee(position.employee_id)"
             >

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../models/shift_window.dart';
+import '../l10n/stored_localizations.dart';
+import 'auth_storage.dart';
 import 'foreground_task_handler.dart';
 
 class TrackingServiceController {
@@ -10,18 +12,18 @@ class TrackingServiceController {
 
   bool _busy = false;
 
-  void init() {
+  Future<void> init() async {
+    final l10n = await storedLocalizations(AuthStorage());
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: _channelId,
-        channelName: 'Location tracking',
-        channelDescription: 'Shows when location tracking is active during working hours.',
+        channelName: l10n.trackingChannel,
+        channelDescription: l10n.trackingChannelDescription,
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
       ),
       iosNotificationOptions: const IOSNotificationOptions(),
       foregroundTaskOptions: ForegroundTaskOptions(
-
         eventAction: ForegroundTaskEventAction.repeat(5000),
         autoRunOnBoot: false,
         allowWakeLock: true,
@@ -32,9 +34,10 @@ class TrackingServiceController {
   Future<bool> isRunning() => FlutterForegroundTask.isRunningService;
 
   Future<void> startService() async {
+    final l10n = await storedLocalizations(AuthStorage());
     await FlutterForegroundTask.startService(
-      notificationTitle: 'Smart Inspection',
-      notificationText: 'Tracking active',
+      notificationTitle: l10n.appName,
+      notificationText: l10n.trackingActive,
       serviceTypes: const [ForegroundServiceTypes.location],
       callback: startCallback,
     );

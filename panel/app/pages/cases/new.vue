@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { NewCasePayload } from '~/composables/useCases'
-import { CASE_PRIORITIES, casePriorityLabel } from '~/utils/caseStatus'
+import { CASE_PRIORITIES } from '~/utils/caseStatus'
 
 const toast = useToast()
+const { t } = useI18n()
+const { number } = useLocalizedFormat()
 
 const submitting = ref(false)
 const formError = ref<string | null>(null)
@@ -25,9 +27,9 @@ const hasLocation = computed(() => form.lat !== null && form.lng !== null)
 
 const canSubmit = computed(() => form.reference_no.trim() !== '' && form.title.trim() !== '' && hasLocation.value)
 const locationHint = computed(() => {
-  if (locationLookupState.value === 'loading') return 'Finding the location from the map…'
-  if (locationLookupState.value === 'error') return 'Address not found — move the map again or enter it manually.'
-  return 'Filled automatically from the map; you can edit it.'
+  if (locationLookupState.value === 'loading') return t('cases.new.locationFindingHint')
+  if (locationLookupState.value === 'error') return t('cases.new.locationNotFound')
+  return t('cases.new.locationFilledHint')
 })
 
 async function lookupLocation(position: { lat: number; lng: number }, sequence: number) {
@@ -76,12 +78,12 @@ function markLocationManuallyEdited() {
 
 async function submit() {
   if (locationLookupState.value === 'loading') {
-    formError.value = 'Wait for the location lookup to finish.'
+    formError.value = t('cases.new.waitForLocation')
     return
   }
 
   if (!canSubmit.value) {
-    formError.value = 'Report number, customer name, and a location on the map are required.'
+    formError.value = t('cases.new.requiredFields')
     return
   }
 
@@ -98,10 +100,10 @@ async function submit() {
       notes: form.notes || undefined,
     }
     const created = await createCase(payload)
-    toast.success('Case created. Assign it to a surveyor from here.')
+    toast.success(t('cases.new.created'))
     await navigateTo(`/cases/${created.id}`)
   } catch (err) {
-    formError.value = apiErrorMessage(err, 'Could not create case — check the fields.')
+    formError.value = apiErrorMessage(err, t('cases.new.createFailed'))
     toast.error(formError.value)
   } finally {
     submitting.value = false
@@ -114,75 +116,75 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <AppShell title="New case" subtitle="Create an inspection case" back-to="/cases" full-bleed>
+  <AppShell :title="t('cases.new.title')" :subtitle="t('cases.new.subtitle')" back-to="/cases" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" to="/cases" aria-label="Cancel case creation">
+      <Button variant="secondary" size="sm" to="/cases" :aria-label="t('cases.new.cancelCreation')">
         <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">Cancel</span>
+        <span class="hidden sm:inline">{{ t('common.cancel') }}</span>
       </Button>
-      <Button size="sm" :loading="submitting" aria-label="Create case" @click="submit">
+      <Button size="sm" :loading="submitting" :aria-label="t('cases.new.create')" @click="submit">
         <Icon v-if="!submitting" name="plus" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">{{ submitting ? 'Creating…' : 'Create case' }}</span>
+        <span class="hidden sm:inline">{{ submitting ? t('cases.new.creating') : t('cases.new.create') }}</span>
       </Button>
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="flex flex-none flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+      <div class="flex flex-none flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
         <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>
 
-        <Card class="flex-none" icon="briefcase" title="Case details" subtitle="Report, customer, and priority information">
+        <Card class="flex-none" icon="briefcase" :title="t('cases.new.details')" :subtitle="t('cases.new.detailsSubtitle')">
           <form class="space-y-3.5" @submit.prevent="submit">
-            <TextInput v-model="form.reference_no" label="Report no." placeholder="e.g. RPT-1042" required />
-            <TextInput v-model="form.title" label="Customer name" placeholder="e.g. Ahmed Al Balushi" required />
+            <TextInput v-model="form.reference_no" :label="t('cases.fields.reportNumber')" :placeholder="t('cases.placeholders.reportNumber')" required />
+            <TextInput v-model="form.title" :label="t('cases.fields.customerName')" :placeholder="t('cases.placeholders.customerName')" required />
             <TextInput
               v-model="form.property_address"
-              label="Location"
-              :placeholder="locationLookupState === 'loading' ? 'Finding location…' : 'Move the map to fill this automatically'"
+              :label="t('cases.fields.location')"
+              :placeholder="locationLookupState === 'loading' ? t('cases.new.findingLocation') : t('cases.new.moveMapToFill')"
               :hint="locationHint"
               @update:model-value="markLocationManuallyEdited"
             />
 
-            <Select v-model="form.priority" label="Priority">
+            <Select v-model="form.priority" :label="t('cases.fields.priority')">
               <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">
-                {{ casePriorityLabel(priority) }}
+                {{ t(`case.priorities.${priority}`) }}
               </option>
             </Select>
 
             <div>
-              <label for="case-notes" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Notes</label>
+              <label for="case-notes" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('cases.fields.notes') }}</label>
               <textarea
                 id="case-notes"
                 v-model="form.notes"
                 rows="4"
-                placeholder="Anything a surveyor should know before accepting this case"
+                :placeholder="t('cases.placeholders.notes')"
                 class="field h-auto resize-none py-2.5"
               />
             </div>
           </form>
         </Card>
 
-        <Card class="flex-none" icon="user-circle" title="What happens next">
+        <Card class="flex-none" icon="user-circle" :title="t('cases.new.whatNext')">
           <ol class="space-y-2.5 text-[12.5px] text-ink-soft">
             <li class="flex gap-2.5">
-              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">1</span>
-              Every active employee is notified that this case exists as soon as it is created.
+              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">{{ number(1) }}</span>
+              {{ t('cases.new.nextStep1') }}
             </li>
             <li class="flex gap-2.5">
-              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">2</span>
-              You assign it to a surveyor on the case page — nearest on-shift surveyors are ranked for you there.
+              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">{{ number(2) }}</span>
+              {{ t('cases.new.nextStep2') }}
             </li>
             <li class="flex gap-2.5">
-              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">3</span>
-              The surveyor accepts and schedules it, and the case page updates here live.
+              <span class="grid h-5 w-5 flex-none place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-strong">{{ number(3) }}</span>
+              {{ t('cases.new.nextStep3') }}
             </li>
           </ol>
         </Card>
       </div>
 
-      <Card class="flex-none lg:min-h-0" icon="map-pin" title="Location on map" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
+      <Card class="flex-none lg:min-h-0" icon="map-pin" :title="t('cases.fields.locationOnMap')" :subtitle="hasLocation ? t('cases.new.dragPin') : t('cases.new.dropPin')" flush>
         <template #actions>
           <Badge :variant="hasLocation ? 'success' : 'warning'">
-            {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : 'Not set' }}
+            {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : t('cases.new.notSet') }}
           </Badge>
         </template>
         <div class="h-[360px] min-h-[360px] sm:h-[420px] sm:min-h-[420px] lg:h-full">

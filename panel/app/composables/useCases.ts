@@ -100,6 +100,7 @@ function buildQuery(filters: CaseFilters): string {
 }
 
 export function useCasesList() {
+  const { t } = useI18n()
   const data = ref<InspectionCase[]>([])
   const meta = ref<PaginationMeta | null>(null)
   const links = ref<PaginationLinks | null>(null)
@@ -115,7 +116,7 @@ export function useCasesList() {
       links.value = page.links
       error.value = null
     } catch {
-      error.value = 'Could not load cases.'
+      error.value = t('cases.list.loadFailed')
     } finally {
       loading.value = false
     }

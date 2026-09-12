@@ -23,7 +23,7 @@ class EnsureCapability
     public function handle(Request $request, Closure $next, string $capability): Response
     {
         if (! self::passes($request->user(), Capability::from($capability))) {
-            abort(403, 'You do not have permission to access this resource.');
+            abort(403, __('messages.forbidden'));
         }
 
         return $next($request);

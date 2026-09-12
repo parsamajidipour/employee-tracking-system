@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' as intl;
 
+import '../l10n/l10n.dart';
 import '../models/inspection_case.dart';
 import '../models/permission_snapshot.dart';
 import '../models/shift_window.dart';
@@ -22,6 +24,41 @@ import '../widgets/fade_slide_in.dart';
 import '../widgets/live_dot.dart';
 import '../widgets/status_pill.dart';
 import 'case_detail_screen.dart';
+
+String _localizedDuration(BuildContext context, Duration duration) {
+  final l10n = context.l10n;
+  final number = intl.NumberFormat.decimalPattern(
+      Localizations.localeOf(context).toLanguageTag());
+  if (duration.isNegative || duration.inMinutes < 1) return l10n.lessThanMinute;
+  if (duration.inMinutes < 60) {
+    return l10n.minutesShort(number.format(duration.inMinutes));
+  }
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes % 60;
+  if (hours < 24) {
+    return l10n.hoursShort(number.format(hours), number.format(minutes));
+  }
+  return l10n.daysShort(number.format(duration.inDays));
+}
+
+String _localizedCountdown(BuildContext context, DateTime dateTime) {
+  final diff = dateTime.difference(DateTime.now());
+  if (diff.isNegative) return context.l10n.now;
+  return context.l10n.inDuration(_localizedDuration(context, diff));
+}
+
+String _localizedRelative(BuildContext context, DateTime dateTime) {
+  final diff = DateTime.now().difference(dateTime);
+  final l10n = context.l10n;
+  final number = intl.NumberFormat.decimalPattern(
+      Localizations.localeOf(context).toLanguageTag());
+  if (diff.isNegative || diff.inSeconds < 5) return l10n.justNow;
+  if (diff.inMinutes < 1) return l10n.secondsAgo(number.format(diff.inSeconds));
+  if (diff.inHours < 1) return l10n.minutesAgo(number.format(diff.inMinutes));
+  if (diff.inDays < 1) return l10n.hoursAgo(number.format(diff.inHours));
+  return formatDateTime(dateTime,
+      locale: Localizations.localeOf(context).toLanguageTag());
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -163,8 +200,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error =
-            'Could not reach the server, and no previous data is cached yet.';
+        _error = context.l10n.homeServerError;
         _loading = false;
       });
     }
@@ -259,9 +295,9 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: AppSpacing.xl),
           FadeSlideIn(
             index: step(),
-            child: const SectionHeader(
-              overline: 'Field queue',
-              title: 'Your inspections',
+            child: SectionHeader(
+              overline: context.l10n.fieldQueue,
+              title: context.l10n.yourInspections,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -287,9 +323,9 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: AppSpacing.xxl),
           FadeSlideIn(
             index: step(),
-            child: const SectionHeader(
-              overline: 'Working hours',
-              title: 'Tracking status',
+            child: SectionHeader(
+              overline: context.l10n.workingHours,
+              title: context.l10n.trackingStatus,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -304,9 +340,9 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: AppSpacing.xxl),
           FadeSlideIn(
             index: step(),
-            child: const SectionHeader(
-              overline: 'Device',
-              title: 'Connection & sync',
+            child: SectionHeader(
+              overline: context.l10n.device,
+              title: context.l10n.connectionAndSync,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -349,11 +385,11 @@ class _HomeHeader extends StatelessWidget {
   final int unread;
   final VoidCallback onOpenNotifications;
 
-  String _greeting() {
+  String _greeting(BuildContext context) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return context.l10n.goodMorning;
+    if (hour < 17) return context.l10n.goodAfternoon;
+    return context.l10n.goodEvening;
   }
 
   @override
@@ -371,7 +407,7 @@ class _HomeHeader extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    _greeting().toUpperCase(),
+                    _greeting(context).toUpperCase(),
                     style: context.text.labelSmall?.copyWith(
                       color: colors.primaryStrong,
                     ),
@@ -382,7 +418,7 @@ class _HomeHeader extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                firstName.isEmpty ? 'Field surveyor' : firstName,
+                firstName.isEmpty ? context.l10n.fieldSurveyor : firstName,
                 style: context.text.headlineSmall ?? context.text.titleLarge,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -392,12 +428,14 @@ class _HomeHeader extends StatelessWidget {
         ),
         IconButton(
           onPressed: onOpenNotifications,
-          tooltip: 'Notifications',
+          tooltip: context.l10n.notifications,
           iconSize: 26,
           constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: Badge(
             isLabelVisible: unread > 0,
-            label: Text('$unread'),
+            label: Text(intl.NumberFormat.decimalPattern(
+                    Localizations.localeOf(context).toLanguageTag())
+                .format(unread)),
             child: const Icon(Icons.notifications_outlined),
           ),
         ),
@@ -454,12 +492,14 @@ class _OnShiftHero extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'On shift',
+                  context.l10n.onShift,
                   style: context.text.titleLarge?.copyWith(color: Colors.white),
                 ),
               ),
               _HeroBadge(
-                label: serviceRunning == true ? 'Recording' : 'Starting…',
+                label: serviceRunning == true
+                    ? context.l10n.recording
+                    : context.l10n.starting,
                 icon: serviceRunning == true
                     ? Icons.fiber_manual_record
                     : Icons.hourglass_top,
@@ -468,7 +508,7 @@ class _OnShiftHero extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            '${formatTime(window.start)} – ${formatTime(window.end)}',
+            '${formatTime(window.start, locale: Localizations.localeOf(context).toLanguageTag())} – ${formatTime(window.end, locale: Localizations.localeOf(context).toLanguageTag())}',
             style: context.text.bodyLarge?.copyWith(
               color: Colors.white.withValues(alpha: 0.86),
             ),
@@ -500,8 +540,9 @@ class _OnShiftHero extends StatelessWidget {
               Expanded(
                 child: Text(
                   remaining.isNegative
-                      ? 'Window closing.'
-                      : 'Location recorded for another ${formatDuration(remaining)}.',
+                      ? context.l10n.windowClosing
+                      : context.l10n.locationRecordedFor(
+                          _localizedDuration(context, remaining)),
                   style: context.text.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.86),
                   ),
@@ -575,12 +616,19 @@ class _OffShiftHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Off shift', style: context.text.titleLarge),
+                    Text(context.l10n.offShift, style: context.text.titleLarge),
                     const SizedBox(height: 2),
                     Text(
                       next == null
-                          ? 'Nothing scheduled yet'
-                          : 'Next ${formatTime(next!.start)} – ${formatTime(next!.end)}',
+                          ? context.l10n.nothingScheduled
+                          : context.l10n.nextWindow(
+                              formatTime(next!.start,
+                                  locale: Localizations.localeOf(context)
+                                      .toLanguageTag()),
+                              formatTime(next!.end,
+                                  locale: Localizations.localeOf(context)
+                                      .toLanguageTag()),
+                            ),
                       style: context.text.bodyMedium,
                     ),
                   ],
@@ -599,8 +647,9 @@ class _OffShiftHero extends StatelessWidget {
               Expanded(
                 child: Text(
                   next == null
-                      ? 'No location is recorded outside a working window.'
-                      : 'No location is recorded until then. Starts ${formatCountdown(next!.start)}.',
+                      ? context.l10n.outsideWindowPrivacy
+                      : context.l10n.untilWindowPrivacy(
+                          _localizedCountdown(context, next!.start)),
                   style: context.text.bodySmall,
                 ),
               ),
@@ -634,7 +683,7 @@ class _WorkloadTiles extends StatelessWidget {
         Expanded(
           child: _WorkloadTile(
             value: pending,
-            label: 'Awaiting\nresponse',
+            label: context.l10n.awaitingResponse,
             tint: colors.warning,
             icon: Icons.mark_email_unread_outlined,
             onTap: () => onOpen('pending'),
@@ -644,7 +693,7 @@ class _WorkloadTiles extends StatelessWidget {
         Expanded(
           child: _WorkloadTile(
             value: scheduled,
-            label: 'Scheduled\nvisits',
+            label: context.l10n.scheduledVisits,
             tint: colors.primaryStrong,
             icon: Icons.event_available_outlined,
             onTap: () => onOpen('accepted'),
@@ -654,7 +703,7 @@ class _WorkloadTiles extends StatelessWidget {
         Expanded(
           child: _WorkloadTile(
             value: inProgress,
-            label: 'In\nprogress',
+            label: context.l10n.inProgressTwoLines,
             tint: colors.success,
             icon: Icons.directions_walk,
             onTap: () => onOpen('in_progress'),
@@ -706,7 +755,9 @@ class _WorkloadTile extends StatelessWidget {
               Icon(icon, size: 18, color: tint),
               const SizedBox(height: AppSpacing.xl),
               Text(
-                '$value',
+                intl.NumberFormat.decimalPattern(
+                        Localizations.localeOf(context).toLanguageTag())
+                    .format(value),
                 style: context.text.headlineSmall?.copyWith(
                   color: value > 0 ? colors.textPrimary : colors.textTertiary,
                 ),
@@ -752,8 +803,8 @@ class _NextVisitCard extends StatelessWidget {
               children: [
                 Text(
                   inspectionCase.status == 'in_progress'
-                      ? 'ON THE JOB'
-                      : 'NEXT VISIT',
+                      ? context.l10n.onTheJob
+                      : context.l10n.nextVisit,
                   style: context.text.labelSmall?.copyWith(
                     color: colors.primaryStrong,
                   ),
@@ -768,8 +819,10 @@ class _NextVisitCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   plannedAt == null
-                      ? inspectionCase.propertyAddress
-                      : '${formatDateTime(plannedAt)} · ${inspectionCase.propertyAddress}',
+                      ? (!inspectionCase.hasPropertyAddress
+                          ? context.l10n.locationNotProvided
+                          : inspectionCase.propertyAddress)
+                      : '${formatDateTime(plannedAt, locale: Localizations.localeOf(context).toLanguageTag())} · ${!inspectionCase.hasPropertyAddress ? context.l10n.locationNotProvided : inspectionCase.propertyAddress}',
                   style: context.text.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -777,7 +830,12 @@ class _NextVisitCard extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: colors.textTertiary),
+          Icon(
+            Directionality.of(context) == TextDirection.rtl
+                ? Icons.chevron_left
+                : Icons.chevron_right,
+            color: colors.textTertiary,
+          ),
         ],
       ),
     );
@@ -810,10 +868,12 @@ class _SyncCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Upload queue', style: context.text.titleMedium),
+                child: Text(context.l10n.uploadQueue,
+                    style: context.text.titleMedium),
               ),
               StatusPill(
-                label: backingUp ? 'Backing up' : 'Healthy',
+                label:
+                    backingUp ? context.l10n.backingUp : context.l10n.healthy,
                 tone: backingUp ? StatusTone.warning : StatusTone.active,
               ),
             ],
@@ -823,17 +883,21 @@ class _SyncCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _Metric(
-                  label: 'Queued points',
-                  value: depth == null ? '—' : '$depth',
+                  label: context.l10n.queuedPoints,
+                  value: depth == null
+                      ? '—'
+                      : intl.NumberFormat.decimalPattern(
+                              Localizations.localeOf(context).toLanguageTag())
+                          .format(depth),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _Metric(
-                  label: 'Last upload',
+                  label: context.l10n.lastUpload,
                   value: lastUploadAt == null
-                      ? 'Never'
-                      : formatRelative(lastUploadAt!),
+                      ? context.l10n.never
+                      : _localizedRelative(context, lastUploadAt!),
                 ),
               ),
             ],
@@ -849,11 +913,11 @@ class _SyncCard extends StatelessWidget {
                 child: Text(
                   switch (connectionState) {
                     RealtimeConnectionState.connected =>
-                      'Live updates on. New assignments arrive instantly.',
+                      context.l10n.liveConnected,
                     RealtimeConnectionState.connecting =>
-                      'Reconnecting to live updates…',
+                      context.l10n.liveConnecting,
                     RealtimeConnectionState.disconnected =>
-                      'Live updates offline. Checking every 45s instead.',
+                      context.l10n.liveOffline,
                   },
                   style: context.text.bodySmall,
                 ),
@@ -867,14 +931,15 @@ class _SyncCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Schedule synced ${formatRelative(snapshot.syncedAt)}',
+                  context.l10n.scheduleSynced(
+                      _localizedRelative(context, snapshot.syncedAt)),
                   style: context.text.bodySmall
                       ?.copyWith(color: colors.textTertiary),
                 ),
               ),
               if (snapshot.stale)
-                const StatusPill(
-                    label: 'May be stale', tone: StatusTone.warning),
+                StatusPill(
+                    label: context.l10n.mayBeStale, tone: StatusTone.warning),
             ],
           ),
         ],
@@ -934,26 +999,26 @@ class _PermissionCard extends StatelessWidget {
     final missing = <(String, String, Future<void> Function())>[
       if (!snapshot.fineLocationGranted)
         (
-          'Location',
-          'Needed to record a point at all.',
+          context.l10n.location,
+          context.l10n.locationNeededWhy,
           permissionService.requestFineLocation
         ),
       if (!snapshot.backgroundLocationGranted)
         (
-          'Location in the background',
-          'Keeps tracking while the screen is off.',
+          context.l10n.backgroundLocation,
+          context.l10n.backgroundNeededWhy,
           permissionService.requestBackgroundLocation
         ),
       if (!snapshot.notificationsGranted)
         (
-          'Notifications',
-          'Shows new assignments the moment they arrive.',
+          context.l10n.notifications,
+          context.l10n.notificationsNeededWhy,
           permissionService.requestNotifications
         ),
       if (!snapshot.batteryOptimizationExempt)
         (
-          'Battery optimisation',
-          'Stops Android pausing the service.',
+          context.l10n.batteryOptimisation,
+          context.l10n.batteryNeededWhy,
           permissionService.requestBatteryOptimizationExemption
         ),
     ];
@@ -974,10 +1039,11 @@ class _PermissionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Needs attention', style: context.text.titleMedium),
+                    Text(context.l10n.needsAttention,
+                        style: context.text.titleMedium),
                     const SizedBox(height: 2),
                     Text(
-                      'Tracking cannot run reliably yet.',
+                      context.l10n.trackingUnreliable,
                       style: context.text.bodySmall,
                     ),
                   ],
@@ -1006,7 +1072,7 @@ class _PermissionCard extends StatelessWidget {
                       await request();
                       onChanged();
                     },
-                    child: const Text('Grant'),
+                    child: Text(context.l10n.grant),
                   ),
                 ],
               ),
@@ -1017,7 +1083,7 @@ class _PermissionCard extends StatelessWidget {
               await permissionService.openSettings();
               onChanged();
             },
-            child: const Text('Open app settings'),
+            child: Text(context.l10n.openAppSettings),
           ),
         ],
       ),
@@ -1051,18 +1117,18 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Nothing to show yet',
+                context.l10n.nothingToShow,
                 style: context.text.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                message ?? 'Pull down to try again once you are back online.',
+                message ?? context.l10n.pullDownWhenOnline,
                 style: context.text.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              FilledButton(onPressed: onRetry, child: Text(context.l10n.retry)),
             ],
           ),
         ),

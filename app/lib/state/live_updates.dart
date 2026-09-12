@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_notification.dart';
+import '../l10n/stored_localizations.dart';
+import '../services/auth_storage.dart';
 import '../services/local_notification_service.dart';
 import '../services/me_repository.dart';
 import '../services/notification_repository.dart';
@@ -13,11 +15,13 @@ class LiveUpdates extends ChangeNotifier {
   final MeRepository meRepository;
   final NotificationRepository notificationRepository;
   final RealtimeClient client;
+  final AuthStorage storage;
 
   LiveUpdates({
     required this.meRepository,
     required this.notificationRepository,
     required this.client,
+    required this.storage,
   });
 
   NotificationInbox inbox = NotificationInbox.empty;
@@ -104,7 +108,6 @@ class LiveUpdates extends ChangeNotifier {
   }
 
   void _onEvent(RealtimeEvent event) {
-    _announceRealtime(event);
     unawaited(refreshInbox());
     bumpRevision();
   }
@@ -142,60 +145,20 @@ class LiveUpdates extends ChangeNotifier {
       if (!_announced.add(notification.id)) continue;
       if (!_arrivals.isClosed) _arrivals.add(notification);
 
-      unawaited(LocalNotificationService.show(
-        id: notification.id.hashCode & 0x7fffffff,
-        title: notification.title,
-        body: notification.message.isEmpty
-            ? 'Open the app for details.'
-            : notification.message,
-        payload: jsonEncode(notification.toPayload()),
-      ));
+      unawaited(_showNotification(notification));
     }
   }
 
-  void _announceRealtime(RealtimeEvent event) {
-    final type = event.type;
-    if (type != 'case.assigned' && type != 'app-release.published') {
-      return;
-    }
-
-    final caseId = (event.payload['case_id'] as num?)?.toInt();
-    final versionCode = (event.payload['version_code'] as num?)?.toInt();
-    final key = _realtimeKey(
-      type,
-      caseId: caseId,
-      versionCode: versionCode,
-      fallback: event.payload['reference_no'] ?? event.name,
-    );
-    if (key == null) return;
-    if (!_announced.add(key)) return;
-
-    final title = AppNotification.titleFor(type);
-    final message =
-        (event.payload['message'] as String?) ?? 'Open the app for details.';
-    final rawMandatory = event.payload['is_mandatory'];
-    final notification = AppNotification(
-      id: key,
-      type: type,
-      title: title,
-      message: message,
-      caseId: caseId,
-      referenceNo: event.payload['reference_no'] as String?,
-      versionCode: versionCode,
-      versionName: event.payload['version_name'] as String?,
-      isMandatoryUpdate: rawMandatory == true || rawMandatory == 1,
-      createdAt: DateTime.now(),
-      read: false,
-    );
-
-    if (!_arrivals.isClosed) _arrivals.add(notification);
-
-    unawaited(LocalNotificationService.show(
-      id: key.hashCode & 0x7fffffff,
-      title: title,
-      body: message,
+  Future<void> _showNotification(AppNotification notification) async {
+    final l10n = await storedLocalizations(storage);
+    await LocalNotificationService.show(
+      id: notification.id.hashCode & 0x7fffffff,
+      title: notification.localizedTitle(l10n),
+      body: notification.message.isEmpty
+          ? l10n.openAppForDetails
+          : notification.message,
       payload: jsonEncode(notification.toPayload()),
-    ));
+    );
   }
 
   String? _realtimeKey(

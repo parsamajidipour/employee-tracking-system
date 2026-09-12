@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../services/realtime_client.dart';
 import '../theme/app_theme.dart';
 
@@ -14,9 +15,15 @@ class LiveDot extends StatelessWidget {
     final colors = context.colors;
 
     final (tint, label) = switch (state) {
-      RealtimeConnectionState.connected => (colors.success, 'Live'),
-      RealtimeConnectionState.connecting => (colors.warning, 'Connecting'),
-      RealtimeConnectionState.disconnected => (colors.textTertiary, 'Offline'),
+      RealtimeConnectionState.connected => (colors.success, context.l10n.live),
+      RealtimeConnectionState.connecting => (
+          colors.warning,
+          context.l10n.connecting
+        ),
+      RealtimeConnectionState.disconnected => (
+          colors.textTertiary,
+          context.l10n.offline
+        ),
     };
 
     final dot = Container(

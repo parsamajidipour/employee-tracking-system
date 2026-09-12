@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../l10n/l10n.dart';
 import '../models/inspection_case.dart';
 import '../models/queued_case_photo.dart';
 import 'case_location_screen.dart';
@@ -54,7 +55,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   void initState() {
     super.initState();
     startLiveRefresh();
-    widget.authController.casePhotoUploadService.addListener(_onPhotoQueueChanged);
+    widget.authController.casePhotoUploadService
+        .addListener(_onPhotoQueueChanged);
     _fetch();
     _loadQueuedPhotos();
   }
@@ -62,7 +64,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   @override
   void dispose() {
     stopLiveRefresh();
-    widget.authController.casePhotoUploadService.removeListener(_onPhotoQueueChanged);
+    widget.authController.casePhotoUploadService
+        .removeListener(_onPhotoQueueChanged);
     super.dispose();
   }
 
@@ -99,7 +102,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not reach the server.';
+        _error = context.l10n.notificationsServerError;
         _loading = false;
       });
     }
@@ -164,8 +167,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
-      _showSnack(
-          'Assignment accepted. Inspection scheduled for ${formatDateTime(plannedAt)}.');
+      _showSnack(context.l10n.acceptScheduled(formatDateTime(
+        plannedAt,
+        locale: Localizations.localeOf(context).toLanguageTag(),
+      )));
       _fetch();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -174,14 +179,14 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('Could not reach the server. Your change was not saved.');
+      _showError(context.l10n.changeNotSaved);
     }
   }
 
   Future<void> _reject() async {
     final note = await _promptForNote(
-      title: 'Reject case',
-      confirmLabel: 'Reject',
+      title: context.l10n.rejectCase,
+      confirmLabel: context.l10n.reject,
     );
     if (note == null) return;
 
@@ -194,7 +199,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
-      _showSnack('Assignment rejected. Management has been notified.');
+      _showSnack(context.l10n.rejectedNotice);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -202,7 +207,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('Could not reach the server. Your change was not saved.');
+      _showError(context.l10n.changeNotSaved);
     }
   }
 
@@ -216,7 +221,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
-      _showSnack('Inspection started. GPS and site photo tools are ready.');
+      _showSnack(context.l10n.inspectionStarted);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -224,14 +229,14 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('Could not reach the server. Your change was not saved.');
+      _showError(context.l10n.changeNotSaved);
     }
   }
 
   Future<void> _complete() async {
     final note = await _promptForNote(
-      title: 'Complete case',
-      confirmLabel: 'Complete',
+      title: context.l10n.completeCase,
+      confirmLabel: context.l10n.complete,
     );
     if (note == null) return;
 
@@ -244,7 +249,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         _inspectionCase = updated;
         _busy = false;
       });
-      _showSnack('Inspection completed. Management has been notified.');
+      _showSnack(context.l10n.completedNotice);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -252,7 +257,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('Could not reach the server. Your change was not saved.');
+      _showError(context.l10n.changeNotSaved);
     }
   }
 
@@ -268,12 +273,12 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
         content: TextField(
           controller: controller,
           maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Note (optional)'),
+          decoration: InputDecoration(hintText: context.l10n.noteOptional),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () =>
@@ -286,9 +291,9 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   }
 
   Future<void> _capturePhoto() async {
+    final l10n = context.l10n;
     if (!await Geolocator.isLocationServiceEnabled()) {
-      _showError(
-          'Turn location on before taking a photo — it must be stamped with GPS.');
+      _showError(l10n.photoLocationOff);
       return;
     }
 
@@ -298,8 +303,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      _showError(
-          'Location permission is required before a photo can be uploaded.');
+      _showError(l10n.photoLocationPermission);
       return;
     }
 
@@ -313,7 +317,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     if (photo == null || !mounted) return;
 
     if (await File(photo.path).length() > 10 * 1024 * 1024) {
-      _showError('The photo is larger than 10 MB. Retake it and try again.');
+      _showError(l10n.photoTooLarge);
       return;
     }
 
@@ -337,16 +341,16 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
 
       if (!mounted) return;
       setState(() => _busy = false);
-      _showSnack('Photo saved — uploading in the background');
+      _showSnack(l10n.photoQueued);
       _loadQueuedPhotos();
     } on TimeoutException {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('Could not get a GPS fix. Move to an open area and retake.');
+      _showError(l10n.gpsFixFailed);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      _showError('Could not get a GPS fix. Move to an open area and retake.');
+      _showError(l10n.gpsFixFailed);
     }
   }
 
@@ -370,7 +374,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     final inspectionCase = _inspectionCase;
 
     return Scaffold(
-      appBar: AppBar(title: Text(inspectionCase?.referenceNo ?? 'Case')),
+      appBar: AppBar(
+          title: Text(inspectionCase?.referenceNo ?? context.l10n.caseLabel)),
       body: SafeArea(child: _buildBody()),
     );
   }
@@ -466,14 +471,14 @@ class _Header extends StatelessWidget {
         _ => StatusTone.idle,
       };
 
-  String _labelFor(String status) => switch (status) {
-        'pending' => 'Awaiting acceptance',
-        'accepted' => 'Scheduled',
-        'overdue' => 'Overdue',
-        'in_progress' => 'In progress',
-        'completed' => 'Completed',
-        'rejected' => 'Rejected',
-        'cancelled' => 'Cancelled',
+  String _labelFor(BuildContext context, String status) => switch (status) {
+        'pending' => context.l10n.awaitingAcceptance,
+        'accepted' => context.l10n.scheduled,
+        'overdue' => context.l10n.overdue,
+        'in_progress' => context.l10n.inProgress,
+        'completed' => context.l10n.completed,
+        'rejected' => context.l10n.rejected,
+        'cancelled' => context.l10n.cancelled,
         _ => status,
       };
 
@@ -493,7 +498,7 @@ class _Header extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             StatusPill(
-              label: _labelFor(inspectionCase.status),
+              label: _labelFor(context, inspectionCase.status),
               tone: _toneFor(inspectionCase.status),
             ),
           ],
@@ -530,10 +535,13 @@ class _DetailsCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Property', style: context.text.labelMedium),
+                    Text(context.l10n.property,
+                        style: context.text.labelMedium),
                     const SizedBox(height: 2),
                     Text(
-                      inspectionCase.propertyAddress,
+                      !inspectionCase.hasPropertyAddress
+                          ? context.l10n.locationNotProvided
+                          : inspectionCase.propertyAddress,
                       style: context.text.bodyLarge,
                     ),
                     const SizedBox(height: 2),
@@ -552,7 +560,7 @@ class _DetailsCard extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onOpenMap,
               icon: const Icon(Icons.map_outlined),
-              label: const Text('Open property map'),
+              label: Text(context.l10n.openPropertyMap),
             ),
           ),
           if (inspectionCase.plannedAt != null) ...[
@@ -561,8 +569,9 @@ class _DetailsCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             _InfoRow(
               icon: Icons.event_outlined,
-              label: 'Planned',
-              value: formatDateTime(inspectionCase.plannedAt!),
+              label: context.l10n.planned,
+              value: formatDateTime(inspectionCase.plannedAt!,
+                  locale: Localizations.localeOf(context).toLanguageTag()),
             ),
           ],
           if (inspectionCase.notes != null &&
@@ -572,7 +581,7 @@ class _DetailsCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             _InfoRow(
               icon: Icons.notes_outlined,
-              label: 'Notes',
+              label: context.l10n.notes,
               value: inspectionCase.notes!,
             ),
           ],
@@ -642,34 +651,34 @@ class _ActionsCard extends StatelessWidget {
     if (status == 'pending') {
       widgets.add(FilledButton(
         onPressed: busy ? null : onAccept,
-        child: const Text('Accept'),
+        child: Text(context.l10n.accept),
       ));
       widgets.add(const SizedBox(height: AppSpacing.sm));
       widgets.add(OutlinedButton(
         onPressed: busy ? null : onReject,
-        child: const Text('Reject'),
+        child: Text(context.l10n.reject),
       ));
     } else if (status == 'accepted' || status == 'overdue') {
       widgets.add(FilledButton(
         onPressed: busy ? null : onStart,
-        child: const Text('Start inspection'),
+        child: Text(context.l10n.startInspection),
       ));
     } else if (status == 'in_progress') {
       final hasVerifiedPhoto =
           inspectionCase.photos?.any((photo) => photo.isGpsVerified) ?? false;
       widgets.add(FilledButton(
         onPressed: busy ? null : onCapturePhoto,
-        child: const Text('Take GPS-verified photo'),
+        child: Text(context.l10n.takeGpsPhoto),
       ));
       widgets.add(const SizedBox(height: AppSpacing.sm));
       widgets.add(OutlinedButton(
         onPressed: busy || !hasVerifiedPhoto ? null : onComplete,
-        child: const Text('Complete inspection'),
+        child: Text(context.l10n.completeInspection),
       ));
       if (!hasVerifiedPhoto) {
         widgets.add(const SizedBox(height: AppSpacing.sm));
         widgets.add(Text(
-          'A GPS-verified site photo is required before completion.',
+          context.l10n.gpsPhotoRequired,
           textAlign: TextAlign.center,
           style: context.text.bodySmall,
         ));
@@ -685,7 +694,7 @@ class _ActionsCard extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
-                'No actions available for this case right now.',
+                context.l10n.noCaseActions,
                 style: context.text.bodyMedium,
               ),
             ),
@@ -700,10 +709,10 @@ class _ActionsCard extends StatelessWidget {
         children: [
           Text(
             status == 'pending'
-                ? 'Assignment response'
+                ? context.l10n.assignmentResponse
                 : status == 'accepted' || status == 'overdue'
-                    ? 'Ready for inspection'
-                    : 'Site verification',
+                    ? context.l10n.readyForInspection
+                    : context.l10n.siteVerification,
             style: context.text.titleMedium,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -730,23 +739,56 @@ class _TimelineCard extends StatelessWidget {
 
   final List<CaseStatusEvent> events;
 
-  String _eventTitle(CaseStatusEvent event) {
+  String _eventTitle(BuildContext context, CaseStatusEvent event) {
     final note = event.note?.toLowerCase() ?? '';
     if (event.toStatus == 'pending' && note.contains('assigned')) {
-      return 'Surveyor assigned';
+      return context.l10n.surveyorAssigned;
     }
     if (event.fromStatus == null && event.toStatus == 'pending') {
-      return 'Case received';
+      return context.l10n.caseReceived;
     }
     return switch (event.toStatus) {
-      'accepted' => 'Assignment accepted and scheduled',
-      'in_progress' => 'Inspection started',
-      'overdue' => 'Inspection became overdue',
-      'completed' => 'Inspection completed',
-      'rejected' => 'Assignment rejected',
-      'cancelled' => 'Case cancelled',
-      _ => 'Case updated',
+      'accepted' => context.l10n.assignmentAcceptedScheduled,
+      'in_progress' => context.l10n.inspectionStarted,
+      'overdue' => context.l10n.inspectionBecameOverdue,
+      'completed' => context.l10n.completed,
+      'rejected' => context.l10n.rejected,
+      'cancelled' => context.l10n.caseCancelled,
+      _ => context.l10n.caseUpdated,
     };
+  }
+
+  String? _eventNote(BuildContext context, CaseStatusEvent event) {
+    final note = event.note?.trim();
+    if (note == null || note.isEmpty) return null;
+
+    final fixed = switch (note) {
+      'Case created.' => context.l10n.eventCaseCreated,
+      'Accepted by surveyor.' => context.l10n.eventAccepted,
+      'Rejected by surveyor.' => context.l10n.eventRejected,
+      'Inspection started.' => context.l10n.eventInspectionStarted,
+      'Planned inspection time passed.' => context.l10n.eventOverdue,
+      'Inspection completed.' => context.l10n.eventCompleted,
+      'Cancelled by management.' => context.l10n.eventCancelled,
+      _ => null,
+    };
+    if (fixed != null) return fixed;
+
+    final reassigned =
+        RegExp(r'^Reassigned from (.+) to (.+)\.$').firstMatch(note);
+    if (reassigned != null) {
+      return context.l10n.eventReassigned(
+        reassigned.group(1)!,
+        reassigned.group(2)!,
+      );
+    }
+
+    final assigned = RegExp(r'^Assigned to (.+)\.$').firstMatch(note);
+    if (assigned != null) {
+      return context.l10n.eventAssignedTo(assigned.group(1)!);
+    }
+
+    return note;
   }
 
   @override
@@ -757,45 +799,54 @@ class _TimelineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('History', style: context.text.titleMedium),
+          Text(context.l10n.history, style: context.text.titleMedium),
           const SizedBox(height: AppSpacing.lg),
           for (var i = 0; i < events.length; i++) ...[
             if (i > 0) const SizedBox(height: AppSpacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(top: 6),
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _eventTitle(events[i]),
-                        style: context.text.bodyLarge,
+            Builder(
+              builder: (context) {
+                final event = events[i];
+                final note = _eventNote(context, event);
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(top: 6),
+                      decoration: BoxDecoration(
+                        color: colors.primary,
+                        shape: BoxShape.circle,
                       ),
-                      Text(
-                        '${events[i].actorName} · ${formatDateTime(events[i].createdAt)}',
-                        style: context.text.bodySmall,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _eventTitle(context, event),
+                            style: context.text.bodyLarge,
+                          ),
+                          Text(
+                            '${event.actorName == 'System' ? context.l10n.system : event.actorName} · ${formatDateTime(event.createdAt, locale: Localizations.localeOf(context).toLanguageTag())}',
+                            style: context.text.bodySmall,
+                          ),
+                          if (note != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                note,
+                                style: context.text.bodyMedium,
+                              ),
+                            ),
+                        ],
                       ),
-                      if (events[i].note != null && events[i].note!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(events[i].note!,
-                              style: context.text.bodyMedium),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -820,17 +871,17 @@ class _QueuedPhotosCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Photo could not be uploaded'),
-        content: Text(photo.failureReason ??
-            'This case was closed before your photo could be uploaded.'),
+        title: Text(context.l10n.photoUploadFailed),
+        content:
+            Text(photo.failureReason ?? context.l10n.closedBeforePhotoUpload),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep'),
+            child: Text(context.l10n.keep),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Discard'),
+            child: Text(context.l10n.discard),
           ),
         ],
       ),
@@ -844,7 +895,7 @@ class _QueuedPhotosCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Uploading', style: context.text.titleMedium),
+          Text(context.l10n.uploading, style: context.text.titleMedium),
           const SizedBox(height: AppSpacing.lg),
           Wrap(
             spacing: AppSpacing.md,
@@ -909,7 +960,9 @@ class _QueuedPhotoThumb extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              photo.isFailedPermanent ? 'Failed — tap for details' : 'Uploading…',
+              photo.isFailedPermanent
+                  ? context.l10n.photoFailedTap
+                  : context.l10n.uploadingEllipsis,
               textAlign: TextAlign.center,
               style: context.text.bodySmall,
             ),
@@ -932,7 +985,7 @@ class _PhotosCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Site photos', style: context.text.titleMedium),
+          Text(context.l10n.sitePhotos, style: context.text.titleMedium),
           const SizedBox(height: AppSpacing.lg),
           Wrap(
             spacing: AppSpacing.md,
@@ -1037,18 +1090,18 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Nothing to show yet',
+                context.l10n.nothingToShow,
                 style: context.text.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                message ?? 'Pull down to try again once you are back online.',
+                message ?? context.l10n.pullDownWhenOnline,
                 style: context.text.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              FilledButton(onPressed: onRetry, child: Text(context.l10n.retry)),
             ],
           ),
         ),

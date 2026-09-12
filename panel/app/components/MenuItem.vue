@@ -5,7 +5,7 @@ withDefaults(
 )
 
 const classes = computed(() => [
-  'flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2.5 text-left text-[13.5px] font-medium transition-colors duration-fast ease-soft',
+  'flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2.5 text-start text-[13.5px] font-medium transition-colors duration-fast ease-soft',
 ])
 </script>
 

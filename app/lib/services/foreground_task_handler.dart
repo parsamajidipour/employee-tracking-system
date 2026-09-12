@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../config.dart';
 import '../models/shift_window.dart';
+import '../l10n/stored_localizations.dart';
 import 'api_client.dart';
 import 'app_update_service.dart';
 import 'auth_storage.dart';
@@ -97,11 +98,12 @@ class TrackingTaskHandler extends TaskHandler {
 
       final onForeground = await FlutterForegroundTask.isAppOnForeground;
       if (onForeground) return;
+      final l10n = await storedLocalizations(_storage);
 
       await LocalNotificationService.show(
         id: 1001,
-        title: 'Update available',
-        body: 'Version ${info.versionName} is ready to install.',
+        title: l10n.updateAvailable,
+        body: l10n.versionReady(info.versionName),
       );
     } catch (_) {}
   }
@@ -124,6 +126,7 @@ class TrackingTaskHandler extends TaskHandler {
 
       final notified = await _storage.backgroundNotifiedNotifications();
       final inbox = await _notificationRepository.fetchInbox();
+      final l10n = await storedLocalizations(_storage);
       var changed = false;
 
       for (final notification in inbox.notifications.reversed) {
@@ -133,9 +136,9 @@ class TrackingTaskHandler extends TaskHandler {
 
         await LocalNotificationService.show(
           id: notification.id.hashCode & 0x7fffffff,
-          title: notification.title,
+          title: notification.localizedTitle(l10n),
           body: notification.message.isEmpty
-              ? 'Open the app for details.'
+              ? l10n.openAppForDetails
               : notification.message,
           payload: jsonEncode(notification.toPayload()),
         );
@@ -204,12 +207,11 @@ class TrackingTaskHandler extends TaskHandler {
     if (_everReconciled && hasWindow != _hadWindow) {
       final onForeground = await FlutterForegroundTask.isAppOnForeground;
       if (!onForeground) {
+        final l10n = await storedLocalizations(_storage);
         await LocalNotificationService.show(
           id: hasWindow ? 1002 : 1003,
-          title: hasWindow ? 'Shift started' : 'Shift ended',
-          body: hasWindow
-              ? 'You are now inside your working-hours window.'
-              : 'Your working-hours window has ended.',
+          title: hasWindow ? l10n.shiftStarted : l10n.shiftEnded,
+          body: hasWindow ? l10n.insideWindowNotice : l10n.windowEndedNotice,
         );
       }
     }

@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../l10n/l10n.dart';
 import '../models/inspection_case.dart';
 import '../services/api_exception.dart';
 import '../services/realtime_client.dart';
@@ -16,13 +18,13 @@ import '../widgets/live_dot.dart';
 import '../widgets/status_pill.dart';
 import 'case_detail_screen.dart';
 
-const _filters = <({String? value, String label})>[
-  (value: null, label: 'All'),
-  (value: 'pending', label: 'Pending'),
-  (value: 'accepted', label: 'Scheduled'),
-  (value: 'overdue', label: 'Overdue'),
-  (value: 'in_progress', label: 'In progress'),
-  (value: 'completed', label: 'Completed'),
+const _filters = <String?>[
+  null,
+  'pending',
+  'accepted',
+  'overdue',
+  'in_progress',
+  'completed'
 ];
 
 StatusTone caseStatusTone(String status) => switch (status) {
@@ -36,15 +38,21 @@ StatusTone caseStatusTone(String status) => switch (status) {
       _ => StatusTone.idle,
     };
 
-String caseStatusLabel(String status) => switch (status) {
-      'pending' => 'Awaiting acceptance',
-      'accepted' => 'Scheduled',
-      'overdue' => 'Overdue',
-      'in_progress' => 'In progress',
-      'completed' => 'Completed',
-      'rejected' => 'Rejected',
-      'cancelled' => 'Cancelled',
+String caseStatusLabel(BuildContext context, String status) => switch (status) {
+      'pending' => context.l10n.awaitingAcceptance,
+      'accepted' => context.l10n.scheduled,
+      'overdue' => context.l10n.overdue,
+      'in_progress' => context.l10n.inProgress,
+      'completed' => context.l10n.completed,
+      'rejected' => context.l10n.rejected,
+      'cancelled' => context.l10n.cancelled,
       _ => status,
+    };
+
+String filterLabel(BuildContext context, String? status) => switch (status) {
+      null => context.l10n.all,
+      'pending' => context.l10n.pending,
+      _ => caseStatusLabel(context, status),
     };
 
 class CasesScreen extends StatefulWidget {
@@ -126,7 +134,7 @@ class _CasesScreenState extends State<CasesScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not reach the server.';
+        _error = context.l10n.notificationsServerError;
         _loading = false;
       });
     }
@@ -155,7 +163,7 @@ class _CasesScreenState extends State<CasesScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My cases'),
+        title: Text(context.l10n.myCases),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.screen),
@@ -262,14 +270,14 @@ class _FilterBar extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final filter = _filters[index];
-          final active = filter.value == selected;
-          final count = countFor(filter.value);
+          final active = filter == selected;
+          final count = countFor(filter);
 
           return Material(
             color: Colors.transparent,
             borderRadius: AppRadii.pillRadius,
             child: InkWell(
-              onTap: () => onSelected(filter.value),
+              onTap: () => onSelected(filter),
               borderRadius: AppRadii.pillRadius,
               child: Container(
                 constraints: const BoxConstraints(minHeight: 40),
@@ -288,7 +296,7 @@ class _FilterBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      filter.label,
+                      filterLabel(context, filter),
                       style: context.text.labelMedium?.copyWith(
                         color: active
                             ? colors.primaryStrong
@@ -299,7 +307,9 @@ class _FilterBar extends StatelessWidget {
                     if (count > 0) ...[
                       const SizedBox(width: AppSpacing.sm),
                       Text(
-                        '$count',
+                        NumberFormat.decimalPattern(
+                                Localizations.localeOf(context).toLanguageTag())
+                            .format(count),
                         style: context.text.labelMedium?.copyWith(
                           color: active
                               ? colors.primaryStrong
@@ -347,7 +357,7 @@ class _CaseRow extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               StatusPill(
-                label: caseStatusLabel(inspectionCase.status),
+                label: caseStatusLabel(context, inspectionCase.status),
                 tone: caseStatusTone(inspectionCase.status),
               ),
             ],
@@ -380,7 +390,9 @@ class _CaseRow extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            inspectionCase.propertyAddress,
+            !inspectionCase.hasPropertyAddress
+                ? context.l10n.locationNotProvided
+                : inspectionCase.propertyAddress,
             style: context.text.bodySmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -395,7 +407,9 @@ class _CaseRow extends StatelessWidget {
                     size: 16, color: colors.textSecondary),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  'Planned ${formatDateTime(inspectionCase.plannedAt!)}',
+                  context.l10n.plannedAt(formatDateTime(
+                      inspectionCase.plannedAt!,
+                      locale: Localizations.localeOf(context).toLanguageTag())),
                   style: context.text.bodySmall,
                 ),
               ],
@@ -430,15 +444,17 @@ class _NoCasesState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              filtered ? 'Nothing in this filter' : 'No cases assigned',
+              filtered
+                  ? context.l10n.nothingInFilter
+                  : context.l10n.noCasesAssigned,
               style: context.text.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               filtered
-                  ? 'Try another filter, or pull down to refresh.'
-                  : 'New assignments arrive here the moment the office sends them.',
+                  ? context.l10n.tryAnotherFilter
+                  : context.l10n.assignmentsAppearHere,
               style: context.text.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -475,18 +491,18 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Nothing to show yet',
+                context.l10n.nothingToShow,
                 style: context.text.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                message ?? 'Pull down to try again once you are back online.',
+                message ?? context.l10n.pullDownWhenOnline,
                 style: context.text.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              FilledButton(onPressed: onRetry, child: Text(context.l10n.retry)),
             ],
           ),
         ),

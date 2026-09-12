@@ -9,6 +9,7 @@ import '../services/case_photo_upload_service.dart';
 import '../services/case_repository.dart';
 import '../services/me_repository.dart';
 import '../services/notification_repository.dart';
+import '../l10n/stored_localizations.dart';
 import '../services/permission_service.dart';
 import '../services/realtime_client.dart';
 import 'live_updates.dart';
@@ -30,7 +31,7 @@ class AuthController extends ChangeNotifier {
 
   bool onboardingCompleted = false;
 
-  String? revokedMessage;
+  bool deviceWasRevoked = false;
 
   AuthController({AuthStorage? storage}) : storage = storage ?? AuthStorage() {
     apiClient = ApiClient(
@@ -54,6 +55,7 @@ class AuthController extends ChangeNotifier {
       meRepository: meRepository,
       notificationRepository: notificationRepository,
       client: RealtimeClient(authorizer: apiClient.authorizeChannel),
+      storage: this.storage,
     );
   }
 
@@ -90,13 +92,14 @@ class AuthController extends ChangeNotifier {
 
   Future<void> login(String identifier, String password) async {
     final deviceIdentifier = await storage.deviceIdentifier();
+    final l10n = await storedLocalizations(storage);
 
     final json =
         await apiClient.postJsonUnauthenticated('/api/v1/device/login', {
       'identifier': identifier,
       'password': password,
       'device_identifier': deviceIdentifier,
-      'device_name': 'Android device',
+      'device_name': l10n.androidDevice,
     });
 
     final token = json['token'] as String;
@@ -108,14 +111,13 @@ class AuthController extends ChangeNotifier {
   }
 
   void clearRevokedMessage() {
-    revokedMessage = null;
+    deviceWasRevoked = false;
   }
 
   Future<void> handleUnauthorized() async {
     await liveUpdates.stop();
     await storage.clearToken();
-    revokedMessage =
-        'This device was deactivated. Contact your administrator to sign in again.';
+    deviceWasRevoked = true;
     status = AuthStatus.signedOut;
     notifyListeners();
   }

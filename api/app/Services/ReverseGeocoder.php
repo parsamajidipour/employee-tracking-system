@@ -15,7 +15,7 @@ class ReverseGeocoder
     {
         $roundedLat = round($lat, 5);
         $roundedLng = round($lng, 5);
-        $cacheKey = sprintf('reverse-geocode:%.5f:%.5f', $roundedLat, $roundedLng);
+        $cacheKey = sprintf('reverse-geocode:%s:%.5f:%.5f', app()->getLocale(), $roundedLat, $roundedLng);
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached) && array_key_exists('location', $cached)) {
@@ -25,7 +25,7 @@ class ReverseGeocoder
         if (! Cache::add(self::RATE_LIMIT_KEY, true, 1)) {
             throw new TooManyRequestsHttpException(
                 1,
-                'Location lookup is temporarily busy. Try again in a moment.',
+                __('messages.location_busy'),
             );
         }
 
@@ -41,7 +41,7 @@ class ReverseGeocoder
         $response = Http::acceptJson()
             ->withUserAgent(sprintf('SmartInspection/1.0 (+%s)', config('app.url')))
             ->withHeaders([
-                'Accept-Language' => 'en',
+                'Accept-Language' => app()->getLocale(),
                 'Referer' => config('app.url'),
             ])
             ->connectTimeout(3)

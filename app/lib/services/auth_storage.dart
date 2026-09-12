@@ -12,6 +12,7 @@ class AuthStorage {
   static const _lastUploadAtKey = 'last_upload_at';
   static const _backgroundNotifiedNotificationsKey =
       'background_notified_notifications';
+  static const _localeKey = 'app_locale';
 
   final FlutterSecureStorage _storage;
 
@@ -84,4 +85,9 @@ class AuthStorage {
       value: jsonEncode(recent),
     );
   }
+
+  Future<String?> locale() => _storage.read(key: _localeKey);
+
+  Future<void> saveLocale(String locale) =>
+      _storage.write(key: _localeKey, value: locale);
 }

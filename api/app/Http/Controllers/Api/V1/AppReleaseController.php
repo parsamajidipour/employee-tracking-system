@@ -36,7 +36,7 @@ class AppReleaseController extends Controller
         );
 
         if ($release === null) {
-            return response()->json(['message' => 'No release available.'], 404);
+            return response()->json(['message' => __('messages.release_unavailable')], 404);
         }
 
         return AppReleaseResource::make($release)->response();
@@ -82,7 +82,7 @@ class AppReleaseController extends Controller
         $path = Storage::disk('local')->path($appRelease->file_path);
 
         if (! is_readable($path)) {
-            return response()->json(['message' => 'Release file is missing.'], 503);
+            return response()->json(['message' => __('messages.release_missing')], 503);
         }
 
         return response()->file($path, [

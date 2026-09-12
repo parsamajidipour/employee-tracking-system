@@ -1,0 +1,210 @@
+{
+  "app": { "name": "Smart Inspection" },
+  "language": { "label": "Language", "english": "English", "arabic": "Arabic" },
+  "common": {
+    "active": "Active", "inactive": "Inactive", "all": "All", "yes": "Yes", "no": "No", "none": "None", "unknown": "Unknown",
+    "loading": "Loading…", "refresh": "Refresh", "retry": "Try again", "save": "Save", "saving": "Saving…", "saved": "Saved.",
+    "cancel": "Cancel", "confirm": "Confirm", "close": "Close", "delete": "Delete", "edit": "Edit", "discard": "Discard",
+    "search": "Search", "status": "Status", "date": "Date", "name": "Name", "email": "Email", "phone": "Phone", "password": "Password",
+    "back": "Back", "next": "Next", "previous": "Previous", "notAvailable": "Not available", "optional": "optional",
+    "showPassword": "Show password", "hidePassword": "Hide password", "copyPassword": "Copy password", "passwordCopied": "Password copied", "copied": "Copied",
+    "removeFile": "Remove file", "clickToUpload": "Click to upload", "orDragDrop": "or drag and drop", "moreActions": "More actions", "live": "Live", "offline": "Offline", "loadFailed": "Could not load data.", "nothingHere": "Nothing here yet."
+  },
+  "nav": {
+    "liveMap": "Live map", "shiftTemplates": "Shift templates", "employees": "Employees", "cases": "Cases", "appReleases": "App releases",
+    "adminProfile": "Admin profile", "collapse": "Collapse", "expand": "Expand", "openMenu": "Open menu", "closeMenu": "Close menu",
+    "signedIn": "Signed in", "signOut": "Sign out"
+  },
+  "auth": {
+    "signIn": "Sign in", "signingIn": "Signing in…", "workEmail": "Use your work email address.",
+    "emailPlaceholder": "e.g. admin{'@'}inspection.local", "passwordPlaceholder": "Enter your work password",
+    "failed": "Login failed — check the credentials and try again.",
+    "privacy": "Location data is only visible during an employee's working hours."
+  },
+  "notifications": {
+    "title": "Notifications", "unread": "Notifications, {count} unread", "markAllRead": "Mark all read", "empty": "Nothing to catch up on yet.", "loadFailed": "Could not load notifications."
+  },
+  "case": {
+    "statuses": {
+      "pending": "Unassigned / Awaiting Acceptance", "accepted": "Scheduled", "overdue": "Overdue", "in_progress": "In progress",
+      "completed": "Completed", "rejected": "Rejected", "cancelled": "Cancelled", "unassigned": "Unassigned", "awaiting_acceptance": "Awaiting Acceptance"
+    },
+    "priorities": { "normal": "Normal", "high": "High", "urgent": "Urgent" },
+    "assignmentStatuses": {
+      "unassigned": "Unassigned", "awaiting_acceptance": "Awaiting Acceptance", "scheduled": "Scheduled", "in_progress": "In Progress",
+      "completed": "Completed", "rejected": "Rejected", "cancelled": "Cancelled", "overdue": "Overdue"
+    }
+  },
+  "cases": {
+    "fields": {
+      "reportNumber": "Report no.", "customerName": "Customer name", "location": "Location", "locationOnMap": "Location on map",
+      "priority": "Priority", "notes": "Notes", "assignee": "Assignee", "created": "Created"
+    },
+    "placeholders": {
+      "reportNumber": "e.g. RPT-1042", "customerName": "e.g. Ahmed Al Balushi",
+      "notes": "Anything a surveyor should know before accepting this case"
+    },
+    "new": {
+      "title": "New case", "subtitle": "Create an inspection case", "cancelCreation": "Cancel case creation", "create": "Create case", "creating": "Creating…",
+      "details": "Case details", "detailsSubtitle": "Report, customer, and priority information", "findingLocation": "Finding location…",
+      "moveMapToFill": "Move the map to fill this automatically", "locationFindingHint": "Finding the location from the map…",
+      "locationNotFound": "Address not found — move the map again or enter it manually.", "locationFilledHint": "Filled automatically from the map; you can edit it.",
+      "waitForLocation": "Wait for the location lookup to finish.", "requiredFields": "Report number, customer name, and a location on the map are required.",
+      "created": "Case created. Assign it to a surveyor from here.", "createFailed": "Could not create case — check the fields.",
+      "whatNext": "What happens next", "nextStep1": "Every active employee is notified that this case exists as soon as it is created.",
+      "nextStep2": "You assign it to a surveyor on the case page — nearest on-shift surveyors are ranked for you there.",
+      "nextStep3": "The surveyor accepts and schedules it, and the case page updates here live.",
+      "dragPin": "Drag the pin to fine-tune", "dropPin": "Required — click the map to drop the pin", "notSet": "Not set", "adjustMap": "Move the map to adjust the pin.", "placeOnProperty": "Move the map to place the pin on the property — required."
+    },
+    "assignmentMap": { "propertyLocation": "Property location", "caseLocation": "Case location", "propertyToInspect": "Property to inspect", "away": "{distance} away", "openCases": "{count} open cases", "assignTo": "Assign to {name}", "online": "Online", "lastKnown": "Last known" },
+    "histories": {
+      "title": "{name} histories", "employee": "Employee", "subtitle": "Daily routes by shift", "refresh": "Refresh route history", "employeeShifts": "Employee shifts", "shift": "Shift",
+      "loadFailed": "Could not load activity for this day.", "mapFailed": "The map could not be loaded.", "points": "{count} pts", "empty": "No tracked activity for this day.",
+      "interruptions": "Tracking interruptions", "ongoing": "ongoing", "start": "Start", "end": "End", "startShort": "S", "endShort": "E",
+      "reasons": { "gps_disabled": "GPS unavailable", "network_disabled": "No network", "flight_mode": "Flight mode", "permission_revoked": "Permission revoked", "service_interrupted": "Tracking service interrupted" }
+    },
+    "detail": {
+      "workspace": "Case workspace", "refresh": "Refresh case", "loadFailed": "Could not load this case.", "rankingUnavailable": "Live location ranking is temporarily unavailable.",
+      "selectFirst": "Select an available surveyor first.", "assignedNotice": "Case assigned to {name}. Awaiting acceptance.", "assignFailed": "Assignment could not be completed. Nothing was changed.",
+      "cancelledNotice": "Case cancelled. Relevant users were notified.", "cancelFailed": "Case could not be cancelled. Nothing was changed.",
+      "deleteConfirm": "Permanently delete case “{name}” and its timeline and site photos? This cannot be undone.", "deleteTitle": "Permanently delete case", "deleted": "Case and all related inspection data were permanently deleted.", "deleteFailed": "Case could not be deleted.",
+      "notSetYet": "Not set yet", "notSet": "Not set", "distanceUnavailable": "Distance unavailable", "fromProperty": "{distance} from property",
+      "steps": { "received": "Received", "new": "New", "assigned": "Assigned", "scheduled": "Scheduled", "plan": "Plan", "inspection": "Inspection", "inspect": "Inspect", "completed": "Completed", "done": "Done" },
+      "events": { "assigned": "Surveyor assigned", "received": "Case received", "accepted": "Assignment accepted and scheduled", "started": "Inspection started", "overdue": "Inspection became overdue", "completed": "Inspection completed", "rejected": "Assignment rejected", "cancelled": "Case cancelled", "updated": "Case updated", "statusUpdated": "Status updated.", "system": "System", "createdNote": "Case created.", "assignedNote": "Assigned to {name}.", "reassignedNote": "Reassigned from {from} to {to}.", "acceptedNote": "Accepted by surveyor.", "rejectedNote": "Rejected by surveyor.", "startedNote": "Inspection started.", "overdueNote": "Planned inspection time passed.", "completedNote": "Inspection completed.", "cancelledNote": "Cancelled by management." },
+      "deletedElsewhere": "This case was deleted in another session.", "priority": "{priority} priority", "addressMissing": "Site address not provided",
+      "sitePhotos": "Site photos", "uploaded": "{count} uploaded", "verified": "Verified", "needsVerified": "Needs verified photo", "noPhotos": "No site photos have been uploaded yet.", "photoAlt": "Site photo captured {date}",
+      "timeline": "Status timeline", "timelineSubtitle": "Every lifecycle change, in order", "noActivity": "No status activity yet.",
+      "reassign": "Reassign surveyor", "assign": "Assign surveyor", "assignment": "Assignment", "assignmentSubtitle": "Location, availability and workload in one decision", "available": "{count} available",
+      "previousRejected": "{name} rejected this assignment. Select a replacement.", "previousSurveyor": "The previous surveyor", "assignByWorkload": "You can still assign by workload.",
+      "surveyor": "Surveyor", "cases": "Cases", "workload": "Workload", "noneAvailable": "No active surveyor is available for assignment.", "offShift": "Off shift / no live location",
+      "pending": "{count} pending", "scheduled": "{count} scheduled", "overdue": "{count} overdue", "assigning": "Assigning…", "assignTo": "Assign case to {name}", "selectToAssign": "Select a surveyor to assign",
+      "assignmentHint": "The surveyor receives a notification and must accept before scheduling.", "unassigned": "Unassigned", "noSurveyor": "No surveyor assigned", "assignedAt": "Assigned at", "acceptedAt": "Accepted at", "inspectionPlan": "Inspection plan",
+      "waitingAcceptance": "Waiting for the surveyor to accept and set the inspection date and time.", "cancelCase": "Cancel case", "cancelExplanation": "Cancelling stops this inspection and notifies the assigned surveyor and management.",
+      "reasonOptional": "Reason (optional)", "reasonPlaceholder": "e.g. Client withdrew the inspection request", "keepCase": "Keep case", "confirmCancellation": "Confirm cancellation"
+    },
+    "list": {
+      "title": "Cases", "total": "{count} total", "refresh": "Refresh cases", "allStatuses": "All statuses", "allEmployees": "All employees",
+      "clearDate": "Clear date", "empty": "No cases match these filters.", "view": "View", "page": "Page {current} of {last} — {total} cases", "loadFailed": "Could not load cases."
+    }
+  },
+  "employees": {
+    "placeholders": { "name": "e.g. Ahmed Al Saadi", "phone": "e.g. 92000001", "email": "name{'@'}example.com", "password": "At least 8 characters" },
+    "create": {
+      "title": "Add employee", "subtitle": "Create an account and give it a working schedule", "cancelCreation": "Cancel employee creation",
+      "create": "Create employee", "creating": "Creating…", "requiredFields": "Name, phone, email and a password of at least 8 characters are required.",
+      "created": "Employee created. A welcome email was sent with their login details.",
+      "failed": "Save failed — check the fields (phone and email must be unique, password at least 8 characters).",
+      "accountDetails": "Account details", "accountDetailsSubtitle": "How this person signs in on the mobile app",
+      "phoneHint": "Used to log in on the mobile app — must be unique.", "emailHint": "Used to log in, and to send the welcome email.",
+      "inactiveHint": "Inactive accounts cannot sign in or be assigned a case.", "shiftAssignment": "Shift assignment",
+      "selectedShifts": "{count} selected", "shiftOptional": "Optional — can be set later",
+      "trackingExplanation": "Location is only ever recorded inside a selected shift window. Leave every shift unselected and this employee is simply never tracked."
+    },
+    "activity": { "inspecting": "Inspecting", "overdue": "Overdue work", "awaiting": "Awaiting response", "available": "Available" },
+    "location": { "offShift": "Off shift / no live location", "unavailable": "Location unavailable" },
+    "connection": { "online": "online", "stale": "stale", "offline": "offline" },
+    "list": {
+      "title": "Employees", "subtitle": "Availability, workload, schedules and access in one place", "refresh": "Refresh employees",
+      "loadFailed": "Could not load employees. Sign in and try again.", "workforce": "Workforce & workload",
+      "shown": "{shown} shown of {total} · live operational capacity", "searchPlaceholder": "Search by name, phone or email",
+      "allStatuses": "All statuses", "activeOnly": "Active only", "inactiveOnly": "Inactive only", "shiftCoverage": "Shift coverage",
+      "anyCoverage": "Any coverage", "hasShift": "Has a shift", "noShift": "No shift assigned", "clear": "Clear",
+      "employee": "Employee", "activityLocation": "Activity & location", "activeCases": "Active cases", "pendingScheduled": "Pending / Scheduled", "workload": "Workload",
+      "emptyFiltered": "No employee matches these filters.", "empty": "No employees yet — add one to get started.", "noEmail": "No email",
+      "activity": "Activity", "schedule": "Schedule", "histories": "Histories", "editDetails": "Edit details", "changePassword": "Change password",
+      "deactivate": "Deactivate", "activate": "Activate", "revokeDevice": "Revoke device", "deleteEmployee": "Delete employee",
+      "pendingCount": "{count} pending", "scheduledCount": "{count} scheduled", "overdueCount": "{count} overdue",
+      "assignedCasesTitle": "{name} · assigned cases", "noAssignedCases": "No cases have been assigned to this employee yet.",
+      "addressMissing": "Site address not provided", "priorityValue": "{priority} priority", "assignedAt": "Assigned {date}", "notSet": "Not set",
+      "assignedCasesFailed": "Could not load assigned cases for this employee.", "updated": "Employee updated.",
+      "updateFailed": "Update failed — check the fields (phone and email must be unique).", "passwordLength": "Password must be at least 8 characters.",
+      "passwordMismatch": "Passwords do not match.", "passwordChanged": "Password changed.", "passwordChangeFailed": "Password change failed.",
+      "activateConfirm": "Activate {name}? They will be able to sign in and be assigned cases again.",
+      "deactivateConfirm": "Deactivate {name}? Their tokens are revoked immediately and they can no longer be assigned cases.",
+      "activateTitle": "Activate employee", "deactivateTitle": "Deactivate employee", "activated": "Employee activated.", "deactivated": "Employee deactivated.",
+      "genericUpdateFailed": "Update failed.", "revokeConfirm": "Revoke {name}'s device? They will need to log in again on a new phone.",
+      "deviceRevoked": "Device revoked.", "revokeFailed": "Revoke failed.",
+      "deleteConfirm": "Delete {name}? They will be removed from the roster, their device access revoked, and their shift assignment cleared.",
+      "deleted": "Employee deleted.", "deleteFailed": "Delete failed.", "editEmployee": "Edit employee",
+      "fullNamePlaceholder": "Full name as it appears on the roster", "phoneLoginHint": "Used to log in on the mobile app.",
+      "emailLoginHint": "Used to log in, and to receive account emails.", "saveChanges": "Save changes",
+      "passwordIntro": "Set a new password for {name}. They'll need it next time they sign in on the mobile app, and an email with the new password will be sent to them if they have an email on file.",
+      "newPassword": "New password", "confirmPassword": "Confirm new password", "repeatPassword": "Repeat the new password", "changing": "Changing…"
+    },
+    "detail": {
+      "schedule": "Working schedule", "refresh": "Refresh employee", "loadFailed": "Could not load employee shifts.", "saved": "Working shifts saved.",
+      "saveFailed": "Saving shifts failed.", "noDevice": "No device paired", "noEmail": "No email on file", "device": "Device",
+      "shiftsAssigned": "Shifts assigned", "tracked": "Tracked", "inShiftWindows": "In shift windows", "never": "Never",
+      "deactivatedHint": "This employee is deactivated. Reactivate them from the roster before changing their schedule.",
+      "workingShifts": "Working shifts", "selected": "{selected} of {total} selected", "saveShifts": "Save shifts",
+      "trackingExplanation": "Location is recorded only inside a selected shift window. Clearing every shift stops tracking this employee entirely — no point is stored outside these times.",
+      "missing": "This employee is no longer on the roster."
+    }
+  },
+  "shifts": {
+    "title": "Shift templates", "subtitle": "Organisation-wide shift definitions — assigned per employee", "refresh": "Refresh shift templates",
+    "loadFailed": "Could not load shift templates. Sign in and try again.", "new": "New template", "edit": "Edit template", "newSubtitle": "Reusable, opt-in — creating one tracks nobody",
+    "namePlaceholder": "e.g. Day Shift", "daysOfWeek": "Days of week", "days": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "noDays": "No days", "everyDay": "Every day", "window": "Window", "start": "Start", "end": "End", "crossesMidnight": "This window crosses midnight — it closes the following day.",
+    "graceCap": "Grace and cap", "graceBefore": "Grace before (min)", "graceAfter": "Grace after (min)", "maxDaily": "Max daily minutes", "noCap": "Leave empty for no cap", "capHint": "Caps how long a single day's window can stay open.",
+    "add": "Add template", "saveChanges": "Save changes", "cancelEdit": "Cancel edit", "templates": "Templates", "defined": "{count} defined",
+    "headers": ["Name", "Days", "Hours", "Grace", "Assigned to", ""], "empty": "No shift templates yet — add one with the form.",
+    "hours": "Hours", "grace": "Grace", "assigned": "{count} assigned", "employees": "{count} employees", "minutes": "{before}/{after} min",
+    "nameRequired": "Give the template a name.", "dayRequired": "Pick at least one day — a template with no days never opens a window.",
+    "created": "Shift template created.", "saved": "Shift template saved.", "saveFailed": "Save failed — check the fields.",
+    "deleteAffected": "Delete shift template “{name}”? {count} employees will lose this shift and become unscheduled: {employees}.",
+    "deleteConfirm": "Delete shift template “{name}”? This cannot be undone.", "deleteTitle": "Delete template", "deleted": "Shift template deleted.", "deleteFailed": "Delete failed.",
+    "noneExist": "No shifts exist. Create one first.", "shiftCount": "{count} shifts", "assignedCount": "{count} shifts assigned", "showDetails": "Show shift details"
+  },
+  "releases": {
+    "title": "App releases", "subtitle": "Builds offered to the Android update-check flow", "refresh": "Refresh app releases",
+    "new": "New release", "newSubtitle": "Publishing notifies every active employee", "apkFile": "APK file", "apkHint": "Universal build — arm64-v8a, armeabi-v7a and x86_64",
+    "versionCode": "Version code", "versionCodePlaceholder": "e.g. 7", "versionName": "Version name", "versionNamePlaceholder": "e.g. 1.1.0",
+    "versionHint": "Version code must match versionCode / pubspec +build — it defaults to the next unused number.",
+    "mandatory": "Mandatory update", "mandatoryHint": "Blocks the app until the employee installs it.", "notes": "Release notes (optional)", "notesPlaceholder": "What changed in this build",
+    "uploading": "Uploading…", "publish": "Publish release", "chooseApk": "Choose an .apk file to upload.", "nameRequired": "Give the build a version name, e.g. 1.1.0.",
+    "publishedNotice": "Release published. Every active employee has been notified.", "uploadFailed": "Upload failed — check the version code is unique and the file is a valid .apk.",
+    "retractConfirm": "Retract version {name} ({code})? Devices already updated keep it — this only stops it being offered.", "retractTitle": "Retract release",
+    "retracted": "Release retracted.", "retractFailed": "Could not retract this release.", "loadFailed": "Could not load releases. Sign in and try again.",
+    "currentVersion": "Current version", "publishedBuilds": "Published builds", "storageUsed": "Storage used", "publishedReleases": "Published releases", "available": "{count} available to devices",
+    "headers": ["Version", "Notes", "Size", "Type", "Published", ""], "empty": "No releases published yet — upload the first build.",
+    "versionCodeShort": "code {code}", "mandatoryShort": "Mandatory", "optionalShort": "Optional", "size": "Size", "published": "Published", "download": "Download", "retract": "Retract", "current": "Current"
+  },
+  "workload": {
+    "title": "Workload", "subtitle": "Open work and time-on-task, per surveyor", "refresh": "Refresh workload", "listLoadFailed": "Could not load workload.",
+    "liveTitle": "Updating live over websocket", "offlineTitle": "Live updates unavailable — use Refresh",
+    "surveyorsTracked": "Surveyors tracked", "openOrg": "Open cases org-wide", "overdueOrg": "Overdue org-wide", "completedToday": "Completed today",
+    "bySurveyor": "By surveyor", "shown": "{shown} shown of {total}", "searchPlaceholder": "Search a surveyor by name", "sortBy": "Sort by",
+    "sortOverdue": "Most overdue first", "sortOpen": "Most open cases first", "sortCompleted": "Most completed this week", "sortName": "Name (A–Z)",
+    "empty": "No active employees to show.", "emptySearch": "No surveyor matches this search.", "noShiftToday": "No shift window today", "travelledToday": "{distance} travelled today",
+    "open": "Open", "pendingShort": "Pend", "scheduledShort": "Sched", "late": "Late", "weekShort": "Wk", "monthShort": "Mo",
+    "inspectingTime": "{duration} inspecting", "travellingTime": "{duration} travelling", "inspecting": "Inspecting", "travelling": "Travelling", "idle": "Idle",
+    "overdueCount": "{count} overdue", "noOpenWork": "No open work", "onTrack": "On track", "loadDayFailed": "Could not load activity for this day.",
+    "activityDate": "Activity date", "pickDate": "Pick a date", "caseLoad": "Case load", "pending": "Pending", "scheduled": "Scheduled", "overdue": "Overdue",
+    "timeOnTask": "Time on task", "travelled": "{distance} travelled", "noWindow": "No shift window resolved for this day — nothing was tracked.",
+    "openHistory": "Open route history", "durationMinutes": "{minutes}m", "durationHoursMinutes": "{hours}h {minutes}m"
+  },
+  "map": {
+    "loadFailed": "The map could not be loaded.", "onlineNow": "online now", "lastUpdate": "Last update", "viewHistories": "View histories",
+    "inWindow": "In window ({count})", "empty": "No employees currently in window."
+  },
+  "profile": {
+    "subtitle": "Your account details and sign-in credentials", "refresh": "Refresh profile", "signedInAs": "Signed in as", "role": "Role",
+    "roles": { "admin": "Administrator", "hr": "HR", "supervisor": "Supervisor", "employee": "Employee" },
+    "details": "Profile details", "detailsSubtitle": "Shown across the panel and on audit entries", "fullName": "Your full name",
+    "emailPlaceholder": "you{'@'}example.com", "emailHint": "You sign in with this address.", "save": "Save profile", "noChanges": "No changes to save.",
+    "passwordSubtitle": "Signs out every other session using this account", "currentPassword": "Current password", "currentPasswordPlaceholder": "Your password right now",
+    "newPasswordPlaceholder": "At least 10 characters", "twoPasswordsMismatch": "These two passwords do not match.",
+    "updated": "Profile updated.", "updateFailed": "Update failed. Check the email address and try again.",
+    "passwordMismatch": "The new password and its confirmation do not match.", "passwordFailed": "Change failed. Check the current password and password requirements."
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "serverTitle": "Something went wrong",
+    "notFoundMessage": "The page you requested does not exist or has moved.",
+    "serverMessage": "The application could not complete this request. Please try again.",
+    "backHome": "Back to home",
+    "retry": "Try again"
+  },
+  "units": { "meter": "{value} m", "kilometer": "{value} km", "kilometersPerHour": "{value} km/h", "kilobyte": "{value} KB", "megabyte": "{value} MB" }
+}

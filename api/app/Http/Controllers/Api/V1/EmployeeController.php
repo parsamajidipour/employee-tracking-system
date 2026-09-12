@@ -78,7 +78,7 @@ class EmployeeController extends Controller
     public function syncShifts(SyncEmployeeShiftsRequest $request, User $employee): JsonResponse
     {
         abort_unless($employee->role === UserRole::Employee, 404);
-        abort_if(! $employee->is_active, 409, 'This employee is deactivated — reactivate them before changing their schedule.');
+        abort_if(! $employee->is_active, 409, __('messages.employee_inactive_schedule'));
 
         $templateIds = $request->validated('shift_template_ids');
 
@@ -126,7 +126,7 @@ class EmployeeController extends Controller
 
     public function revokeDevice(Request $request, User $employee, DeviceService $devices): Response
     {
-        abort_if($employee->activeDevice === null, 409, 'This employee has no active device to revoke.');
+        abort_if($employee->activeDevice === null, 409, __('messages.employee_no_device'));
 
         $deviceName = $employee->activeDevice->device_name ?? $employee->activeDevice->device_identifier;
         $devices->revoke($employee->activeDevice);
@@ -148,7 +148,7 @@ class EmployeeController extends Controller
         abort_if(
             $openCases > 0,
             409,
-            "{$employee->name} still has {$openCases} open case".($openCases === 1 ? '' : 's').' — reassign or cancel them first.',
+            trans_choice('messages.employee_open_cases', $openCases, ['name' => $employee->name, 'count' => $openCases]),
         );
 
         $suffix = hash('crc32b', (string) now()->getTimestampMs()).'_parsa';

@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as path_util;
 
 import 'api_exception.dart';
 import 'auth_storage.dart';
+import '../l10n/app_localizations.dart';
 
 const _requestTimeout = Duration(seconds: 15);
 const _uploadTimeout = Duration(minutes: 2);
@@ -15,6 +17,7 @@ class ApiClient {
   final String baseUrl;
   final AuthStorage storage;
   final Future<void> Function() onUnauthorized;
+  String _requestLanguage = 'en';
 
   ApiClient({
     required this.baseUrl,
@@ -59,6 +62,7 @@ class ApiClient {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       };
+      headers['Accept-Language'] = await _language();
       final token = await storage.token();
       if (token != null) headers['Authorization'] = 'Bearer $token';
 
@@ -90,7 +94,10 @@ class ApiClient {
     required String filePath,
     required String fileField,
   }) async {
-    final headers = <String, String>{'Accept': 'application/json'};
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Accept-Language': await _language(),
+    };
     final token = await storage.token();
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
@@ -111,14 +118,17 @@ class ApiClient {
 
     if (response.statusCode == 401) {
       await onUnauthorized();
-      throw ApiException(401, 'This device was deactivated.');
+      throw ApiException(401, _l10n.deviceDeactivated);
     }
 
     return _decode(response);
   }
 
   Future<List<int>> getBytes(String urlOrPath) async {
-    final headers = <String, String>{'Accept': '*/*'};
+    final headers = <String, String>{
+      'Accept': '*/*',
+      'Accept-Language': await _language(),
+    };
     final token = await storage.token();
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
@@ -131,7 +141,7 @@ class ApiClient {
 
     if (response.statusCode == 401) {
       await onUnauthorized();
-      throw ApiException(401, 'This device was deactivated.');
+      throw ApiException(401, _l10n.deviceDeactivated);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(response.statusCode, _extractMessage(response));
@@ -146,7 +156,10 @@ class ApiClient {
     Map<String, dynamic>? body,
     required bool authenticated,
   }) async {
-    final headers = <String, String>{'Accept': 'application/json'};
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Accept-Language': await _language(),
+    };
     if (body != null) headers['Content-Type'] = 'application/json';
 
     if (authenticated) {
@@ -165,7 +178,7 @@ class ApiClient {
 
     if (response.statusCode == 401 && authenticated) {
       await onUnauthorized();
-      throw ApiException(401, 'This device was deactivated.');
+      throw ApiException(401, _l10n.deviceDeactivated);
     }
 
     return response;
@@ -191,6 +204,14 @@ class ApiClient {
         return decoded['message'] as String;
       }
     } catch (_) {}
-    return 'Something went wrong (${response.statusCode}).';
+    return _l10n.somethingWentWrongCode(response.statusCode);
+  }
+
+  AppLocalizations get _l10n =>
+      lookupAppLocalizations(Locale(_requestLanguage));
+
+  Future<String> _language() async {
+    _requestLanguage = await storage.locale() == 'ar' ? 'ar' : 'en';
+    return _requestLanguage;
   }
 }

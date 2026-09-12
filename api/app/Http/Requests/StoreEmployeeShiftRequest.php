@@ -22,7 +22,7 @@ class StoreEmployeeShiftRequest extends FormRequest
             'template_id' => ['required', 'exists:shift_templates,id'],
             'effective_from' => ['required', 'date', function ($attribute, $value, $fail) {
                 if (CarbonImmutable::parse($value)->lessThan(CarbonImmutable::now())) {
-                    $fail('The :attribute cannot be in the past.');
+                    $fail(__('messages.date_in_past', ['attribute' => __('validation.attributes.'.$attribute)]));
                 }
             }],
             'effective_to' => ['nullable', 'date', 'after:effective_from'],

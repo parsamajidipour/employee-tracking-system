@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../services/auth_storage.dart';
+import '../l10n/l10n.dart';
 import '../services/permission_service.dart';
 import '../models/permission_snapshot.dart';
 import '../state/auth_controller.dart';
@@ -12,6 +13,7 @@ import '../widgets/app_card.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/live_dot.dart';
 import '../widgets/status_pill.dart';
+import '../widgets/language_switcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.authController});
@@ -78,9 +80,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     final colors = context.colors;
     final permissions = _permissions;
     final deviceId = _deviceId;
+    final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text(l10n.profile)),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -103,13 +106,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _name.isEmpty ? 'Field surveyor' : _name,
+                              _name.isEmpty ? l10n.fieldSurveyor : _name,
                               style: context.text.titleLarge,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
-                            Text('Field surveyor', style: context.text.bodySmall),
+                            Text(l10n.fieldSurveyor,
+                                style: context.text.bodySmall),
                           ],
                         ),
                       ),
@@ -120,9 +124,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(height: AppSpacing.xxl),
               FadeSlideIn(
                 index: 1,
-                child: const SectionHeader(
-                  overline: 'Privacy',
-                  title: 'What is recorded',
+                child: SectionHeader(
+                  overline: l10n.privacy,
+                  title: l10n.whatIsRecorded,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -131,23 +135,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       _PrivacyLine(
                         icon: Icons.schedule_outlined,
-                        text:
-                            'Your location is recorded only during your working-hours window.',
+                        text: l10n.privacyWorkingHours,
                       ),
-                      SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.md),
                       _PrivacyLine(
                         icon: Icons.visibility_off_outlined,
-                        text:
-                            'Outside that window nothing is recorded, stored or shown to anyone.',
+                        text: l10n.privacyOutsideWindow,
                       ),
-                      SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.md),
                       _PrivacyLine(
                         icon: Icons.history_toggle_off_outlined,
-                        text:
-                            'Every time a supervisor opens your history it is written to an audit log.',
+                        text: l10n.privacyAudit,
                       ),
                     ],
                   ),
@@ -156,9 +157,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(height: AppSpacing.xxl),
               FadeSlideIn(
                 index: 3,
-                child: const SectionHeader(
-                  overline: 'Device',
-                  title: 'This phone',
+                child: SectionHeader(
+                  overline: l10n.device,
+                  title: l10n.thisPhone,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -168,18 +169,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Column(
                     children: [
                       _InfoRow(
-                        label: 'Live updates',
+                        label: l10n.liveUpdates,
                         trailing: LiveDot(state: liveUpdates.connectionState),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _InfoRow(
-                        label: 'Permissions',
+                        label: l10n.permissions,
                         trailing: permissions == null
                             ? const SizedBox.shrink()
                             : StatusPill(
                                 label: permissions.allGranted
-                                    ? 'All granted'
-                                    : 'Action needed',
+                                    ? l10n.allGranted
+                                    : l10n.actionNeeded,
                                 tone: permissions.allGranted
                                     ? StatusTone.active
                                     : StatusTone.warning,
@@ -187,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _InfoRow(
-                        label: 'App version',
+                        label: l10n.appVersion,
                         trailing: Text(
                           _appVersion.isEmpty ? '—' : _appVersion,
                           style: context.text.bodyMedium,
@@ -195,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _InfoRow(
-                        label: 'Device ID',
+                        label: l10n.deviceId,
                         trailing: Text(
                           deviceId == null
                               ? '—'
@@ -217,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       await _load();
                     },
                     icon: const Icon(Icons.settings_outlined),
-                    label: const Text('Open app settings'),
+                    label: Text(l10n.openAppSettings),
                   ),
                 ),
               ],
@@ -226,16 +227,29 @@ class _ProfileScreenState extends State<ProfileScreen>
                 index: 6,
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, size: 16, color: colors.textTertiary),
+                    Icon(Icons.info_outline,
+                        size: 16, color: colors.textTertiary),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
-                        'This device stays signed in. Only an administrator can release it from your account.',
+                        l10n.deviceSignInInfo,
                         style: context.text.bodySmall
                             ?.copyWith(color: colors.textTertiary),
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.cardGap),
+              FadeSlideIn(
+                index: 7,
+                child: AppCard(
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(l10n.language)),
+                      const LanguageSwitcher(),
+                    ],
+                  ),
                 ),
               ),
             ],

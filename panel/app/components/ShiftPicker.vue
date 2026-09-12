@@ -10,7 +10,8 @@ interface PickableShift {
 defineProps<{ shifts: PickableShift[]; loading?: boolean }>()
 const selected = defineModel<number[]>({ default: () => [] })
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const { t, tm } = useI18n()
+const dayLabels = computed(() => tm('shifts.days') as string[])
 
 function formatTime(value: string) {
   return value.slice(0, 5)
@@ -33,7 +34,7 @@ function toggle(id: number) {
         v-for="shift in shifts"
         :key="shift.id"
         type="button"
-        class="flex items-center gap-3 rounded-md border p-3 text-left transition-colors duration-fast ease-soft"
+        class="flex items-center gap-3 rounded-md border p-3 text-start transition-colors duration-fast ease-soft"
         :class="selected.includes(shift.id) ? 'border-primary bg-primary-soft' : 'border-hairline bg-surface hover:border-primary/60'"
         @click="toggle(shift.id)"
       >
@@ -49,11 +50,11 @@ function toggle(id: number) {
             {{ formatTime(shift.start_time) }} – {{ formatTime(shift.end_time) }}
           </span>
           <span class="mt-0.5 block text-[11px] text-ink-faint">
-            {{ shift.days_of_week.map((day) => DAY_LABELS[day]).join(' · ') }}
+            {{ shift.days_of_week.map((day) => dayLabels[day]).join(' · ') }}
           </span>
         </span>
       </button>
     </div>
-    <EmptyState v-else icon="calendar" message="No shifts exist. Create one first." />
+    <EmptyState v-else icon="calendar" :message="t('shifts.noneExist')" />
   </div>
 </template>

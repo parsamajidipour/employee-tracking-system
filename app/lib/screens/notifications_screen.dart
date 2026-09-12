@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_notification.dart';
+import '../l10n/l10n.dart';
 import '../models/inspection_case.dart';
 import '../services/api_exception.dart';
 import '../state/auth_controller.dart';
@@ -74,7 +75,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       setState(() => _error = e.message);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _error = 'Could not reach the server.');
+      setState(() => _error = context.l10n.notificationsServerError);
     }
   }
 
@@ -104,7 +105,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(context.l10n.notifications),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.screen),
@@ -186,12 +187,12 @@ class _PendingSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$pending case${pending == 1 ? '' : 's'} awaiting your response',
+                  context.l10n.pendingResponse(pending),
                   style: context.text.titleMedium,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Open the Inspections tab to accept or reject them.',
+                  context.l10n.pendingResponseHint,
                   style: context.text.bodySmall,
                 ),
               ],
@@ -236,7 +237,7 @@ class _NotificationTile extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        notification.title,
+                        notification.localizedTitle(context.l10n),
                         style: context.text.titleMedium,
                         maxLines: 2,
                       ),
@@ -260,7 +261,7 @@ class _NotificationTile extends StatelessWidget {
                 ],
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  formatRelative(notification.createdAt),
+                  formatRelative(notification.createdAt, context.l10n),
                   style: context.text.labelSmall
                       ?.copyWith(color: colors.textTertiary),
                 ),
@@ -268,7 +269,12 @@ class _NotificationTile extends StatelessWidget {
             ),
           ),
           if (onTap != null)
-            Icon(Icons.chevron_right, color: colors.textTertiary),
+            Icon(
+              Directionality.of(context) == TextDirection.rtl
+                  ? Icons.chevron_left
+                  : Icons.chevron_right,
+              color: colors.textTertiary,
+            ),
         ],
       ),
     );
@@ -327,10 +333,10 @@ class _EmptyInbox extends StatelessWidget {
               background: colors.surfaceMuted,
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text('You are all caught up', style: context.text.titleMedium),
+            Text(context.l10n.allCaughtUp, style: context.text.titleMedium),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'New assignments and updates from the office appear here as they happen.',
+              context.l10n.emptyNotifications,
               style: context.text.bodyMedium,
               textAlign: TextAlign.center,
             ),

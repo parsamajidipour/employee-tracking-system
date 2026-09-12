@@ -24,7 +24,7 @@ class StoreAppReleaseRequest extends FormRequest
                 'max:204800',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if (strtolower($value->getClientOriginalExtension()) !== 'apk') {
-                        $fail('The apk field must be an .apk file.');
+                        $fail(__('messages.apk_invalid'));
                     }
                 },
             ],

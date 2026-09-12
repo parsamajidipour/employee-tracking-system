@@ -1,0 +1,40 @@
+<?php
+
+return [
+    'forbidden' => 'You do not have permission to access this resource.',
+    'location_unavailable' => 'Location lookup is temporarily unavailable.',
+    'location_busy' => 'Location lookup is temporarily busy. Try again in a moment.',
+    'photo_missing' => 'Photo file is missing.',
+    'photo_before_start' => 'Start the inspection before adding site photos.',
+    'release_unavailable' => 'No release available.',
+    'release_missing' => 'Release file is missing.',
+    'apk_invalid' => 'The apk field must be an .apk file.',
+    'date_in_past' => 'The :attribute cannot be in the past.',
+    'employee_inactive_schedule' => 'This employee is deactivated — reactivate them before changing their schedule.',
+    'employee_no_device' => 'This employee has no active device to revoke.',
+    'employee_open_cases' => ':name still has :count open case — reassign or cancel it first.|:name still has :count open cases — reassign or cancel them first.',
+    'employee_not_assignable' => 'That employee is deactivated or no longer on the roster — pick an active surveyor.',
+    'device_login' => [
+        'invalid_credentials' => 'These credentials do not match our records.',
+        'inactive' => 'This account is not active.',
+        'device_conflict' => 'A device is already registered for this account. Revoke it first.',
+    ],
+    'case' => [
+        'overdue_invalid' => 'Only a scheduled case past its planned time can become overdue.',
+        'photo_required' => 'Add at least one GPS-verified site photo before completing the inspection.',
+        'not_assigned' => 'This case is not assigned to this employee.',
+        'employee_inactive' => ':name is deactivated and cannot be assigned a case.',
+        'not_assignable' => 'Only a pending or rejected case can be assigned or reassigned.',
+        'awaiting_response' => 'This assignment is awaiting the surveyor response and cannot be replaced yet.',
+        'transition_invalid' => 'Cannot move case from :from to :to.',
+        'status' => [
+            'pending' => 'pending',
+            'accepted' => 'scheduled',
+            'overdue' => 'overdue',
+            'in_progress' => 'in progress',
+            'completed' => 'completed',
+            'rejected' => 'rejected',
+            'cancelled' => 'cancelled',
+        ],
+    ],
+];

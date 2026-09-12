@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(
+const props = withDefaults(
   defineProps<{
     headers: string[]
     loading?: boolean
@@ -9,8 +9,9 @@ withDefaults(
     embedded?: boolean
     skeletonRows?: number
   }>(),
-  { emptyMessage: 'Nothing here yet.', embedded: false, skeletonRows: 6 },
+  { embedded: false, skeletonRows: 6 },
 )
+const { t } = useI18n()
 </script>
 
 <template>
@@ -23,7 +24,7 @@ withDefaults(
     <EmptyState icon="alert-triangle" :message="error" tone="danger" />
   </div>
   <div v-else-if="isEmpty" :class="embedded ? 'px-5 py-12' : 'surface-flat px-5 py-12'">
-    <EmptyState icon="inbox" :message="emptyMessage">
+    <EmptyState icon="inbox" :message="props.emptyMessage ?? t('common.nothingHere')">
       <template v-if="$slots.empty" #action><slot name="empty" /></template>
     </EmptyState>
   </div>
@@ -32,13 +33,13 @@ withDefaults(
       <slot name="cards" />
     </div>
     <div class="hidden overflow-x-auto xl:block" :class="embedded ? '' : 'surface-flat'">
-      <table class="w-full text-left text-[14px]">
+      <table class="w-full text-start text-[14px]">
         <thead class="sticky top-0 z-10 bg-surface-sunken">
           <tr class="border-b border-hairline">
             <th
               v-for="header in headers"
               :key="header"
-              class="eyebrow whitespace-nowrap px-4 py-2.5 text-left font-semibold sm:px-5"
+              class="eyebrow whitespace-nowrap px-4 py-2.5 text-start font-semibold sm:px-5"
             >
               {{ header }}
             </th>

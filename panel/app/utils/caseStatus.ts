@@ -2,16 +2,6 @@ import type { CasePriority, CaseStatus, InspectionCase } from '~/composables/use
 
 type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger'
 
-const STATUS_LABEL: Record<CaseStatus, string> = {
-  pending: 'Unassigned / Awaiting Acceptance',
-  accepted: 'Scheduled',
-  overdue: 'Overdue',
-  in_progress: 'In progress',
-  completed: 'Completed',
-  rejected: 'Rejected',
-  cancelled: 'Cancelled',
-}
-
 const STATUS_VARIANT: Record<CaseStatus, BadgeVariant> = {
   pending: 'neutral',
   accepted: 'neutral',
@@ -22,28 +12,14 @@ const STATUS_VARIANT: Record<CaseStatus, BadgeVariant> = {
   cancelled: 'neutral',
 }
 
-const PRIORITY_LABEL: Record<CasePriority, string> = {
-  normal: 'Normal',
-  high: 'High',
-  urgent: 'Urgent',
-}
-
 const PRIORITY_VARIANT: Record<CasePriority, BadgeVariant> = {
   normal: 'neutral',
   high: 'warning',
   urgent: 'danger',
 }
 
-export function caseStatusLabel(status: CaseStatus): string {
-  return STATUS_LABEL[status]
-}
-
 export function caseStatusVariant(status: CaseStatus): BadgeVariant {
   return STATUS_VARIANT[status]
-}
-
-export function casePriorityLabel(priority: CasePriority): string {
-  return PRIORITY_LABEL[priority]
 }
 
 export function casePriorityVariant(priority: CasePriority): BadgeVariant {
@@ -65,23 +41,11 @@ export type AssignmentDisplayStatus =
 
 export interface AssignmentDisplay {
   status: AssignmentDisplayStatus
-  label: string
   variant: BadgeVariant
   isOverdue: boolean
 }
 
 type CaseForAssignmentDisplay = Pick<InspectionCase, 'status' | 'assigned_to' | 'planned_at' | 'started_at'>
-
-const ASSIGNMENT_LABEL: Record<AssignmentDisplayStatus, string> = {
-  unassigned: 'Unassigned',
-  awaiting_acceptance: 'Awaiting Acceptance',
-  scheduled: 'Scheduled',
-  in_progress: 'In Progress',
-  completed: 'Completed',
-  rejected: 'Rejected',
-  cancelled: 'Cancelled',
-  overdue: 'Overdue',
-}
 
 const ASSIGNMENT_VARIANT: Record<AssignmentDisplayStatus, BadgeVariant> = {
   unassigned: 'neutral',
@@ -98,7 +62,6 @@ export function caseAssignmentDisplay(item: CaseForAssignmentDisplay): Assignmen
   const status = deriveAssignmentStatus(item)
   return {
     status,
-    label: ASSIGNMENT_LABEL[status],
     variant: ASSIGNMENT_VARIANT[status],
     isOverdue: status === 'overdue',
   }

@@ -1,7 +1,8 @@
+import '../l10n/app_localizations.dart';
+
 class AppNotification {
   final String id;
   final String type;
-  final String title;
   final String message;
   final int? caseId;
   final String? referenceNo;
@@ -14,7 +15,6 @@ class AppNotification {
   AppNotification({
     required this.id,
     required this.type,
-    required this.title,
     required this.message,
     required this.caseId,
     required this.referenceNo,
@@ -31,7 +31,6 @@ class AppNotification {
     return AppNotification(
       id: json['id'].toString(),
       type: type,
-      title: titleFor(type),
       message: (json['message'] as String?) ?? '',
       caseId: (json['case_id'] as num?)?.toInt(),
       referenceNo: json['reference_no'] as String?,
@@ -50,14 +49,14 @@ class AppNotification {
         if (versionCode != null) 'version_code': versionCode,
       };
 
-  static String titleFor(String type) => switch (type) {
-        'case.assigned' => 'New case assigned',
-        'case.created' => 'New case created',
-        'case.status-changed' => 'Case status changed',
-        'schedule.changed' => 'Your schedule changed',
-        'device.revoked' => 'Device access revoked',
-        'app-release.published' => 'App update available',
-        _ => 'Update from the office',
+  String localizedTitle(AppLocalizations l10n) => switch (type) {
+        'case.assigned' => l10n.newCaseAssigned,
+        'case.created' => l10n.newCaseCreated,
+        'case.status-changed' => l10n.caseStatusChanged,
+        'schedule.changed' => l10n.scheduleChanged,
+        'device.revoked' => l10n.deviceAccessRevoked,
+        'app-release.published' => l10n.appUpdateAvailable,
+        _ => l10n.officeUpdate,
       };
 }
 

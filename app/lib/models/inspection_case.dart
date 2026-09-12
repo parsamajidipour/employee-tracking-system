@@ -122,6 +122,9 @@ class InspectionCase {
             ?.map((e) => CasePhoto.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
+
+  bool get hasPropertyAddress =>
+      propertyAddress != 'Property address not provided';
 }
 
 class CaseUnseenCount {

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:app/l10n/app_localizations.dart';
 import 'package:app/models/permission_snapshot.dart';
 import 'package:app/screens/login_screen.dart';
 import 'package:app/screens/permission_onboarding_screen.dart';
 import 'package:app/services/permission_service.dart';
 import 'package:app/state/auth_controller.dart';
+import 'package:app/state/locale_controller.dart';
 import 'package:app/theme/app_theme.dart';
 
 class _FakePermissionService extends PermissionService {
@@ -49,6 +52,48 @@ class _FakePermissionService extends PermissionService {
 }
 
 void main() {
+  testWidgets('locale persists and switches direction without a restart',
+      (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final controller = LocaleController();
+    await controller.initialize();
+    expect(controller.locale, const Locale('en'));
+
+    await controller.setLocale(const Locale('ar'));
+    final restored = LocaleController();
+    await restored.initialize();
+    expect(restored.locale, const Locale('ar'));
+
+    await tester.pumpWidget(MaterialApp(
+      locale: restored.locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => Text(
+          Directionality.of(context).name,
+          textDirection: Directionality.of(context),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('rtl'), findsOneWidget);
+
+    await restored.setLocale(const Locale('en'));
+    await tester.pumpWidget(MaterialApp(
+      locale: restored.locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => Text(
+          Directionality.of(context).name,
+          textDirection: Directionality.of(context),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('ltr'), findsOneWidget);
+  });
+
   testWidgets('login screen shows identifier and password fields',
       (tester) async {
     final authController = AuthController();

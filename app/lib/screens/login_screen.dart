@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/api_exception.dart';
+import '../l10n/l10n.dart';
 import '../state/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/fade_slide_in.dart';
+import '../widgets/language_switcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.authController});
@@ -26,13 +28,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _submitting = false;
   bool _obscurePassword = true;
   String? _errorMessage;
-  String? _revokedMessage;
+  bool _deviceWasRevoked = false;
 
   @override
   void initState() {
     super.initState();
 
-    _revokedMessage = widget.authController.revokedMessage;
+    _deviceWasRevoked = widget.authController.deviceWasRevoked;
     widget.authController.clearRevokedMessage();
   }
 
@@ -68,8 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _errorMessage =
-            'Could not reach the server. Check your connection.');
+        setState(() => _errorMessage = context.l10n.serverUnreachable);
       }
     } finally {
       if (mounted) {
@@ -86,12 +87,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Password copied.')));
+      ..showSnackBar(SnackBar(content: Text(context.l10n.passwordCopied)));
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
 
     return Scaffold(
       body: SafeArea(
@@ -113,6 +115,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: LanguageSwitcher(),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
                         const FadeSlideIn(
                           child: Padding(
                             padding: EdgeInsets.only(bottom: AppSpacing.xxxl),
@@ -127,17 +134,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Text('Welcome back',
+                                  Text(l10n.welcomeBack,
                                       style: context.text.titleMedium),
                                   const SizedBox(height: AppSpacing.xs),
                                   Text(
-                                    'Use the email or phone number your supervisor gave you.',
+                                    l10n.loginInstruction,
                                     style: context.text.bodyMedium,
                                   ),
                                   const SizedBox(height: AppSpacing.xl),
-                                  if (_revokedMessage != null) ...[
+                                  if (_deviceWasRevoked) ...[
                                     _MessageBanner(
-                                      message: _revokedMessage!,
+                                      message:
+                                          l10n.deviceDeactivatedContactAdmin,
                                       color: colors.warning,
                                       icon: Icons.phonelink_erase_outlined,
                                     ),
@@ -153,10 +161,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ],
                                   TextFormField(
                                     controller: _identifierController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Email or phone number',
-                                      hintText: 'e.g. jane@example.com',
-                                      prefixIcon: Icon(Icons.person_outline),
+                                    decoration: InputDecoration(
+                                      labelText: l10n.emailOrPhone,
+                                      hintText: l10n.emailExample,
+                                      prefixIcon:
+                                          const Icon(Icons.person_outline),
                                     ),
                                     keyboardType: TextInputType.emailAddress,
                                     textInputAction: TextInputAction.next,
@@ -168,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         _passwordFocus.requestFocus(),
                                     validator: (value) =>
                                         (value == null || value.trim().isEmpty)
-                                            ? 'Enter your email or phone number'
+                                            ? l10n.enterEmailOrPhone
                                             : null,
                                   ),
                                   const SizedBox(height: AppSpacing.md),
@@ -176,8 +185,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     controller: _passwordController,
                                     focusNode: _passwordFocus,
                                     decoration: InputDecoration(
-                                      labelText: 'Password',
-                                      hintText: 'Enter your password',
+                                      labelText: l10n.password,
+                                      hintText: l10n.enterPassword,
                                       prefixIcon:
                                           const Icon(Icons.lock_outline),
                                       suffixIcon: Row(
@@ -195,14 +204,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                                       .visibility_off_outlined,
                                             ),
                                             tooltip: _obscurePassword
-                                                ? 'Show password'
-                                                : 'Hide password',
+                                                ? l10n.showPassword
+                                                : l10n.hidePassword,
                                           ),
                                           IconButton(
                                             onPressed: _copyPassword,
                                             icon:
                                                 const Icon(Icons.copy_outlined),
-                                            tooltip: 'Copy password',
+                                            tooltip: l10n.copyPassword,
                                           ),
                                         ],
                                       ),
@@ -216,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     onFieldSubmitted: (_) => _submit(),
                                     validator: (value) =>
                                         (value == null || value.isEmpty)
-                                            ? 'Enter your password'
+                                            ? l10n.enterPassword
                                             : null,
                                   ),
                                   const SizedBox(height: AppSpacing.xl),
@@ -235,9 +244,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 color: Colors.white,
                                               ),
                                             )
-                                          : const Text(
-                                              'Sign in',
-                                              key: ValueKey('label'),
+                                          : Text(
+                                              l10n.signIn,
+                                              key: const ValueKey('label'),
                                             ),
                                     ),
                                   ),
@@ -250,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         FadeSlideIn(
                           index: 2,
                           child: Text(
-                            'Location is only recorded during your working hours.',
+                            l10n.locationWorkingHoursOnly,
                             textAlign: TextAlign.center,
                             style: context.text.bodySmall,
                           ),

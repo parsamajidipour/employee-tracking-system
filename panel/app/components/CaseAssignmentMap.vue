@@ -2,7 +2,9 @@
 import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import type { NearestSurveyor } from '~/composables/useCases'
-import { formatDistance } from '~/utils/formatDistance'
+
+const { t, locale } = useI18n()
+const { number, distance: formatDistance } = useLocalizedFormat()
 
 const props = defineProps<{
   caseLat: number
@@ -48,12 +50,20 @@ function renderMarkers(): void {
   clearMarkers()
 
   const bounds = new LngLatBounds([props.caseLng, props.caseLat], [props.caseLng, props.caseLat])
-  const caseElement = markerButton('#111827', 'Property location', true)
+  const caseElement = markerButton('#111827', t('cases.assignmentMap.propertyLocation'), true)
   caseElement.style.borderRadius = '9px 9px 9px 2px'
   caseElement.style.transform = 'rotate(-45deg)'
+  const casePopup = document.createElement('div')
+  casePopup.dir = locale.value === 'ar' ? 'rtl' : 'ltr'
+  const caseName = document.createElement('strong')
+  caseName.textContent = t('cases.assignmentMap.caseLocation')
+  const caseDetail = document.createElement('div')
+  caseDetail.style.cssText = 'font-size:12px;color:#71717a'
+  caseDetail.textContent = t('cases.assignmentMap.propertyToInspect')
+  casePopup.append(caseName, caseDetail)
   const caseMarker = new Marker({ element: caseElement, anchor: 'bottom' })
     .setLngLat([props.caseLng, props.caseLat])
-    .setPopup(new Popup({ offset: 18 }).setHTML('<strong>Case location</strong><br><span style="font-size:12px;color:#71717a">Property to inspect</span>'))
+    .setPopup(new Popup({ offset: 18 }).setDOMContent(casePopup))
     .addTo(map)
   markers.push(caseMarker)
 
@@ -61,20 +71,21 @@ function renderMarkers(): void {
     const selected = candidate.employee_id === props.selectedId
     const element = markerButton(
       selected ? '#4f46e5' : candidate.connection_status === 'online' ? '#16a34a' : '#9ca3af',
-      `${candidate.name}, ${formatDistance(candidate.distance_m)} away`,
+      `${candidate.name}, ${t('cases.assignmentMap.away', { distance: formatDistance(candidate.distance_m) })}`,
       selected,
     )
 
     const popupContent = document.createElement('div')
+    popupContent.dir = locale.value === 'ar' ? 'rtl' : 'ltr'
     popupContent.style.minWidth = '176px'
     const name = document.createElement('strong')
     name.textContent = candidate.name
     const detail = document.createElement('p')
-    detail.textContent = `${formatDistance(candidate.distance_m)} away · ${candidate.open_case_count} open case${candidate.open_case_count === 1 ? '' : 's'}`
+    detail.textContent = `${t('cases.assignmentMap.away', { distance: formatDistance(candidate.distance_m) })} · ${t('cases.assignmentMap.openCases', { count: number(candidate.open_case_count) })}`
     Object.assign(detail.style, { margin: '4px 0 10px', fontSize: '12px', color: '#71717a' })
     const assign = document.createElement('button')
     assign.type = 'button'
-    assign.textContent = `Assign to ${candidate.name.split(' ')[0]}`
+    assign.textContent = t('cases.assignmentMap.assignTo', { name: candidate.name.split(' ')[0] })
     Object.assign(assign.style, {
       width: '100%',
       minHeight: '36px',
@@ -127,7 +138,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.caseLat, props.caseLng, props.candidates, props.selectedId],
+  () => [props.caseLat, props.caseLng, props.candidates, props.selectedId, locale.value],
   () => renderMarkers(),
   { deep: true },
 )
@@ -141,9 +152,9 @@ onUnmounted(() => {
 <template>
   <div class="relative h-full w-full overflow-hidden bg-surface-sunken">
     <div ref="mapContainer" class="h-full w-full" />
-    <div class="surface pointer-events-none absolute left-2.5 top-2.5 flex items-center gap-3 px-2.5 py-2 text-[10.5px] text-ink-soft">
-      <span class="flex items-center gap-1"><i class="h-2 w-2 rounded-full bg-state-success" />Online</span>
-      <span class="flex items-center gap-1"><i class="h-2 w-2 rounded-full bg-state-neutral" />Last known</span>
+    <div class="surface pointer-events-none absolute start-2.5 top-2.5 flex items-center gap-3 px-2.5 py-2 text-[10.5px] text-ink-soft">
+      <span class="flex items-center gap-1"><i class="h-2 w-2 rounded-full bg-state-success" />{{ t('cases.assignmentMap.online') }}</span>
+      <span class="flex items-center gap-1"><i class="h-2 w-2 rounded-full bg-state-neutral" />{{ t('cases.assignmentMap.lastKnown') }}</span>
     </div>
   </div>
 </template>

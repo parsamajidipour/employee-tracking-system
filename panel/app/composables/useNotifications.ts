@@ -14,6 +14,7 @@ interface InboxResponse {
 }
 
 export function useNotifications() {
+  const { t } = useI18n()
   const items = useState<InboxNotification[]>('notifications', () => [])
   const unreadCount = useState<number>('notifications-unread', () => 0)
   const loading = useState<boolean>('notifications-loading', () => false)
@@ -28,7 +29,7 @@ export function useNotifications() {
       unreadCount.value = page.unread_count
       error.value = null
     } catch {
-      error.value = 'Could not load notifications.'
+      error.value = t('notifications.loadFailed')
     } finally {
       loading.value = false
     }
@@ -71,16 +72,8 @@ export function useNotifications() {
     if (!echo) return
 
     try {
-      echo.private(`App.Models.User.${userId}`).notification((payload: Record<string, unknown>) => {
-        prepend({
-          id: String(payload.id ?? crypto.randomUUID()),
-          type: String(payload.type ?? 'notification'),
-          message: (payload.message as string | undefined) ?? null,
-          case_id: (payload.case_id as number | undefined) ?? null,
-          reference_no: (payload.reference_no as string | undefined) ?? null,
-          read_at: null,
-          created_at: new Date().toISOString(),
-        })
+      echo.private(`App.Models.User.${userId}`).notification(() => {
+        void load()
       })
       subscribed.value = true
     } catch {

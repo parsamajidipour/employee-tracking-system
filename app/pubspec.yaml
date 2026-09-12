@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   cupertino_icons: ^1.0.8
   flutter_secure_storage: ^10.3.1
@@ -48,6 +51,7 @@ dependency_overrides:
 
 flutter:
   uses-material-design: true
+  generate: true
 
   assets:
     - assets/brand/

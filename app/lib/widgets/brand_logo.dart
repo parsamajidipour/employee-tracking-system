@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 
 class BrandLogo extends StatelessWidget {
@@ -14,7 +15,7 @@ class BrandLogo extends StatelessWidget {
       width: size,
       height: size,
       filterQuality: FilterQuality.medium,
-      semanticLabel: 'Smart Inspection',
+      semanticLabel: context.l10n.appName,
     );
   }
 }
@@ -31,10 +32,10 @@ class BrandWordmark extends StatelessWidget {
       children: [
         BrandLogo(size: logoSize),
         const SizedBox(height: AppSpacing.md),
-        Text('Smart Inspection', style: context.text.titleLarge),
+        Text(context.l10n.appName, style: context.text.titleLarge),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Working hours tracking',
+          context.l10n.workingHoursTracking,
           style: context.text.bodyMedium,
         ),
       ],

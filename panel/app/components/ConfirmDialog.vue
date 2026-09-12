@@ -1,6 +1,7 @@
 <script setup lang="ts">
 
 const state = useConfirmState()
+const { t } = useI18n()
 
 function respond(value: boolean) {
   state.open = false
@@ -13,8 +14,8 @@ function respond(value: boolean) {
   <Modal v-model="state.open" :title="state.title">
     <p>{{ state.message }}</p>
     <template #footer>
-      <Button variant="secondary" @click="respond(false)">Cancel</Button>
-      <Button :variant="state.variant === 'danger' ? 'danger' : 'primary'" @click="respond(true)">Confirm</Button>
+      <Button variant="secondary" @click="respond(false)">{{ t('common.cancel') }}</Button>
+      <Button :variant="state.variant === 'danger' ? 'danger' : 'primary'" @click="respond(true)">{{ t('common.confirm') }}</Button>
     </template>
   </Modal>
 </template>

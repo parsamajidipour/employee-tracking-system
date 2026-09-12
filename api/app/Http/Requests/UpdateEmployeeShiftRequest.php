@@ -21,7 +21,7 @@ class UpdateEmployeeShiftRequest extends FormRequest
             'template_id' => ['sometimes', 'exists:shift_templates,id'],
             'effective_from' => ['sometimes', 'date', function ($attribute, $value, $fail) {
                 if (CarbonImmutable::parse($value)->lessThan(CarbonImmutable::now())) {
-                    $fail('The :attribute cannot be in the past.');
+                    $fail(__('messages.date_in_past', ['attribute' => __('validation.attributes.'.$attribute)]));
                 }
             }],
             'effective_to' => ['sometimes', 'nullable', 'date'],

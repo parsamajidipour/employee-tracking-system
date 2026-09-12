@@ -2,7 +2,9 @@
 import { GeoJSONSource, LngLatBounds, Map as MapLibreMap, Marker as MapLibreMarker, Popup as MapLibrePopup, setWorkerUrl } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { shiftColor } from '~/utils/mapMarker'
-import { formatDistance } from '~/utils/formatDistance'
+
+const { t, locale } = useI18n()
+const { number, distance: formatDistance } = useLocalizedFormat()
 
 interface TrailPoint {
   lng: number
@@ -34,14 +36,6 @@ interface Trail {
   interruptions: TrailInterruption[]
 }
 
-const INTERRUPTION_LABEL: Record<InterruptionReason, string> = {
-  gps_disabled: 'GPS unavailable',
-  network_disabled: 'No network',
-  flight_mode: 'Flight mode',
-  permission_revoked: 'Permission revoked',
-  service_interrupted: 'Tracking service interrupted',
-}
-
 const UNASSIGNED_COLOR = '#8b8b98'
 
 function todayLocalDate(): string {
@@ -68,10 +62,10 @@ let hoverPopup: MapLibrePopup | undefined
 let terminalMarkers: MapLibreMarker[] = []
 
 function timeLabel(value: string): string {
-  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return new Intl.DateTimeFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(value))
 }
 
-function terminalElement(kind: 'S' | 'E', color: string): HTMLDivElement {
+function terminalElement(kind: string, color: string): HTMLDivElement {
   const el = document.createElement('div')
   el.className = 'flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-white text-[11px] font-extrabold shadow-raised'
   el.style.backgroundColor = color
@@ -214,12 +208,12 @@ function renderTrail() {
     const first = groupPoints[0]!
     const last = groupPoints.at(-1)!
 
-    const start = new MapLibreMarker({ element: terminalElement('S', '#22c55e') }).setLngLat([first.lng, first.lat]).addTo(map)
-    attachMarkerHoverTooltip(start, `<div class="text-xs font-medium">Start · ${timeLabel(first.recorded_at)}</div>`)
+    const start = new MapLibreMarker({ element: terminalElement(t('employees.histories.startShort'), '#22c55e') }).setLngLat([first.lng, first.lat]).addTo(map)
+    attachMarkerHoverTooltip(start, `<div dir="${locale.value === 'ar' ? 'rtl' : 'ltr'}" class="text-xs font-medium">${t('employees.histories.start')} · ${timeLabel(first.recorded_at)}</div>`)
     terminalMarkers.push(start)
 
-    const end = new MapLibreMarker({ element: terminalElement('E', '#f43f5e') }).setLngLat([last.lng, last.lat]).addTo(map)
-    attachMarkerHoverTooltip(end, `<div class="text-xs font-medium">End · ${timeLabel(last.recorded_at)}</div>`)
+    const end = new MapLibreMarker({ element: terminalElement(t('employees.histories.endShort'), '#f43f5e') }).setLngLat([last.lng, last.lat]).addTo(map)
+    attachMarkerHoverTooltip(end, `<div dir="${locale.value === 'ar' ? 'rtl' : 'ltr'}" class="text-xs font-medium">${t('employees.histories.end')} · ${timeLabel(last.recorded_at)}</div>`)
     terminalMarkers.push(end)
 
     for (const point of groupPoints) bounds.extend([point.lng, point.lat])
@@ -245,7 +239,7 @@ async function loadTrail() {
     error.value = null
     renderTrail()
   } catch {
-    error.value = 'Could not load activity for this day.'
+    error.value = t('employees.histories.loadFailed')
   } finally {
     trailLoading.value = false
   }
@@ -259,10 +253,10 @@ const selectedDistanceM = computed(() => {
 const interruptions = computed(() => trail.value?.interruptions ?? [])
 
 function interruptionLabel(reason: InterruptionReason): string {
-  return INTERRUPTION_LABEL[reason]
+  return t(`employees.histories.reasons.${reason}`)
 }
 
-watch(selectedShift, renderTrail)
+watch([selectedShift, locale], renderTrail)
 
 onMounted(() => {
   loadEmployees()
@@ -293,7 +287,7 @@ onMounted(() => {
     ],
   })
   map.on('error', (e) => {
-    if (!mapError.value) mapError.value = 'The map could not be loaded.'
+    if (!mapError.value) mapError.value = t('employees.histories.mapFailed')
     console.error('MapLibre error', e.error)
   })
   map.on('load', () => {
@@ -332,15 +326,15 @@ onUnmounted(() => map?.remove())
 </script>
 
 <template>
-  <AppShell :title="`${employee?.name ?? 'Employee'} histories`" subtitle="Daily routes by shift" :back-to="`/employees/${employeeId}`" full-bleed>
+  <AppShell :title="t('employees.histories.title', { name: employee?.name ?? t('employees.histories.employee') })" :subtitle="t('employees.histories.subtitle')" :back-to="`/employees/${employeeId}`" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="trailLoading" aria-label="Refresh route history" @click="loadTrail">
+      <Button variant="secondary" size="sm" :disabled="trailLoading" :aria-label="t('employees.histories.refresh')" @click="loadTrail">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="trailLoading" />
-        <span class="hidden sm:inline">Refresh</span>
+        <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
-      <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`" aria-label="Employee shifts">
+      <Button variant="secondary" size="sm" :to="`/employees/${employeeId}`" :aria-label="t('employees.histories.employeeShifts')">
         <Icon name="calendar" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">Employee shifts</span>
+        <span class="hidden sm:inline">{{ t('employees.histories.employeeShifts') }}</span>
       </Button>
     </template>
 
@@ -349,7 +343,7 @@ onUnmounted(() => map?.remove())
 
       <form class="surface-flat mb-3 flex flex-none flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-4 sm:p-4" @submit.prevent>
         <div class="w-full min-[360px]:w-auto">
-          <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">Date</label>
+          <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">{{ t('common.date') }}</label>
           <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-full min-[360px]:w-48" />
         </div>
 
@@ -357,7 +351,7 @@ onUnmounted(() => map?.remove())
           v-if="trail && trail.shifts.length > 0"
           class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap"
           role="radiogroup"
-          aria-label="Shift"
+          :aria-label="t('employees.histories.shift')"
         >
           <label
             v-for="shift in trail.shifts"
@@ -372,7 +366,7 @@ onUnmounted(() => map?.remove())
           </label>
         </div>
 
-        <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">Loading…</span>
+        <span v-if="trailLoading" class="pb-3 text-[12.5px] text-ink-faint">{{ t('common.loading') }}</span>
       </form>
 
       <section class="surface-flat relative min-h-[300px] flex-1 overflow-hidden sm:min-h-[420px]">
@@ -380,7 +374,7 @@ onUnmounted(() => map?.remove())
 
         <div
           v-if="trail && trail.points.length > 0"
-          class="surface-dark absolute left-3 top-3 z-10 flex gap-3 px-3 py-2"
+          class="surface-dark absolute start-3 top-3 z-10 flex gap-3 px-3 py-2"
         >
           <div class="flex items-center gap-1.5">
             <Icon name="route" class="h-3.5 w-3.5 text-primary" />
@@ -389,7 +383,7 @@ onUnmounted(() => map?.remove())
           <div class="h-full w-px bg-hairline-dark" />
           <div class="flex items-center gap-1.5">
             <Icon name="map-pin" class="h-3.5 w-3.5 text-primary" />
-            <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ trail.points_count }} pts</span>
+            <span class="tabular text-[12.5px] font-semibold text-ink-dark">{{ t('employees.histories.points', { count: number(trail.points_count) }) }}</span>
           </div>
         </div>
 
@@ -400,17 +394,17 @@ onUnmounted(() => map?.remove())
           v-if="!trailLoading && trail && trail.points.length === 0"
           class="surface absolute inset-x-4 top-4 z-10 px-4 py-3"
         >
-          <EmptyState icon="route" message="No tracked activity for this day." />
+          <EmptyState icon="route" :message="t('employees.histories.empty')" />
         </div>
       </section>
 
       <section v-if="interruptions.length > 0" class="surface-flat mt-4 flex-none p-4">
-        <h2 class="mb-2.5">Tracking interruptions</h2>
+        <h2 class="mb-2.5">{{ t('employees.histories.interruptions') }}</h2>
         <ul class="space-y-2">
           <li v-for="(interruption, index) in interruptions" :key="index" class="flex items-center gap-2.5 text-[13px]">
             <Badge variant="warning">{{ interruptionLabel(interruption.reason) }}</Badge>
             <span class="tabular text-ink-soft">
-              {{ timeLabel(interruption.started_at) }}–{{ interruption.ended_at ? timeLabel(interruption.ended_at) : 'ongoing' }}
+              {{ timeLabel(interruption.started_at) }}–{{ interruption.ended_at ? timeLabel(interruption.ended_at) : t('employees.histories.ongoing') }}
             </span>
           </li>
         </ul>

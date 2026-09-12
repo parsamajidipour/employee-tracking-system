@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../l10n/l10n.dart';
 import '../models/app_update_info.dart';
 import '../services/app_update_service.dart';
 import '../theme/app_theme.dart';
@@ -123,9 +124,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
             children: [
               const IconTile(icon: Icons.system_update_alt_outlined),
               const SizedBox(height: AppSpacing.lg),
-              Text('Update available', style: context.text.titleLarge),
+              Text(context.l10n.updateAvailable,
+                  style: context.text.titleLarge),
               const SizedBox(height: AppSpacing.xs),
-              Text('Version ${info.versionName}',
+              Text(context.l10n.versionLabel(info.versionName),
                   style: context.text.bodyMedium),
               if (notes != null && notes.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
@@ -134,8 +136,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
               if (_returnedFromInstaller && _phase == _DownloadPhase.idle) ...[
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  "This update is required — the app can't be used until it's "
-                  'installed. Tap Update and complete the install this time.',
+                  context.l10n.mandatoryInstallReminder,
                   style:
                       context.text.bodySmall?.copyWith(color: colors.warning),
                 ),
@@ -143,8 +144,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
               if (_phase == _DownloadPhase.error) ...[
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  'Could not download the update. Check your connection (and that '
-                  'installing from this app is allowed in Settings) and try again.',
+                  context.l10n.updateDownloadFailed,
                   style: context.text.bodySmall?.copyWith(color: colors.danger),
                 ),
               ],
@@ -188,18 +188,20 @@ class _UpdateDialogState extends State<UpdateDialog> {
                           const SizedBox(width: AppSpacing.sm),
                           Text(
                             installing
-                                ? 'Installing…'
-                                : 'Downloading $percent%',
+                                ? context.l10n.installing
+                                : context.l10n.downloadingPercent(percent),
                           ),
                         ],
                       )
-                    : Text(_phase == _DownloadPhase.error ? 'Retry' : 'Update'),
+                    : Text(_phase == _DownloadPhase.error
+                        ? context.l10n.retry
+                        : context.l10n.update),
               ),
               if (!info.isMandatory) ...[
                 const SizedBox(height: AppSpacing.sm),
                 TextButton(
                   onPressed: busy ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Later'),
+                  child: Text(context.l10n.later),
                 ),
               ],
             ],

@@ -2,6 +2,8 @@
 const route = useRoute()
 const employeeId = Number(route.params.id)
 const toast = useToast()
+const { t } = useI18n()
+const { number } = useLocalizedFormat()
 const selectedIds = ref<number[]>([])
 const saving = ref(false)
 
@@ -11,7 +13,7 @@ const { data: templatesData, loading: templatesLoading, error: templatesError, l
 const employee = computed(() => employeesData.value?.find((item) => item.id === employeeId) ?? null)
 const templates = computed(() => templatesData.value ?? [])
 const loading = computed(() => employeesLoading.value || templatesLoading.value)
-const error = computed(() => (employeesError.value || templatesError.value) ? 'Could not load employee shifts.' : null)
+const error = computed(() => (employeesError.value || templatesError.value) ? t('employees.detail.loadFailed') : null)
 
 const assignedIds = computed(() => employee.value?.shifts.map((shift) => shift.id) ?? [])
 const isDirty = computed(() => {
@@ -33,10 +35,10 @@ async function save() {
       method: 'PUT',
       body: { shift_template_ids: selectedIds.value },
     })
-    toast.success('Working shifts saved.')
+    toast.success(t('employees.detail.saved'))
     await refreshEmployees()
   } catch (err) {
-    toast.error(apiErrorMessage(err, 'Saving shifts failed.'))
+    toast.error(apiErrorMessage(err, t('employees.detail.saveFailed')))
   } finally {
     saving.value = false
   }
@@ -53,7 +55,7 @@ function refreshAll() {
 
 function deviceLabel(): string {
   const device = employee.value?.device
-  if (!device) return 'No device paired'
+  if (!device) return t('employees.detail.noDevice')
   return device.device_name ?? device.device_identifier
 }
 
@@ -61,15 +63,15 @@ onMounted(refreshAll)
 </script>
 
 <template>
-  <AppShell :title="employee?.name ?? 'Employee'" subtitle="Working schedule" back-to="/employees" full-bleed>
+  <AppShell :title="employee?.name ?? t('employees.list.employee')" :subtitle="t('employees.detail.schedule')" back-to="/employees" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh employee" @click="refreshAll">
+      <Button variant="secondary" size="sm" :disabled="loading" :aria-label="t('employees.detail.refresh')" @click="refreshAll">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        <span class="hidden sm:inline">Refresh</span>
+        <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
       <Button variant="secondary" size="sm" :to="`/employees/${employeeId}/histories`">
         <Icon name="history" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">Histories</span>
+        <span class="hidden sm:inline">{{ t('employees.list.histories') }}</span>
       </Button>
     </template>
 
@@ -82,10 +84,10 @@ onMounted(refreshAll)
       </div>
 
       <template v-else-if="employee">
-        <Card class="flex-none" icon="user-circle" title="Employee" :subtitle="employee.email ?? 'No email on file'">
+        <Card class="flex-none" icon="user-circle" :title="t('employees.list.employee')" :subtitle="employee.email ?? t('employees.detail.noEmail')">
           <template #actions>
             <Badge :variant="employee.is_active ? 'success' : 'neutral'">
-              {{ employee.is_active ? 'Active' : 'Inactive' }}
+              {{ employee.is_active ? t('common.active') : t('common.inactive') }}
             </Badge>
           </template>
 
@@ -93,22 +95,22 @@ onMounted(refreshAll)
             <Avatar :name="employee.name" size="lg" :muted="!employee.is_active" />
             <dl class="grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-3 text-[13px] min-[360px]:grid-cols-2 sm:grid-cols-4">
               <div>
-                <dt class="eyebrow mb-1">Phone</dt>
+                <dt class="eyebrow mb-1">{{ t('common.phone') }}</dt>
                 <dd class="tabular text-ink">{{ employee.phone ?? '—' }}</dd>
               </div>
               <div>
-                <dt class="eyebrow mb-1">Device</dt>
+                <dt class="eyebrow mb-1">{{ t('employees.detail.device') }}</dt>
                 <dd class="truncate" :class="employee.device ? 'text-ink' : 'text-ink-faint'">{{ deviceLabel() }}</dd>
               </div>
               <div>
-                <dt class="eyebrow mb-1">Shifts assigned</dt>
-                <dd class="tabular text-ink">{{ assignedIds.length }}</dd>
+                <dt class="eyebrow mb-1">{{ t('employees.detail.shiftsAssigned') }}</dt>
+                <dd class="tabular text-ink">{{ number(assignedIds.length) }}</dd>
               </div>
               <div>
-                <dt class="eyebrow mb-1">Tracked</dt>
+                <dt class="eyebrow mb-1">{{ t('employees.detail.tracked') }}</dt>
                 <dd>
                   <Badge :variant="assignedIds.length > 0 && employee.is_active ? 'success' : 'neutral'">
-                    {{ assignedIds.length > 0 && employee.is_active ? 'In shift windows' : 'Never' }}
+                    {{ assignedIds.length > 0 && employee.is_active ? t('employees.detail.inShiftWindows') : t('employees.detail.never') }}
                   </Badge>
                 </dd>
               </div>
@@ -117,31 +119,30 @@ onMounted(refreshAll)
         </Card>
 
         <InlineAlert v-if="!employee.is_active" variant="warning" class="!mb-0 flex-none">
-          This employee is deactivated. Reactivate them from the roster before changing their schedule.
+          {{ t('employees.detail.deactivatedHint') }}
         </InlineAlert>
 
         <Card
           class="min-h-0 flex-1"
           icon="calendar"
-          title="Working shifts"
-          :subtitle="`${selectedIds.length} of ${templates.length} selected`"
+          :title="t('employees.detail.workingShifts')"
+          :subtitle="t('employees.detail.selected', { selected: number(selectedIds.length), total: number(templates.length) })"
         >
           <template #actions>
-            <Button v-if="isDirty" variant="ghost" size="sm" :disabled="saving" @click="reset">Discard</Button>
+            <Button v-if="isDirty" variant="ghost" size="sm" :disabled="saving" @click="reset">{{ t('common.discard') }}</Button>
             <Button size="sm" :disabled="!isDirty" :loading="saving" @click="save">
-              {{ saving ? 'Saving…' : 'Save shifts' }}
+              {{ saving ? t('common.saving') : t('employees.detail.saveShifts') }}
             </Button>
           </template>
 
           <p class="mb-3.5 text-[12.5px] text-ink-soft">
-            Location is recorded only inside a selected shift window. Clearing every shift stops tracking this
-            employee entirely — no point is stored outside these times.
+            {{ t('employees.detail.trackingExplanation') }}
           </p>
           <ShiftPicker v-model="selectedIds" :shifts="templates" />
         </Card>
       </template>
 
-      <EmptyState v-else icon="users" message="This employee is no longer on the roster." />
+      <EmptyState v-else icon="users" :message="t('employees.detail.missing')" />
     </div>
   </AppShell>
 </template>

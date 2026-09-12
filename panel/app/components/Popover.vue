@@ -1,8 +1,9 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{ width?: number; align?: 'start' | 'end'; label?: string }>(),
-  { width: 272, align: 'end', label: 'Open menu' },
+  { width: 272, align: 'end' },
 )
+const { t, locale } = useI18n()
 
 const open = ref(false)
 const triggerRef = ref<HTMLElement | null>(null)
@@ -18,7 +19,10 @@ function updatePosition() {
   const rect = trigger.getBoundingClientRect()
   const width = Math.min(props.width, window.innerWidth - MARGIN * 2)
 
-  let left = props.align === 'end' ? rect.right - width : rect.left
+  const endAligned = props.align === 'end'
+  let left = locale.value === 'ar'
+    ? (endAligned ? rect.left : rect.right - width)
+    : (endAligned ? rect.right - width : rect.left)
   left = Math.max(MARGIN, Math.min(left, window.innerWidth - width - MARGIN))
 
   const below = window.innerHeight - rect.bottom - MARGIN * 2
@@ -93,7 +97,7 @@ defineExpose({ close })
           class="grid h-10 w-10 place-items-center rounded-sm text-ink-soft transition-colors duration-fast ease-soft hover:bg-surface-sunken hover:text-ink"
           :class="open ? 'bg-surface-sunken text-ink' : ''"
           :aria-expanded="open"
-          :aria-label="label"
+          :aria-label="label ?? t('common.moreActions')"
           @click.stop="toggle"
         >
           <Icon name="more-horizontal" class="h-4 w-4" />

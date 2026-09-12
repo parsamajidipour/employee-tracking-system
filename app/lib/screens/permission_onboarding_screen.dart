@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../services/permission_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
@@ -107,14 +108,10 @@ class _PermissionOnboardingScreenState
     setState(() {
       _requesting = false;
       _permissionError = switch (_currentStep) {
-        _Step.fineLocation =>
-          'Location access is required to use this work app.',
-        _Step.backgroundLocation =>
-          'Choose “Allow all the time” so tracking continues during field work.',
-        _Step.notifications =>
-          'Notifications are required for assignments and tracking status.',
-        _Step.batteryOptimization =>
-          'Battery exemption is required for reliable shift tracking.',
+        _Step.fineLocation => context.l10n.locationPermissionError,
+        _Step.backgroundLocation => context.l10n.backgroundPermissionError,
+        _Step.notifications => context.l10n.notificationPermissionError,
+        _Step.batteryOptimization => context.l10n.batteryPermissionError,
       };
       _openSettingsRequired = true;
     });
@@ -132,38 +129,31 @@ class _PermissionOnboardingScreenState
   }
 
   (IconData, String, String, String) _stepContent(_Step step) {
+    final l10n = context.l10n;
     return switch (step) {
       _Step.fineLocation => (
           Icons.my_location_outlined,
-          'Location',
-          "This app records your location during working hours only, so your "
-              'supervisor can see field employees on the live map. Outside working '
-              'hours, nothing is recorded.',
-          'Allow location',
+          l10n.location,
+          l10n.locationPermissionExplanation,
+          l10n.allowLocation,
         ),
       _Step.backgroundLocation => (
           Icons.location_on_outlined,
-          'Location in the background',
-          'Tracking has to keep working while the app is closed or the screen is '
-              'off — the previous permission only covers while this screen is open. '
-              'Android will ask again; choose "Allow all the time".',
-          'Allow all the time',
+          l10n.backgroundLocation,
+          l10n.backgroundLocationExplanation,
+          l10n.allowAllTheTime,
         ),
       _Step.notifications => (
           Icons.notifications_active_outlined,
-          'Notifications',
-          'While tracking is active, a persistent notification stays visible so '
-              "it's always obvious tracking is on — and just as obvious when it's "
-              'off.',
-          'Allow notifications',
+          l10n.notifications,
+          l10n.notificationsExplanation,
+          l10n.allowNotifications,
         ),
       _Step.batteryOptimization => (
           Icons.battery_charging_full_outlined,
-          'Battery optimisation',
-          'Android can pause background work to save battery, which would stop '
-              'tracking mid-shift without warning. Exempting this app keeps '
-              'tracking reliable for the whole working-hours window.',
-          'Exempt from battery optimisation',
+          l10n.batteryOptimisation,
+          l10n.batteryExplanation,
+          l10n.exemptBattery,
         ),
     };
   }
@@ -227,7 +217,8 @@ class _PermissionOnboardingScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'STEP ${_stepIndex + 1} OF ${_steps.length}',
+                              context.l10n
+                                  .stepProgress(_stepIndex + 1, _steps.length),
                               style: context.text.labelSmall?.copyWith(
                                 color: colors.primaryStrong,
                               ),
@@ -308,7 +299,7 @@ class _PermissionOnboardingScreenState
                                 await _loadOutstandingSteps();
                               },
                         icon: const Icon(Icons.settings_outlined),
-                        label: const Text('Open app settings'),
+                        label: Text(context.l10n.openAppSettings),
                       ),
                     ],
                   ],

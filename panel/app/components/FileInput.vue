@@ -12,6 +12,7 @@ withDefaults(
 const file = defineModel<File | null>({ default: null })
 const inputRef = ref<HTMLInputElement | null>(null)
 const dragging = ref(false)
+const { t, locale } = useI18n()
 
 function pick() {
   inputRef.value?.click()
@@ -42,8 +43,9 @@ function clear() {
 defineExpose({ reset: clear })
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  const formatter = new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', { maximumFractionDigits: 1 })
+  if (bytes < 1024 * 1024) return t('units.kilobyte', { value: formatter.format(bytes / 1024) })
+  return t('units.megabyte', { value: formatter.format(bytes / (1024 * 1024)) })
 }
 </script>
 
@@ -63,7 +65,7 @@ function formatSize(bytes: number): string {
       @drop.prevent="onDrop"
     >
       <Icon name="upload" class="h-5 w-5 text-ink-faint" />
-      <p class="text-[12.5px] text-ink-soft"><span class="font-semibold text-primary-strong">Click to upload</span> or drag and drop</p>
+      <p class="text-[12.5px] text-ink-soft"><span class="font-semibold text-primary-strong">{{ t('common.clickToUpload') }}</span> {{ t('common.orDragDrop') }}</p>
       <p v-if="hint" class="text-[11px] text-ink-faint">{{ hint }}</p>
     </div>
 
@@ -76,7 +78,7 @@ function formatSize(bytes: number): string {
       <button
         type="button"
         class="grid h-9 w-9 flex-none place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface hover:text-state-danger"
-        aria-label="Remove file"
+        :aria-label="t('common.removeFile')"
         @click="clear"
       >
         <Icon name="close" class="h-4 w-4" />

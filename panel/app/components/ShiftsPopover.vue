@@ -2,6 +2,8 @@
 import type { EmployeeShiftSummary } from '~/composables/useEmployees'
 
 const props = defineProps<{ shifts: EmployeeShiftSummary[] }>()
+const { t, locale } = useI18n()
+const { number } = useLocalizedFormat()
 
 const open = ref(false)
 const triggerRef = ref<HTMLButtonElement | null>(null)
@@ -18,7 +20,7 @@ function updatePosition() {
   const width = Math.min(272, window.innerWidth - MARGIN * 2)
   const panelHeight = Math.min(popoverRef.value?.scrollHeight ?? props.shifts.length * 30 + 44, 320)
 
-  let left = rect.right - width
+  let left = locale.value === 'ar' ? rect.left : rect.right - width
   left = Math.max(MARGIN, Math.min(left, window.innerWidth - width - MARGIN))
 
   let top = rect.bottom + 6
@@ -80,14 +82,14 @@ onUnmounted(() => {
 
 <template>
   <span class="inline-flex items-center gap-1.5">
-    <span class="tabular text-[13.5px] text-ink">{{ shifts.length }} {{ shifts.length === 1 ? 'shift' : 'shifts' }}</span>
+    <span class="tabular text-[13.5px] text-ink">{{ t('shifts.shiftCount', { count: number(shifts.length) }) }}</span>
     <button
       ref="triggerRef"
       type="button"
       class="grid h-6 w-6 shrink-0 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-primary-strong"
       :class="open ? 'bg-surface-sunken text-primary-strong' : ''"
       :aria-expanded="open"
-      aria-label="Show shift details"
+      :aria-label="t('shifts.showDetails')"
       @click.stop="toggle"
     >
       <Icon name="calendar" class="h-3.5 w-3.5" />
@@ -107,7 +109,7 @@ onUnmounted(() => {
           class="surface fixed z-50 max-h-80 overflow-y-auto p-3"
           :style="{ top: `${position.top}px`, left: `${position.left}px`, width: `min(272px, calc(100vw - ${MARGIN * 2}px))` }"
         >
-          <p class="eyebrow mb-2">{{ shifts.length }} {{ shifts.length === 1 ? 'shift' : 'shifts' }} assigned</p>
+          <p class="eyebrow mb-2">{{ t('shifts.assignedCount', { count: number(shifts.length) }) }}</p>
           <ul class="space-y-1.5">
             <li v-for="shift in shifts" :key="shift.id" class="flex items-center justify-between gap-3 text-[13px]">
               <span class="min-w-0 truncate font-medium text-ink">{{ shift.name }}</span>

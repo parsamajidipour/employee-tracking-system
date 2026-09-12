@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { CaseStatus } from '~/composables/useCases'
-import { CASE_STATUSES, caseStatusLabel, casePriorityLabel, casePriorityVariant, caseAssignmentDisplay } from '~/utils/caseStatus'
+import { CASE_STATUSES, casePriorityVariant, caseAssignmentDisplay } from '~/utils/caseStatus'
+
+const { t } = useI18n()
+const { date, number } = useLocalizedFormat()
 
 const { data: employeesData, load: loadEmployees } = useEmployees()
 const employees = computed(() => employeesData.value ?? [])
@@ -45,46 +48,46 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppShell title="Cases" :subtitle="meta ? `${meta.total} total` : undefined">
+  <AppShell :title="t('cases.list.title')" :subtitle="meta ? t('cases.list.total', { count: number(meta.total) }) : undefined">
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh cases" @click="refresh">
+      <Button variant="secondary" size="sm" :disabled="loading" :aria-label="t('cases.list.refresh')" @click="refresh">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        <span class="hidden sm:inline">Refresh</span>
+        <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
       <Button size="sm" to="/cases/new">
         <Icon name="plus" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">New case</span>
+        <span class="hidden sm:inline">{{ t('cases.new.title') }}</span>
       </Button>
     </template>
 
     <div class="surface-flat mb-3 flex flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-3.5 sm:p-4">
       <div class="w-full min-[360px]:w-48">
-        <Select v-model="statusFilter" label="Status">
-          <option value="">All statuses</option>
-          <option v-for="status in CASE_STATUSES" :key="status" :value="status">{{ caseStatusLabel(status) }}</option>
+        <Select v-model="statusFilter" :label="t('common.status')">
+          <option value="">{{ t('cases.list.allStatuses') }}</option>
+          <option v-for="status in CASE_STATUSES" :key="status" :value="status">{{ t(`case.statuses.${status}`) }}</option>
         </Select>
       </div>
       <div class="w-full min-[360px]:w-56">
-        <Select v-model="assigneeFilter" label="Assignee">
-          <option value="">All employees</option>
+        <Select v-model="assigneeFilter" :label="t('cases.fields.assignee')">
+          <option value="">{{ t('cases.list.allEmployees') }}</option>
           <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
         </Select>
       </div>
       <div class="w-full min-[360px]:w-48">
-        <label for="case-created-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Date</label>
+        <label for="case-created-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('common.date') }}</label>
         <input id="case-created-date" v-model="createdDateFilter" type="date" class="field w-full" />
       </div>
       <Button v-if="createdDateFilter" variant="secondary" size="sm" type="button" @click="createdDateFilter = ''">
-        Clear date
+        {{ t('cases.list.clearDate') }}
       </Button>
     </div>
 
     <Table
-      :headers="['Report no.', 'Customer name', 'Assignee', 'Status', 'Priority', 'Created', '']"
+      :headers="[t('cases.fields.reportNumber'), t('cases.fields.customerName'), t('cases.fields.assignee'), t('common.status'), t('cases.fields.priority'), t('cases.fields.created'), '']"
       :loading="loading"
       :error="error"
       :is-empty="cases.length === 0"
-      empty-message="No cases match these filters."
+      :empty-message="t('cases.list.empty')"
     >
       <template #cards>
         <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block space-y-3 p-3.5 sm:p-4">
@@ -93,16 +96,16 @@ onMounted(() => {
               <p class="truncate text-[14px] font-medium text-ink">{{ item.title }}</p>
               <p class="truncate text-[12px] text-ink-faint">{{ item.reference_no }}</p>
             </div>
-            <Badge :variant="caseAssignmentDisplay(item).variant">{{ caseAssignmentDisplay(item).label }}</Badge>
+            <Badge :variant="caseAssignmentDisplay(item).variant">{{ t(`case.assignmentStatuses.${caseAssignmentDisplay(item).status}`) }}</Badge>
           </div>
           <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
             <div>
-              <dt class="eyebrow mb-1">Assignee</dt>
-              <dd class="text-ink">{{ item.assignee_name ?? 'Unassigned' }}</dd>
+              <dt class="eyebrow mb-1">{{ t('cases.fields.assignee') }}</dt>
+              <dd class="text-ink">{{ item.assignee_name ?? t('case.assignmentStatuses.unassigned') }}</dd>
             </div>
             <div>
-              <dt class="eyebrow mb-1">Priority</dt>
-              <dd><Badge :variant="casePriorityVariant(item.priority)">{{ casePriorityLabel(item.priority) }}</Badge></dd>
+              <dt class="eyebrow mb-1">{{ t('cases.fields.priority') }}</dt>
+              <dd><Badge :variant="casePriorityVariant(item.priority)">{{ t(`case.priorities.${item.priority}`) }}</Badge></dd>
             </div>
           </dl>
         </NuxtLink>
@@ -111,23 +114,23 @@ onMounted(() => {
       <tr v-for="item in cases" :key="item.id" class="row-h cursor-pointer text-ink hover:bg-surface-sunken/60" @click="navigateTo(`/cases/${item.id}`)">
         <td class="px-5 text-[14px] font-medium tabular">{{ item.reference_no }}</td>
         <td class="px-5 text-[14px]">{{ item.title }}</td>
-        <td class="px-5 text-[14px] text-ink-soft">{{ item.assignee_name ?? 'Unassigned' }}</td>
-        <td class="px-5"><Badge :variant="caseAssignmentDisplay(item).variant">{{ caseAssignmentDisplay(item).label }}</Badge></td>
-        <td class="px-5"><Badge :variant="casePriorityVariant(item.priority)">{{ casePriorityLabel(item.priority) }}</Badge></td>
-        <td class="px-5 text-[13px] tabular text-ink-faint">{{ new Date(item.created_at).toLocaleDateString() }}</td>
-        <td class="px-5 text-right">
+        <td class="px-5 text-[14px] text-ink-soft">{{ item.assignee_name ?? t('case.assignmentStatuses.unassigned') }}</td>
+        <td class="px-5"><Badge :variant="caseAssignmentDisplay(item).variant">{{ t(`case.assignmentStatuses.${caseAssignmentDisplay(item).status}`) }}</Badge></td>
+        <td class="px-5"><Badge :variant="casePriorityVariant(item.priority)">{{ t(`case.priorities.${item.priority}`) }}</Badge></td>
+        <td class="px-5 text-[13px] tabular text-ink-faint">{{ date(item.created_at) }}</td>
+        <td class="px-5 text-end">
           <NuxtLink :to="`/cases/${item.id}`" class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click.stop>
-            View
+            {{ t('cases.list.view') }}
           </NuxtLink>
         </td>
       </tr>
     </Table>
 
     <div v-if="meta && meta.last_page > 1" class="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-[12.5px] text-ink-faint">Page {{ meta.current_page }} of {{ meta.last_page }} — {{ meta.total }} cases</p>
+      <p class="text-[12.5px] text-ink-faint">{{ t('cases.list.page', { current: number(meta.current_page), last: number(meta.last_page), total: number(meta.total) }) }}</p>
       <div class="flex items-center gap-2">
-        <Button variant="secondary" size="sm" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">Prev</Button>
-        <Button variant="secondary" size="sm" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">Next</Button>
+        <Button variant="secondary" size="sm" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">{{ t('common.previous') }}</Button>
+        <Button variant="secondary" size="sm" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">{{ t('common.next') }}</Button>
       </div>
     </div>
   </AppShell>

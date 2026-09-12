@@ -16,6 +16,7 @@ const templates = computed<ShiftTemplate[]>(() => templatesData.value ?? [])
 const error = ref<string | null>(null)
 const submitting = ref(false)
 const toast = useToast()
+const { t } = useI18n()
 const { refresh: refreshEmployees } = useEmployees()
 
 const canSubmit = computed(
@@ -26,7 +27,7 @@ onMounted(loadTemplates)
 
 async function submit() {
   if (!canSubmit.value) {
-    error.value = 'Name, phone, email and a password of at least 8 characters are required.'
+    error.value = t('employees.create.requiredFields')
     return
   }
 
@@ -45,10 +46,10 @@ async function submit() {
       },
     })
     await refreshEmployees()
-    toast.success('Employee created. A welcome email was sent with their login details.')
+    toast.success(t('employees.create.created'))
     await navigateTo('/employees')
   } catch (err) {
-    error.value = apiErrorMessage(err, 'Save failed — check the fields (phone and email must be unique, password at least 8 characters).')
+    error.value = apiErrorMessage(err, t('employees.create.failed'))
     toast.error(error.value)
   } finally {
     submitting.value = false
@@ -57,15 +58,15 @@ async function submit() {
 </script>
 
 <template>
-  <AppShell title="Add employee" subtitle="Create an account and give it a working schedule" back-to="/employees" full-bleed>
+  <AppShell :title="t('employees.create.title')" :subtitle="t('employees.create.subtitle')" back-to="/employees" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" to="/employees" aria-label="Cancel employee creation">
+      <Button variant="secondary" size="sm" to="/employees" :aria-label="t('employees.create.cancelCreation')">
         <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">Cancel</span>
+        <span class="hidden sm:inline">{{ t('common.cancel') }}</span>
       </Button>
-      <Button size="sm" :loading="submitting" aria-label="Create employee" @click="submit">
+      <Button size="sm" :loading="submitting" :aria-label="t('employees.create.create')" @click="submit">
         <Icon v-if="!submitting" name="plus" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">{{ submitting ? 'Creating…' : 'Create employee' }}</span>
+        <span class="hidden sm:inline">{{ submitting ? t('employees.create.creating') : t('employees.create.create') }}</span>
       </Button>
     </template>
 
@@ -73,29 +74,29 @@ async function submit() {
       <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 
       <div class="grid flex-none grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
-        <Card icon="user-circle" title="Account details" subtitle="How this person signs in on the mobile app">
+        <Card icon="user-circle" :title="t('employees.create.accountDetails')" :subtitle="t('employees.create.accountDetailsSubtitle')">
           <div class="space-y-3.5">
-            <TextInput v-model="form.name" label="Name" placeholder="e.g. Ahmed Al Saadi" required />
+            <TextInput v-model="form.name" :label="t('common.name')" :placeholder="t('employees.placeholders.name')" required />
             <TextInput
               v-model="form.phone"
-              label="Phone"
-              placeholder="e.g. 92000001"
+              :label="t('common.phone')"
+              :placeholder="t('employees.placeholders.phone')"
               required
-              hint="Used to log in on the mobile app — must be unique."
+              :hint="t('employees.create.phoneHint')"
             />
             <TextInput
               v-model="form.email"
               type="email"
-              label="Email"
-              placeholder="name@example.com"
+              :label="t('common.email')"
+              :placeholder="t('employees.placeholders.email')"
               required
-              hint="Used to log in, and to send the welcome email."
+              :hint="t('employees.create.emailHint')"
             />
             <TextInput
               v-model="form.password"
               type="password"
-              label="Password"
-              placeholder="At least 8 characters"
+              :label="t('common.password')"
+              :placeholder="t('employees.placeholders.password')"
               required
               :minlength="8"
               autocomplete="new-password"
@@ -103,8 +104,8 @@ async function submit() {
 
             <div class="flex items-center justify-between gap-3 rounded-md bg-surface-sunken px-3.5 py-3">
               <div class="min-w-0">
-                <p class="text-[13px] font-medium text-ink">Active</p>
-                <p class="text-[12px] text-ink-faint">Inactive accounts cannot sign in or be assigned a case.</p>
+                <p class="text-[13px] font-medium text-ink">{{ t('common.active') }}</p>
+                <p class="text-[12px] text-ink-faint">{{ t('employees.create.inactiveHint') }}</p>
               </div>
               <Toggle v-model="form.is_active" />
             </div>
@@ -113,12 +114,11 @@ async function submit() {
 
         <Card
           icon="calendar"
-          title="Shift assignment"
-          :subtitle="form.shift_template_ids.length ? `${form.shift_template_ids.length} selected` : 'Optional — can be set later'"
+          :title="t('employees.create.shiftAssignment')"
+          :subtitle="form.shift_template_ids.length ? t('employees.create.selectedShifts', { count: form.shift_template_ids.length }) : t('employees.create.shiftOptional')"
         >
           <p class="mb-3.5 text-[12.5px] text-ink-soft">
-            Location is only ever recorded inside a selected shift window. Leave every shift unselected and this
-            employee is simply never tracked.
+            {{ t('employees.create.trackingExplanation') }}
           </p>
           <ShiftPicker v-model="form.shift_template_ids" :shifts="templates" :loading="loadingShifts" />
         </Card>

@@ -32,7 +32,7 @@ class AssignCaseRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'employee_id.exists' => 'That employee is deactivated or no longer on the roster — pick an active surveyor.',
+            'employee_id.exists' => __('messages.employee_not_assignable'),
         ];
     }
 }

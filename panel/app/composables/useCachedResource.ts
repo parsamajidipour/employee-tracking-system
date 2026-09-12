@@ -1,4 +1,5 @@
 export function useCachedResource<T>(key: string, fetcher: () => Promise<T>) {
+  const { t } = useI18n()
   const data = useState<T | null>(`cache-${key}`, () => null)
   const loading = useState<boolean>(`cache-${key}-loading`, () => false)
   const error = useState<string | null>(`cache-${key}-error`, () => null)
@@ -11,7 +12,7 @@ export function useCachedResource<T>(key: string, fetcher: () => Promise<T>) {
       data.value = await fetcher()
       error.value = null
     } catch {
-      error.value = 'Could not load data.'
+      error.value = t('common.loadFailed')
     } finally {
       loading.value = false
     }

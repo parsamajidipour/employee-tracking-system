@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../l10n/stored_localizations.dart';
+import 'auth_storage.dart';
+
 class LocalNotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -38,10 +41,11 @@ class LocalNotificationService {
       _launchPayload = launchDetails?.notificationResponse?.payload;
     }
 
-    const channel = AndroidNotificationChannel(
+    final l10n = await storedLocalizations(AuthStorage());
+    final channel = AndroidNotificationChannel(
       _channelId,
-      'Alerts',
-      description: 'Shift and update alerts shown when the app is not open.',
+      l10n.alertsChannel,
+      description: l10n.alertsChannelDescription,
       importance: Importance.high,
     );
 
@@ -61,16 +65,16 @@ class LocalNotificationService {
   }) async {
     try {
       await _ensureInitialized();
+      final l10n = await storedLocalizations(AuthStorage());
       await _plugin.show(
         id,
         title,
         body,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
-            'Alerts',
-            channelDescription:
-                'Shift and update alerts shown when the app is not open.',
+            l10n.alertsChannel,
+            channelDescription: l10n.alertsChannelDescription,
             importance: Importance.high,
             priority: Priority.high,
           ),

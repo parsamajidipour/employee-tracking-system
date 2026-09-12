@@ -43,6 +43,7 @@ const ICONS: Record<string, string> = {
   history: 'M3.5 9A9 9 0 1 1 3 12M3.5 4.5V9H8M12 7.5V12l3 2',
   sparkle: 'M12 3.5 13.8 9l5.7 1.8-5.7 1.8L12 20.5l-1.8-5.9L4.5 12.8 10.2 11 12 3.5Z',
   x_circle: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 9l6 6M15 9l-6 6',
+  language: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-18c2.2 2.5 3.3 5.5 3.3 9S14.2 18.5 12 21m0-18C9.8 5.5 8.7 8.5 8.7 12s1.1 6.5 3.3 9M3.5 9h17M3.5 15h17',
 }
 
 withDefaults(defineProps<{ name: keyof typeof ICONS | string; spin?: boolean }>(), { spin: false })

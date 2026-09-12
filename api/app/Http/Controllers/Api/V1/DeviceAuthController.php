@@ -16,12 +16,6 @@ class DeviceAuthController extends Controller
         'device_conflict' => 409,
     ];
 
-    private const MESSAGES = [
-        'invalid_credentials' => 'These credentials do not match our records.',
-        'inactive' => 'This account is not active.',
-        'device_conflict' => 'A device is already registered for this account. Revoke it first.',
-    ];
-
     public function __construct(private readonly DeviceService $devices) {}
 
     public function login(DeviceLoginRequest $request): JsonResponse
@@ -35,7 +29,7 @@ class DeviceAuthController extends Controller
 
         if (! $result->success) {
             return response()->json(
-                ['message' => self::MESSAGES[$result->failureReason]],
+                ['message' => __('messages.device_login.'.$result->failureReason)],
                 self::STATUSES[$result->failureReason],
             );
         }

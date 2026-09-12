@@ -3,6 +3,9 @@ import type { WorkloadDetail, WorkloadActivity, WorkloadRow } from '~/composable
 
 definePageMeta({ middleware: 'employees-workload' })
 
+const { t } = useI18n()
+const { number: formatNumber, date: formatDate, distance: formatDistance } = useLocalizedFormat()
+
 type SortKey = 'name' | 'overdue' | 'active' | 'completed'
 
 function todayLocalDate(): string {
@@ -54,8 +57,8 @@ const drawerError = ref<string | null>(null)
 function minutesLabel(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = Math.round(minutes % 60)
-  if (h === 0) return `${m}m`
-  return `${h}h ${m}m`
+  if (h === 0) return t('workload.durationMinutes', { minutes: formatNumber(m) })
+  return t('workload.durationHoursMinutes', { hours: formatNumber(h), minutes: formatNumber(m) })
 }
 
 function segments(activity: WorkloadActivity) {
@@ -84,9 +87,9 @@ function ringStyle(activity: WorkloadActivity) {
 }
 
 function statusOf(row: WorkloadRow): { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' } {
-  if (row.summary.overdue > 0) return { label: `${row.summary.overdue} overdue`, variant: 'danger' }
-  if (row.summary.active_cases === 0) return { label: 'No open work', variant: 'neutral' }
-  return { label: 'On track', variant: 'success' }
+  if (row.summary.overdue > 0) return { label: t('workload.overdueCount', { count: formatNumber(row.summary.overdue) }), variant: 'danger' }
+  if (row.summary.active_cases === 0) return { label: t('workload.noOpenWork'), variant: 'neutral' }
+  return { label: t('workload.onTrack'), variant: 'success' }
 }
 
 async function loadDrawerDetail() {
@@ -96,7 +99,7 @@ async function loadDrawerDetail() {
     drawerDetail.value = await fetchWorkloadDetail(drawerEmployeeId.value, drawerDate.value)
     drawerError.value = null
   } catch (err) {
-    drawerError.value = apiErrorMessage(err, 'Could not load activity for this day.')
+    drawerError.value = apiErrorMessage(err, t('workload.loadDayFailed'))
   } finally {
     drawerLoading.value = false
   }
@@ -119,18 +122,18 @@ onMounted(load)
 </script>
 
 <template>
-  <AppShell title="Workload" subtitle="Open work and time-on-task, per surveyor" full-bleed>
+  <AppShell :title="t('workload.title')" :subtitle="t('workload.subtitle')" full-bleed>
     <template #actions>
       <span
         class="hidden items-center gap-1.5 rounded-pill bg-surface-sunken px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-soft sm:inline-flex"
-        :title="connected ? 'Updating live over websocket' : 'Live updates unavailable — use Refresh'"
+        :title="connected ? t('workload.liveTitle') : t('workload.offlineTitle')"
       >
         <span class="h-1.5 w-1.5 rounded-full" :class="connected ? 'bg-state-success' : 'bg-state-neutral'"></span>
-        {{ connected ? 'Live' : 'Offline' }}
+        {{ connected ? t('common.live') : t('common.offline') }}
       </span>
-      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh workload" @click="load">
+      <Button variant="secondary" size="sm" :disabled="loading" :aria-label="t('workload.refresh')" @click="load">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        <span class="hidden sm:inline">Refresh</span>
+        <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
     </template>
 
@@ -138,35 +141,35 @@ onMounted(load)
       <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 
       <div class="grid flex-none grid-cols-2 gap-2.5 lg:grid-cols-4">
-        <StatCard icon="users" label="Surveyors tracked" :value="String(rows.length)" accent="neutral" />
-        <StatCard icon="briefcase" label="Open cases org-wide" :value="String(totals.active)" accent="primary" />
+        <StatCard icon="users" :label="t('workload.surveyorsTracked')" :value="formatNumber(rows.length)" accent="neutral" />
+        <StatCard icon="briefcase" :label="t('workload.openOrg')" :value="formatNumber(totals.active)" accent="primary" />
         <StatCard
           icon="alert-triangle"
-          label="Overdue org-wide"
-          :value="String(totals.overdue)"
+          :label="t('workload.overdueOrg')"
+          :value="formatNumber(totals.overdue)"
           :accent="totals.overdue > 0 ? 'danger' : 'neutral'"
         />
-        <StatCard icon="check-circle" label="Completed today" :value="String(totals.completedToday)" accent="success" />
+        <StatCard icon="check-circle" :label="t('workload.completedToday')" :value="formatNumber(totals.completedToday)" accent="success" />
       </div>
 
       <Card
         class="flex-none lg:min-h-0 lg:flex-1"
         icon="chart-bar"
-        title="By surveyor"
-        :subtitle="`${visibleRows.length} shown of ${rows.length}`"
+        :title="t('workload.bySurveyor')"
+        :subtitle="t('workload.shown', { shown: formatNumber(visibleRows.length), total: formatNumber(rows.length) })"
         flush
       >
         <div class="flex min-h-0 flex-col lg:h-full">
           <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-4 py-3 sm:px-5">
             <div class="min-w-56 flex-1">
-              <TextInput v-model="search" label="Search" icon="search" placeholder="Search a surveyor by name" />
+              <TextInput v-model="search" :label="t('common.search')" icon="search" :placeholder="t('workload.searchPlaceholder')" />
             </div>
             <div class="w-52">
-              <Select v-model="sortKey" label="Sort by">
-                <option value="overdue">Most overdue first</option>
-                <option value="active">Most open cases first</option>
-                <option value="completed">Most completed this week</option>
-                <option value="name">Name (A–Z)</option>
+              <Select v-model="sortKey" :label="t('workload.sortBy')">
+                <option value="overdue">{{ t('workload.sortOverdue') }}</option>
+                <option value="active">{{ t('workload.sortOpen') }}</option>
+                <option value="completed">{{ t('workload.sortCompleted') }}</option>
+                <option value="name">{{ t('workload.sortName') }}</option>
               </Select>
             </div>
           </div>
@@ -179,7 +182,7 @@ onMounted(load)
             <EmptyState
               v-else-if="visibleRows.length === 0"
               icon="briefcase"
-              :message="rows.length === 0 ? 'No active employees to show.' : 'No surveyor matches this search.'"
+              :message="rows.length === 0 ? t('workload.empty') : t('workload.emptySearch')"
               class="py-12"
             />
 
@@ -187,7 +190,7 @@ onMounted(load)
               <li v-for="row in visibleRows" :key="row.employee_id">
                 <button
                   type="button"
-                  class="flex w-full flex-col gap-3.5 px-4 py-3.5 text-left transition-colors duration-fast ease-soft hover:bg-surface-sunken/60 sm:px-5 xl:flex-row xl:items-center xl:gap-5"
+                  class="flex w-full flex-col gap-3.5 px-4 py-3.5 text-start transition-colors duration-fast ease-soft hover:bg-surface-sunken/60 sm:px-5 xl:flex-row xl:items-center xl:gap-5"
                   @click="openDrawer(row.employee_id, row.name)"
                 >
                   <span class="flex min-w-0 flex-1 items-center gap-3">
@@ -195,45 +198,45 @@ onMounted(load)
                     <span class="min-w-0">
                       <span class="block truncate text-[14.5px] font-semibold text-ink">{{ row.name }}</span>
                       <span class="mt-0.5 block text-[12px] tabular text-ink-faint">
-                        {{ row.today.window_minutes === null ? 'No shift window today' : `${formatDistance(row.today.distance_m)} travelled today` }}
+                        {{ row.today.window_minutes === null ? t('workload.noShiftToday') : t('workload.travelledToday', { distance: formatDistance(row.today.distance_m) }) }}
                       </span>
                     </span>
                   </span>
 
                   <span class="grid flex-none grid-cols-3 gap-x-4 gap-y-2.5 sm:grid-cols-6 xl:w-[300px]">
                     <span class="min-w-0">
-                      <span class="eyebrow block">Open</span>
-                      <span class="block text-[15px] font-bold tabular text-ink">{{ row.summary.active_cases }}</span>
+                      <span class="eyebrow block">{{ t('workload.open') }}</span>
+                      <span class="block text-[15px] font-bold tabular text-ink">{{ formatNumber(row.summary.active_cases) }}</span>
                     </span>
                     <span class="min-w-0">
-                      <span class="eyebrow block">Pend</span>
-                      <span class="block text-[15px] font-bold tabular text-ink">{{ row.summary.pending }}</span>
+                      <span class="eyebrow block">{{ t('workload.pendingShort') }}</span>
+                      <span class="block text-[15px] font-bold tabular text-ink">{{ formatNumber(row.summary.pending) }}</span>
                     </span>
                     <span class="min-w-0">
-                      <span class="eyebrow block">Sched</span>
-                      <span class="block text-[15px] font-bold tabular text-ink">{{ row.summary.scheduled }}</span>
+                      <span class="eyebrow block">{{ t('workload.scheduledShort') }}</span>
+                      <span class="block text-[15px] font-bold tabular text-ink">{{ formatNumber(row.summary.scheduled) }}</span>
                     </span>
                     <span class="min-w-0">
-                      <span class="eyebrow block">Late</span>
+                      <span class="eyebrow block">{{ t('workload.late') }}</span>
                       <span
                         class="block text-[15px] font-bold tabular"
                         :class="row.summary.overdue > 0 ? 'text-state-danger' : 'text-ink'"
-                      >{{ row.summary.overdue }}</span>
+                      >{{ formatNumber(row.summary.overdue) }}</span>
                     </span>
                     <span class="min-w-0">
-                      <span class="eyebrow block">Wk</span>
-                      <span class="block text-[15px] font-bold tabular text-ink">{{ row.summary.completed_week }}</span>
+                      <span class="eyebrow block">{{ t('workload.weekShort') }}</span>
+                      <span class="block text-[15px] font-bold tabular text-ink">{{ formatNumber(row.summary.completed_week) }}</span>
                     </span>
                     <span class="min-w-0">
-                      <span class="eyebrow block">Mo</span>
-                      <span class="block text-[15px] font-bold tabular text-ink">{{ row.summary.completed_month }}</span>
+                      <span class="eyebrow block">{{ t('workload.monthShort') }}</span>
+                      <span class="block text-[15px] font-bold tabular text-ink">{{ formatNumber(row.summary.completed_month) }}</span>
                     </span>
                   </span>
 
                   <span class="flex flex-none items-center gap-3 xl:w-[280px]">
                     <span class="relative grid h-11 w-11 flex-none place-items-center rounded-full" :style="ringStyle(row.today)">
                       <span class="grid h-8 w-8 place-items-center rounded-full bg-surface">
-                        <span class="text-[11px] font-bold tabular text-ink">{{ utilizationPct(row.today) }}%</span>
+                        <span class="text-[11px] font-bold tabular text-ink">{{ formatNumber(utilizationPct(row.today)) }}%</span>
                       </span>
                     </span>
                     <span class="min-w-0 flex-1">
@@ -243,15 +246,15 @@ onMounted(load)
                         <span class="bg-state-neutral" :style="{ width: segments(row.today).idle + '%' }" />
                       </span>
                       <span class="mt-1.5 block text-[11.5px] tabular text-ink-faint">
-                        {{ minutesLabel(row.today.inspection_minutes) }} inspecting ·
-                        {{ minutesLabel(row.today.travel_minutes) }} travelling
+                        {{ t('workload.inspectingTime', { duration: minutesLabel(row.today.inspection_minutes) }) }} ·
+                        {{ t('workload.travellingTime', { duration: minutesLabel(row.today.travel_minutes) }) }}
                       </span>
                     </span>
                   </span>
 
                   <span class="flex flex-none items-center gap-2 xl:w-40 xl:justify-end">
                     <Badge :variant="statusOf(row).variant">{{ statusOf(row).label }}</Badge>
-                    <Icon name="chevron-right" class="hidden h-4 w-4 text-ink-faint xl:block" />
+                    <Icon name="chevron-right" class="directional-icon hidden h-4 w-4 text-ink-faint xl:block" />
                   </span>
                 </button>
               </li>
@@ -259,9 +262,9 @@ onMounted(load)
           </div>
 
           <div class="flex flex-none flex-wrap items-center gap-4 border-t border-hairline px-4 py-2.5 text-[11.5px] text-ink-soft sm:px-5">
-            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-primary"></span>Inspecting</span>
-            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-state-warning"></span>Travelling</span>
-            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-state-neutral"></span>Idle</span>
+            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-primary"></span>{{ t('workload.inspecting') }}</span>
+            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-state-warning"></span>{{ t('workload.travelling') }}</span>
+            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-state-neutral"></span>{{ t('workload.idle') }}</span>
           </div>
         </div>
       </Card>
@@ -270,12 +273,12 @@ onMounted(load)
     <Drawer v-model="drawerOpen" :title="drawerEmployeeName">
       <div class="space-y-4">
         <div>
-          <label for="workload-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">Activity date</label>
+          <label for="workload-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('workload.activityDate') }}</label>
           <input
             id="workload-date"
             v-model="drawerDate"
             type="date"
-            placeholder="Pick a date"
+            :placeholder="t('workload.pickDate')"
             :max="todayLocalDate()"
             class="field w-52"
           />
@@ -290,16 +293,16 @@ onMounted(load)
 
         <template v-else-if="drawerDetail">
           <section>
-            <h2 class="mb-2.5">Case load</h2>
+            <h2 class="mb-2.5">{{ t('workload.caseLoad') }}</h2>
             <div class="grid grid-cols-2 gap-2.5">
-              <StatCard tone="sunken" icon="briefcase" label="Open" :value="String(drawerDetail.summary.active_cases)" accent="primary" />
-              <StatCard tone="sunken" icon="inbox" label="Pending" :value="String(drawerDetail.summary.pending)" accent="neutral" />
-              <StatCard tone="sunken" icon="calendar" label="Scheduled" :value="String(drawerDetail.summary.scheduled)" accent="neutral" />
+              <StatCard tone="sunken" icon="briefcase" :label="t('workload.open')" :value="formatNumber(drawerDetail.summary.active_cases)" accent="primary" />
+              <StatCard tone="sunken" icon="inbox" :label="t('workload.pending')" :value="formatNumber(drawerDetail.summary.pending)" accent="neutral" />
+              <StatCard tone="sunken" icon="calendar" :label="t('workload.scheduled')" :value="formatNumber(drawerDetail.summary.scheduled)" accent="neutral" />
               <StatCard
                 tone="sunken"
                 icon="alert-triangle"
-                label="Overdue"
-                :value="String(drawerDetail.summary.overdue)"
+                :label="t('workload.overdue')"
+                :value="formatNumber(drawerDetail.summary.overdue)"
                 :accent="drawerDetail.summary.overdue > 0 ? 'danger' : 'neutral'"
               />
             </div>
@@ -307,13 +310,13 @@ onMounted(load)
 
           <section class="border-t border-hairline pt-4">
             <header class="mb-3 flex items-center justify-between gap-2">
-              <h2>Time on task</h2>
-              <span class="text-[12px] tabular text-ink-faint">{{ new Date(drawerDate).toLocaleDateString() }}</span>
+              <h2>{{ t('workload.timeOnTask') }}</h2>
+              <span class="text-[12px] tabular text-ink-faint">{{ formatDate(drawerDate) }}</span>
             </header>
             <div class="flex items-center gap-3.5">
               <div class="relative grid h-16 w-16 flex-none place-items-center rounded-full" :style="ringStyle(drawerDetail.activity)">
                 <div class="grid h-11 w-11 place-items-center rounded-full bg-surface">
-                  <span class="text-[13px] font-bold tabular text-ink">{{ utilizationPct(drawerDetail.activity) }}%</span>
+                  <span class="text-[13px] font-bold tabular text-ink">{{ formatNumber(utilizationPct(drawerDetail.activity)) }}%</span>
                 </div>
               </div>
               <div class="min-w-0 flex-1">
@@ -323,34 +326,34 @@ onMounted(load)
                   <div class="bg-state-neutral" :style="{ width: segments(drawerDetail.activity).idle + '%' }" />
                 </div>
                 <p class="mt-2 tabular text-[12px] text-ink-faint">
-                  {{ formatDistance(drawerDetail.activity.distance_m) }} travelled
+                  {{ t('workload.travelled', { distance: formatDistance(drawerDetail.activity.distance_m) }) }}
                 </p>
               </div>
             </div>
 
             <dl class="mt-4 grid grid-cols-3 gap-2.5 border-t border-hairline pt-4 text-[13px]">
               <div>
-                <dt class="eyebrow mb-1">Inspecting</dt>
+                <dt class="eyebrow mb-1">{{ t('workload.inspecting') }}</dt>
                 <dd class="tabular font-semibold text-ink">{{ minutesLabel(drawerDetail.activity.inspection_minutes) }}</dd>
               </div>
               <div>
-                <dt class="eyebrow mb-1">Travelling</dt>
+                <dt class="eyebrow mb-1">{{ t('workload.travelling') }}</dt>
                 <dd class="tabular font-semibold text-ink">{{ minutesLabel(drawerDetail.activity.travel_minutes) }}</dd>
               </div>
               <div>
-                <dt class="eyebrow mb-1">Idle</dt>
+                <dt class="eyebrow mb-1">{{ t('workload.idle') }}</dt>
                 <dd class="tabular font-semibold text-ink">{{ minutesLabel(drawerDetail.activity.idle_minutes) }}</dd>
               </div>
             </dl>
 
             <p v-if="drawerDetail.activity.window_minutes === null" class="mt-3 text-[12px] text-ink-faint">
-              No shift window resolved for this day — nothing was tracked.
+              {{ t('workload.noWindow') }}
             </p>
           </section>
 
           <Button variant="secondary" class="w-full justify-center" :to="`/employees/${drawerDetail.employee_id}/histories`">
             <Icon name="route" class="h-4 w-4" />
-            Open route history
+            {{ t('workload.openHistory') }}
           </Button>
         </template>
       </div>

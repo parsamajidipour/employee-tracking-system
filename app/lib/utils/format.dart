@@ -1,8 +1,9 @@
-String formatTime(DateTime dateTime) {
-  final local = dateTime.toLocal();
-  final hh = local.hour.toString().padLeft(2, '0');
-  final mm = local.minute.toString().padLeft(2, '0');
-  return '$hh:$mm';
+import 'package:intl/intl.dart';
+
+import '../l10n/app_localizations.dart';
+
+String formatTime(DateTime dateTime, {String locale = 'en'}) {
+  return DateFormat.Hm(locale).format(dateTime.toLocal());
 }
 
 String formatDateParam(DateTime dateTime) {
@@ -12,42 +13,22 @@ String formatDateParam(DateTime dateTime) {
   return '$y-$m-$d';
 }
 
-String formatDateTime(DateTime dateTime) {
-  final local = dateTime.toLocal();
-  final dd = local.day.toString().padLeft(2, '0');
-  final mo = local.month.toString().padLeft(2, '0');
-  return '$dd/$mo ${formatTime(local)}';
+String formatDateTime(DateTime dateTime, {String locale = 'en'}) {
+  return DateFormat.yMd(locale).add_Hm().format(dateTime.toLocal());
 }
 
-String formatDuration(Duration duration) {
-  if (duration.isNegative || duration.inMinutes < 1) {
-    return 'less than a minute';
-  }
-  if (duration.inMinutes < 60) return '${duration.inMinutes} min';
-
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes % 60;
-  if (hours < 24) {
-    return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
-  }
-
-  return '${duration.inDays}d';
-}
-
-String formatCountdown(DateTime dateTime, {DateTime? now}) {
-  final reference = now ?? DateTime.now();
-  final diff = dateTime.difference(reference);
-  if (diff.isNegative) return 'now';
-  return 'in ${formatDuration(diff)}';
-}
-
-String formatRelative(DateTime dateTime, {DateTime? now}) {
+String formatRelative(
+  DateTime dateTime,
+  AppLocalizations l10n, {
+  DateTime? now,
+}) {
   final reference = now ?? DateTime.now();
   final diff = reference.difference(dateTime);
+  final number = NumberFormat.decimalPattern(l10n.localeName);
 
-  if (diff.isNegative || diff.inSeconds < 5) return 'just now';
-  if (diff.inMinutes < 1) return '${diff.inSeconds}s ago';
-  if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-  if (diff.inDays < 1) return '${diff.inHours}h ago';
-  return formatDateTime(dateTime);
+  if (diff.isNegative || diff.inSeconds < 5) return l10n.justNow;
+  if (diff.inMinutes < 1) return l10n.secondsAgo(number.format(diff.inSeconds));
+  if (diff.inHours < 1) return l10n.minutesAgo(number.format(diff.inMinutes));
+  if (diff.inDays < 1) return l10n.hoursAgo(number.format(diff.inHours));
+  return formatDateTime(dateTime, locale: l10n.localeName);
 }

@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../l10n/l10n.dart';
 import '../models/inspection_case.dart';
 import '../theme/app_theme.dart';
 
@@ -43,7 +44,7 @@ class _CaseLocationScreenState extends State<CaseLocationScreen> {
   Future<void> _startLocation() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       if (mounted) {
-        setState(() => _locationError = 'Turn on GPS to show your location.');
+        setState(() => _locationError = context.l10n.turnOnGps);
       }
       return;
     }
@@ -55,8 +56,8 @@ class _CaseLocationScreenState extends State<CaseLocationScreen> {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       if (mounted) {
-        setState(() => _locationError =
-            'Location permission is required to show where you are.');
+        setState(
+            () => _locationError = context.l10n.locationPermissionRequired);
       }
       return;
     }
@@ -86,8 +87,7 @@ class _CaseLocationScreenState extends State<CaseLocationScreen> {
       });
     } catch (_) {
       if (mounted) {
-        setState(() => _locationError =
-            'Your location is temporarily unavailable. The property is still shown.');
+        setState(() => _locationError = context.l10n.locationUnavailableMap);
       }
     }
   }
@@ -124,10 +124,10 @@ class _CaseLocationScreenState extends State<CaseLocationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Property map'),
+        title: Text(context.l10n.propertyMap),
         actions: [
           IconButton(
-            tooltip: 'Fit property and my location',
+            tooltip: context.l10n.fitLocations,
             onPressed: _fitBoth,
             icon: const Icon(Icons.center_focus_strong_outlined),
           ),
@@ -200,20 +200,26 @@ class _CaseLocationScreenState extends State<CaseLocationScreen> {
                     Text(widget.inspectionCase.title,
                         style: context.text.titleMedium),
                     const SizedBox(height: 4),
-                    Text(widget.inspectionCase.propertyAddress,
+                    Text(
+                        !widget.inspectionCase.hasPropertyAddress
+                            ? context.l10n.locationNotProvided
+                            : widget.inspectionCase.propertyAddress,
                         style: context.text.bodyMedium),
                     const SizedBox(height: AppSpacing.md),
                     Row(children: [
-                      _LegendDot(color: colors.primary, label: 'Property'),
+                      _LegendDot(
+                          color: colors.primary, label: context.l10n.property),
                       const SizedBox(width: AppSpacing.lg),
-                      _LegendDot(color: colors.success, label: 'You'),
+                      _LegendDot(
+                          color: colors.success, label: context.l10n.you),
                       const Spacer(),
                       Text(
                         distance == null
-                            ? 'Locating…'
+                            ? context.l10n.locating
                             : distance < 1000
-                                ? '${distance.round()} m away'
-                                : '${(distance / 1000).toStringAsFixed(1)} km away',
+                                ? context.l10n.metersAway(distance.round())
+                                : context.l10n.kilometersAway(
+                                    (distance / 1000).toStringAsFixed(1)),
                         style: context.text.labelMedium,
                       ),
                     ]),

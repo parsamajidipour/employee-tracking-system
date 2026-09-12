@@ -6,11 +6,14 @@ interface EmployeeShiftPreview {
   employee: { id: number; name: string } | null
 }
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const { t, tm } = useI18n()
+const { number } = useLocalizedFormat()
+const dayLabels = computed(() => tm('shifts.days') as string[])
+const tableHeaders = computed(() => tm('shifts.headers') as string[])
 
 const { data: templatesData, loading, error: cacheError, load, refresh } = useShiftTemplates()
 const templates = computed(() => templatesData.value ?? [])
-const error = computed(() => (cacheError.value ? 'Could not load shift templates. Sign in and try again.' : null))
+const error = computed(() => (cacheError.value ? t('shifts.loadFailed') : null))
 
 const { data: employeesData, load: loadEmployees, refresh: refreshEmployees } = useEmployees()
 
@@ -44,13 +47,13 @@ const editingTemplate = computed(() => templates.value.find((template) => templa
 const crossesMidnight = computed(() => form.end_time <= form.start_time)
 
 function dayLabel(days: number[]): string {
-  if (days.length === 0) return 'No days'
-  if (days.length === 7) return 'Every day'
+  if (days.length === 0) return t('shifts.noDays')
+  if (days.length === 7) return t('shifts.everyDay')
 
   return days
     .slice()
     .sort((a, b) => a - b)
-    .map((d) => DAY_LABELS[d])
+    .map((d) => dayLabels.value[d])
     .join(', ')
 }
 
@@ -98,11 +101,11 @@ const submitting = ref(false)
 
 async function submit() {
   if (form.name.trim() === '') {
-    formError.value = 'Give the template a name.'
+    formError.value = t('shifts.nameRequired')
     return
   }
   if (form.days_of_week.length === 0) {
-    formError.value = 'Pick at least one day — a template with no days never opens a window.'
+    formError.value = t('shifts.dayRequired')
     return
   }
 
@@ -111,16 +114,16 @@ async function submit() {
   try {
     if (editingId.value === null) {
       await apiFetch('/api/v1/shift-templates', { method: 'POST', body: buildBody() })
-      toast.success('Shift template created.')
+      toast.success(t('shifts.created'))
     } else {
       await apiFetch(`/api/v1/shift-templates/${editingId.value}`, { method: 'PUT', body: buildBody() })
-      toast.success('Shift template saved.')
+      toast.success(t('shifts.saved'))
     }
     startCreate()
     await refresh()
     await refreshEmployees()
   } catch (err) {
-    formError.value = apiErrorMessage(err, 'Save failed — check the fields.')
+    formError.value = apiErrorMessage(err, t('shifts.saveFailed'))
     toast.error(formError.value)
   } finally {
     submitting.value = false
@@ -137,19 +140,19 @@ async function remove(template: ShiftTemplate) {
 
   const names = affected.map((shift) => shift.employee?.name).filter((name): name is string => !!name)
   const message = names.length > 0
-    ? `Delete shift template "${template.name}"? ${names.length} employee${names.length > 1 ? 's' : ''} will lose this shift and become unscheduled: ${names.join(', ')}.`
-    : `Delete shift template "${template.name}"? This cannot be undone.`
+    ? t('shifts.deleteAffected', { name: template.name, count: number(names.length), employees: names.join(', ') })
+    : t('shifts.deleteConfirm', { name: template.name })
 
-  if (!(await confirm(message, { variant: 'danger', title: 'Delete template' }))) return
+  if (!(await confirm(message, { variant: 'danger', title: t('shifts.deleteTitle') }))) return
 
   try {
     await apiFetch(`/api/v1/shift-templates/${template.id}`, { method: 'DELETE' })
-    toast.success('Shift template deleted.')
+    toast.success(t('shifts.deleted'))
     if (editingId.value === template.id) startCreate()
     await refresh()
     await refreshEmployees()
   } catch (err) {
-    toast.error(apiErrorMessage(err, 'Delete failed.'))
+    toast.error(apiErrorMessage(err, t('shifts.deleteFailed')))
   }
 }
 
@@ -171,35 +174,35 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppShell title="Shift templates" subtitle="Organisation-wide shift definitions — assigned per employee" full-bleed>
+  <AppShell :title="t('shifts.title')" :subtitle="t('shifts.subtitle')" full-bleed>
     <template #actions>
-      <Button variant="secondary" size="sm" :disabled="loading" aria-label="Refresh shift templates" @click="refreshAll">
+      <Button variant="secondary" size="sm" :disabled="loading" :aria-label="t('shifts.refresh')" @click="refreshAll">
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
-        <span class="hidden sm:inline">Refresh</span>
+        <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
       <Button v-if="editingId !== null" size="sm" @click="startCreate">
         <Icon name="plus" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">New template</span>
+        <span class="hidden sm:inline">{{ t('shifts.new') }}</span>
       </Button>
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="flex-none lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+      <div class="flex-none lg:min-h-0 lg:overflow-y-auto lg:pe-1">
         <Card
           :icon="editingId === null ? 'plus' : 'pencil'"
-          :title="editingId === null ? 'New template' : 'Edit template'"
-          :subtitle="editingId === null ? 'Reusable, opt-in — creating one tracks nobody' : editingTemplate?.name"
+          :title="editingId === null ? t('shifts.new') : t('shifts.edit')"
+          :subtitle="editingId === null ? t('shifts.newSubtitle') : editingTemplate?.name"
         >
           <form class="space-y-4" @submit.prevent="submit">
             <InlineAlert v-if="formError" class="!mb-0">{{ formError }}</InlineAlert>
 
-            <TextInput v-model="form.name" label="Name" placeholder="e.g. Day Shift" required />
+            <TextInput v-model="form.name" :label="t('common.name')" :placeholder="t('shifts.namePlaceholder')" required />
 
             <div>
-              <span class="mb-1.5 block text-[12px] font-medium text-ink-soft">Days of week</span>
+              <span class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('shifts.daysOfWeek') }}</span>
               <div class="flex gap-1.5 overflow-x-auto pb-1 min-[420px]:grid min-[420px]:grid-cols-7 min-[420px]:overflow-visible min-[420px]:pb-0">
                 <button
-                  v-for="(label, day) in DAY_LABELS"
+                  v-for="(label, day) in dayLabels"
                   :key="day"
                   type="button"
                   class="h-10 w-10 flex-none rounded-md border px-0 text-[12.5px] font-medium transition-colors duration-fast ease-soft min-[420px]:w-auto"
@@ -215,31 +218,31 @@ onMounted(() => {
             </div>
 
             <div class="rounded-md bg-surface-sunken p-3.5">
-              <p class="eyebrow mb-2.5">Window</p>
+              <p class="eyebrow mb-2.5">{{ t('shifts.window') }}</p>
               <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
-                <TextInput v-model="form.start_time" type="time" label="Start" placeholder="07:00" required />
-                <TextInput v-model="form.end_time" type="time" label="End" placeholder="16:00" required />
+                <TextInput v-model="form.start_time" type="time" :label="t('shifts.start')" placeholder="07:00" required />
+                <TextInput v-model="form.end_time" type="time" :label="t('shifts.end')" placeholder="16:00" required />
               </div>
               <p v-if="crossesMidnight" class="mt-2 text-[12px] text-ink-soft">
-                This window crosses midnight — it closes the following day.
+                {{ t('shifts.crossesMidnight') }}
               </p>
             </div>
 
             <div class="rounded-md bg-surface-sunken p-3.5">
-              <p class="eyebrow mb-2.5">Grace and cap</p>
+              <p class="eyebrow mb-2.5">{{ t('shifts.graceCap') }}</p>
               <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
                 <TextInput
                   v-model="form.grace_before_min"
                   type="number"
                   min="0"
-                  label="Grace before (min)"
+                  :label="t('shifts.graceBefore')"
                   placeholder="0"
                 />
                 <TextInput
                   v-model="form.grace_after_min"
                   type="number"
                   min="0"
-                  label="Grace after (min)"
+                  :label="t('shifts.graceAfter')"
                   placeholder="0"
                 />
               </div>
@@ -248,19 +251,19 @@ onMounted(() => {
                   v-model="form.max_daily_minutes"
                   type="number"
                   min="0"
-                  label="Max daily minutes"
-                  placeholder="Leave empty for no cap"
-                  hint="Caps how long a single day's window can stay open."
+                  :label="t('shifts.maxDaily')"
+                  :placeholder="t('shifts.noCap')"
+                  :hint="t('shifts.capHint')"
                 />
               </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-2 border-t border-hairline pt-4">
               <Button type="submit" :loading="submitting">
-                {{ editingId === null ? 'Add template' : 'Save changes' }}
+                {{ editingId === null ? t('shifts.add') : t('shifts.saveChanges') }}
               </Button>
               <Button v-if="editingId !== null" type="button" variant="secondary" :disabled="submitting" @click="startCreate">
-                Cancel edit
+                {{ t('shifts.cancelEdit') }}
               </Button>
             </div>
           </form>
@@ -270,49 +273,49 @@ onMounted(() => {
       <Card
         class="flex-none lg:min-h-0"
         icon="calendar"
-        title="Templates"
-        :subtitle="`${templates.length} defined`"
+        :title="t('shifts.templates')"
+        :subtitle="t('shifts.defined', { count: number(templates.length) })"
         flush
       >
         <div class="h-full min-h-0 overflow-y-auto">
           <Table
             embedded
-            :headers="['Name', 'Days', 'Hours', 'Grace', 'Assigned to', '']"
+            :headers="tableHeaders"
             :loading="loading"
             :error="error"
             :is-empty="templates.length === 0"
-            empty-message="No shift templates yet — add one with the form."
+            :empty-message="t('shifts.empty')"
           >
             <template #cards>
               <div v-for="template in templates" :key="template.id" class="surface-flat space-y-3 p-3.5 sm:p-4">
                 <div class="flex items-start justify-between gap-3">
                   <p class="text-[14px] font-medium text-ink">{{ template.name }}</p>
                   <Badge :variant="assignedNames(template.id).length ? 'success' : 'neutral'">
-                    {{ assignedNames(template.id).length }} assigned
+                    {{ t('shifts.assigned', { count: number(assignedNames(template.id).length) }) }}
                   </Badge>
                 </div>
 
                 <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
                   <div class="col-span-2">
-                    <dt class="eyebrow mb-1">Days</dt>
+                    <dt class="eyebrow mb-1">{{ t('shifts.daysOfWeek') }}</dt>
                     <dd class="text-ink-soft">{{ dayLabel(template.days_of_week) }}</dd>
                   </div>
                   <div>
-                    <dt class="eyebrow mb-1">Hours</dt>
+                    <dt class="eyebrow mb-1">{{ t('shifts.hours') }}</dt>
                     <dd class="tabular text-ink">{{ template.start_time.slice(0, 5) }}–{{ template.end_time.slice(0, 5) }}</dd>
                   </div>
                   <div>
-                    <dt class="eyebrow mb-1">Grace</dt>
-                    <dd class="tabular text-ink-soft">{{ template.grace_before_min }}/{{ template.grace_after_min }} min</dd>
+                    <dt class="eyebrow mb-1">{{ t('shifts.grace') }}</dt>
+                    <dd class="tabular text-ink-soft">{{ t('shifts.minutes', { before: number(template.grace_before_min), after: number(template.grace_after_min) }) }}</dd>
                   </div>
                 </dl>
 
                 <div class="flex items-center gap-1 border-t border-hairline pt-2.5">
                   <button type="button" class="min-h-10 rounded-sm px-3 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken" @click="startEdit(template)">
-                    Edit
+                    {{ t('common.edit') }}
                   </button>
                   <button type="button" class="min-h-10 rounded-sm px-3 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger" @click="remove(template)">
-                    Delete
+                    {{ t('common.delete') }}
                   </button>
                 </div>
               </div>
@@ -330,7 +333,7 @@ onMounted(() => {
               <td class="px-4 text-[14px] tabular text-ink-soft sm:px-5">{{ template.grace_before_min }}/{{ template.grace_after_min }}</td>
               <td class="px-4 sm:px-5">
                 <Badge :variant="assignedNames(template.id).length ? 'success' : 'neutral'">
-                  {{ assignedNames(template.id).length }} employee{{ assignedNames(template.id).length === 1 ? '' : 's' }}
+                  {{ t('shifts.employees', { count: number(assignedNames(template.id).length) }) }}
                 </Badge>
               </td>
               <td class="px-4 sm:px-5">
@@ -340,14 +343,14 @@ onMounted(() => {
                     class="rounded-sm px-2.5 py-2 text-[13px] font-medium text-primary-strong transition-colors hover:bg-surface-sunken"
                     @click="startEdit(template)"
                   >
-                    Edit
+                    {{ t('common.edit') }}
                   </button>
                   <button
                     type="button"
                     class="rounded-sm px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-surface-sunken hover:text-state-danger"
                     @click="remove(template)"
                   >
-                    Delete
+                    {{ t('common.delete') }}
                   </button>
                 </div>
               </td>

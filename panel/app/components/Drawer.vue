@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const open = defineModel<boolean>({ default: false })
 withDefaults(defineProps<{ title?: string; width?: string }>(), { width: 'max-w-md' })
+const { t, locale } = useI18n()
 
 function close() {
   open.value = false
@@ -25,14 +26,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       <div v-if="open" class="fixed inset-0 z-50 bg-ink/50" @click.self="close">
         <Transition
           enter-active-class="transition duration-base ease-soft"
-          enter-from-class="translate-x-full"
+          :enter-from-class="locale === 'ar' ? '-translate-x-full' : 'translate-x-full'"
           leave-active-class="transition duration-fast ease-soft"
-          leave-to-class="translate-x-full"
+          :leave-to-class="locale === 'ar' ? '-translate-x-full' : 'translate-x-full'"
         >
-          <aside v-if="open" class="surface fixed inset-y-0 right-0 flex w-full flex-col rounded-l-lg rounded-r-none" :class="width">
+          <aside v-if="open" class="surface fixed inset-y-0 end-0 flex w-full flex-col rounded-s-lg rounded-e-none" :class="width">
             <div class="flex flex-none items-center justify-between border-b border-hairline px-4 py-3.5 sm:px-5 sm:py-4">
               <h2 class="text-[14px] font-semibold text-ink">{{ title }}</h2>
-              <button type="button" @click="close" class="grid h-7 w-7 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink" aria-label="Close">
+              <button type="button" @click="close" class="grid h-7 w-7 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink" :aria-label="t('common.close')">
                 <Icon name="close" class="h-4 w-4" />
               </button>
             </div>

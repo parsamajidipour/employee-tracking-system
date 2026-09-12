@@ -22,7 +22,7 @@ class CasePhotoController extends Controller
     public function store(StoreCasePhotoRequest $request, InspectionCase $case, CasePhotoService $photos): JsonResponse
     {
         abort_unless($case->assigned_to === $request->user()->id, 403);
-        abort_unless($case->status === CaseStatus::InProgress, 409, 'Start the inspection before adding site photos.');
+        abort_unless($case->status === CaseStatus::InProgress, 409, __('messages.photo_before_start'));
 
         $photo = $photos->store($case, $request->user(), $request->file('photo'), [
             'lat' => (float) $request->validated('lat'),
@@ -44,7 +44,7 @@ class CasePhotoController extends Controller
 
         $path = Storage::disk('local')->path($casePhoto->disk_path);
         if (! is_readable($path)) {
-            return response()->json(['message' => 'Photo file is missing.'], 503);
+            return response()->json(['message' => __('messages.photo_missing')], 503);
         }
 
         return response()->file($path);

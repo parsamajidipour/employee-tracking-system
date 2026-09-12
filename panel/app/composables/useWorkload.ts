@@ -33,6 +33,7 @@ export interface WorkloadDetail {
 }
 
 export function useWorkloadList() {
+  const { t } = useI18n()
   const data = ref<WorkloadRow[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -43,7 +44,7 @@ export function useWorkloadList() {
       data.value = await apiFetch<WorkloadRow[]>('/api/v1/workload')
       error.value = null
     } catch {
-      error.value = 'Could not load workload.'
+      error.value = t('workload.listLoadFailed')
     } finally {
       loading.value = false
     }
