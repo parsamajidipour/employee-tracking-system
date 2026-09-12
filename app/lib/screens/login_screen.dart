@@ -68,14 +68,25 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() =>
-            _errorMessage = 'Could not reach the server. Check your connection.');
+        setState(() => _errorMessage =
+            'Could not reach the server. Check your connection.');
       }
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
       }
     }
+  }
+
+  Future<void> _copyPassword() async {
+    if (_passwordController.text.isEmpty) return;
+
+    await Clipboard.setData(ClipboardData(text: _passwordController.text));
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Password copied.')));
   }
 
   @override
@@ -116,7 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Text('Welcome back', style: context.text.titleMedium),
+                                  Text('Welcome back',
+                                      style: context.text.titleMedium),
                                   const SizedBox(height: AppSpacing.xs),
                                   Text(
                                     'Use the email or phone number your supervisor gave you.',
@@ -166,24 +178,40 @@ class _LoginScreenState extends State<LoginScreen> {
                                     decoration: InputDecoration(
                                       labelText: 'Password',
                                       hintText: 'Enter your password',
-                                      prefixIcon: const Icon(Icons.lock_outline),
-                                      suffixIcon: IconButton(
-                                        onPressed: () => setState(
-                                          () => _obscurePassword = !_obscurePassword,
-                                        ),
-                                        icon: Icon(
-                                          _obscurePassword
-                                              ? Icons.visibility_outlined
-                                              : Icons.visibility_off_outlined,
-                                        ),
-                                        tooltip: _obscurePassword
-                                            ? 'Show password'
-                                            : 'Hide password',
+                                      prefixIcon:
+                                          const Icon(Icons.lock_outline),
+                                      suffixIcon: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            onPressed: () => setState(
+                                              () => _obscurePassword =
+                                                  !_obscurePassword,
+                                            ),
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_outlined
+                                                  : Icons
+                                                      .visibility_off_outlined,
+                                            ),
+                                            tooltip: _obscurePassword
+                                                ? 'Show password'
+                                                : 'Hide password',
+                                          ),
+                                          IconButton(
+                                            onPressed: _copyPassword,
+                                            icon:
+                                                const Icon(Icons.copy_outlined),
+                                            tooltip: 'Copy password',
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     obscureText: _obscurePassword,
                                     textInputAction: TextInputAction.done,
-                                    autofillHints: const [AutofillHints.password],
+                                    autofillHints: const [
+                                      AutofillHints.password
+                                    ],
                                     enabled: !_submitting,
                                     onFieldSubmitted: (_) => _submit(),
                                     validator: (value) =>
@@ -195,7 +223,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   FilledButton(
                                     onPressed: _submitting ? null : _submit,
                                     child: AnimatedSwitcher(
-                                      duration: context.motion(AppDurations.fast),
+                                      duration:
+                                          context.motion(AppDurations.fast),
                                       child: _submitting
                                           ? const SizedBox(
                                               key: ValueKey('busy'),
