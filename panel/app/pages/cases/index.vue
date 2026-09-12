@@ -80,7 +80,7 @@ onMounted(() => {
     </div>
 
     <Table
-      :headers="['Reference', 'Title', 'Assignee', 'Status', 'Priority', 'Created', '']"
+      :headers="['Report no.', 'Customer name', 'Assignee', 'Status', 'Priority', 'Created', '']"
       :loading="loading"
       :error="error"
       :is-empty="cases.length === 0"

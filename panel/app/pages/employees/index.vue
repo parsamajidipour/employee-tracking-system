@@ -447,7 +447,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
             <Badge :variant="caseStatusVariant(caseItem.status)">{{ caseStatusLabel(caseItem.status) }}</Badge>
           </div>
           <p class="mt-3 line-clamp-2 text-[12.5px] leading-5 text-ink-soft">
-            {{ caseItem.property_address || 'Property address not provided' }}
+            {{ caseItem.property_address || 'Site address not provided' }}
           </p>
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <Badge :variant="casePriorityVariant(caseItem.priority)">{{ casePriorityLabel(caseItem.priority) }} priority</Badge>

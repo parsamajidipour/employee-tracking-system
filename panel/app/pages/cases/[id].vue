@@ -218,7 +218,7 @@ onMounted(refreshAll)
                 <Badge v-if="assignment" :variant="assignment.variant">{{ assignment.label }}</Badge>
                 <Badge :variant="casePriorityVariant(item.priority)">{{ casePriorityLabel(item.priority) }} priority</Badge>
               </div>
-              <p class="mt-1 truncate text-[13px] text-ink-soft">{{ item.property_address || 'Property address not provided' }}</p>
+              <p class="mt-1 truncate text-[13px] text-ink-soft">{{ item.property_address || 'Site address not provided' }}</p>
             </div>
           </div>
 
@@ -244,7 +244,7 @@ onMounted(refreshAll)
 
       <div class="grid flex-none grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,.9fr)_minmax(360px,.95fr)]">
         <div class="flex min-h-fit flex-col gap-5 lg:min-h-0">
-          <Card class="relative z-0 overflow-hidden" icon="map-pin" title="Property location" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
+          <Card class="relative z-0 overflow-hidden" icon="map-pin" title="Location on map" :subtitle="`${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`" flush>
             <div class="relative isolate h-72 overflow-hidden rounded-b-md xl:h-[300px]"><LocationPicker :lat="item.lat" :lng="item.lng" readonly /></div>
           </Card>
 

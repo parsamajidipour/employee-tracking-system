@@ -31,7 +31,7 @@ function setLng(value: number) {
 
 async function submit() {
   if (!canSubmit.value) {
-    formError.value = 'Reference, title, and a property location on the map are required.'
+    formError.value = 'Report number, customer name, and a location on the map are required.'
     return
   }
 
@@ -76,11 +76,11 @@ async function submit() {
       <div class="flex flex-none flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>
 
-        <Card class="flex-none" icon="briefcase" title="Case details" subtitle="What is being inspected, and how urgently">
+        <Card class="flex-none" icon="briefcase" title="Case details" subtitle="Report, customer, and priority information">
           <form class="space-y-3.5" @submit.prevent="submit">
-            <TextInput v-model="form.reference_no" label="Reference no." placeholder="e.g. INS-1042" required />
-            <TextInput v-model="form.title" label="Title" placeholder="e.g. Villa valuation" required />
-            <TextInput v-model="form.property_address" label="Property address" placeholder="e.g. Al Seeb, Muscat" />
+            <TextInput v-model="form.reference_no" label="Report no." placeholder="e.g. RPT-1042" required />
+            <TextInput v-model="form.title" label="Customer name" placeholder="e.g. Ahmed Al Balushi" required />
+            <TextInput v-model="form.property_address" label="Site address" placeholder="e.g. Al Seeb, Muscat" />
 
             <Select v-model="form.priority" label="Priority">
               <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">
@@ -119,7 +119,7 @@ async function submit() {
         </Card>
       </div>
 
-      <Card class="flex-none lg:min-h-0" icon="map-pin" title="Property location" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
+      <Card class="flex-none lg:min-h-0" icon="map-pin" title="Location on map" :subtitle="hasLocation ? 'Drag the pin to fine-tune' : 'Required — click the map to drop the pin'" flush>
         <template #actions>
           <Badge :variant="hasLocation ? 'success' : 'warning'">
             {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : 'Not set' }}
