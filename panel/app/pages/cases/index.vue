@@ -64,8 +64,8 @@ onMounted(() => {
       </Button>
     </div>
 
-    <div class="surface-flat mb-3 flex flex-col gap-3 p-3.5 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3.5 sm:p-4">
-      <div class="w-full sm:w-48">
+    <div class="surface-flat mb-3 grid grid-cols-2 items-end gap-2.5 p-3 sm:mb-4 sm:flex sm:flex-wrap sm:gap-3.5 sm:p-4">
+      <div class="min-w-0 sm:w-48">
         <Select v-model="statusFilter" :label="t('common.status')">
           <option value="">{{ t('cases.list.allStatuses') }}</option>
           <option v-for="status in CASE_STATUSES" :key="status" :value="status">{{ t(`case.statuses.${status}`) }}</option>
@@ -78,10 +78,7 @@ onMounted(() => {
             <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
           </Select>
         </div>
-        <div class="w-full sm:w-48">
-          <label for="case-created-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('common.date') }}</label>
-          <input id="case-created-date" v-model="createdDateFilter" type="date" class="field w-full" />
-        </div>
+        <DateInput v-model="createdDateFilter" class="w-full sm:w-48" :label="t('common.date')" />
         <template #footer>
           <Button
             v-if="advancedFilterCount > 0"
@@ -106,22 +103,25 @@ onMounted(() => {
       :empty-message="t('cases.list.empty')"
     >
       <template #cards>
-        <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block space-y-3 p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
+        <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block p-3.5 sm:p-4">
+          <div class="flex min-w-0 items-start justify-between gap-2.5">
+            <div class="min-w-0 flex-1">
               <p class="truncate text-[14px] font-medium text-ink">{{ item.title }}</p>
               <p class="truncate text-[12px] text-ink-faint">{{ item.reference_no }}</p>
             </div>
-            <Badge :variant="caseAssignmentDisplay(item).variant">{{ t(`case.assignmentStatuses.${caseAssignmentDisplay(item).status}`) }}</Badge>
+            <div class="flex max-w-[58%] flex-none flex-wrap items-center justify-end gap-1.5">
+              <Badge :variant="caseAssignmentDisplay(item).variant">{{ t(`case.assignmentStatuses.${caseAssignmentDisplay(item).status}`) }}</Badge>
+              <Badge :variant="casePriorityVariant(item.priority)">{{ t(`case.priorities.${item.priority}`) }}</Badge>
+            </div>
           </div>
-          <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
-            <div>
+          <dl class="mt-3 grid grid-cols-2 gap-3 border-t border-hairline pt-3 text-[13px]">
+            <div class="min-w-0">
               <dt class="eyebrow mb-1">{{ t('cases.fields.assignee') }}</dt>
               <dd class="truncate text-ink">{{ item.assignee_name ?? t('case.assignmentStatuses.unassigned') }}</dd>
             </div>
-            <div>
-              <dt class="eyebrow mb-1">{{ t('cases.fields.priority') }}</dt>
-              <dd><Badge :variant="casePriorityVariant(item.priority)">{{ t(`case.priorities.${item.priority}`) }}</Badge></dd>
+            <div class="min-w-0 text-end">
+              <dt class="eyebrow mb-1">{{ t('cases.fields.created') }}</dt>
+              <dd class="tabular text-ink-soft">{{ date(item.created_at) }}</dd>
             </div>
           </dl>
         </NuxtLink>

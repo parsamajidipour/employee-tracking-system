@@ -57,14 +57,12 @@ onMounted(() => {
           maxzoom: 19,
         },
       },
-      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }],
+      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm', paint: { 'raster-fade-duration': 0 } }],
     },
     center: initialCenter,
     zoom: props.lat !== null ? 15 : 11,
-    maxBounds: [
-      [52.1, 16.6],
-      [59.95, 26.6],
-    ],
+    minZoom: 2,
+    renderWorldCopies: false,
     interactive: !props.readonly,
   })
 
@@ -86,6 +84,8 @@ watch(
   ([lat, lng]) => {
     if (!map || lat === null || lng === null) return
     hasPositioned.value = true
+    const center = map.getCenter()
+    if (Math.abs(center.lat - lat) < 0.000002 && Math.abs(center.lng - lng) < 0.000002) return
     map.jumpTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) })
   },
 )

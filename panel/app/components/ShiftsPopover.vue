@@ -2,122 +2,35 @@
 import type { EmployeeShiftSummary } from '~/composables/useEmployees'
 
 const props = defineProps<{ shifts: EmployeeShiftSummary[] }>()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { number } = useLocalizedFormat()
-
-const open = ref(false)
-const triggerRef = ref<HTMLButtonElement | null>(null)
-const popoverRef = ref<HTMLElement | null>(null)
-const position = ref({ top: 0, left: 0 })
-
-const MARGIN = 8
-
-function updatePosition() {
-  const trigger = triggerRef.value
-  if (!trigger) return
-
-  const rect = trigger.getBoundingClientRect()
-  const width = Math.min(272, window.innerWidth - MARGIN * 2)
-  const panelHeight = Math.min(popoverRef.value?.scrollHeight ?? props.shifts.length * 30 + 44, 320)
-
-  let left = locale.value === 'ar' ? rect.left : rect.right - width
-  left = Math.max(MARGIN, Math.min(left, window.innerWidth - width - MARGIN))
-
-  let top = rect.bottom + 6
-  if (top + panelHeight > window.innerHeight - MARGIN) {
-    top = Math.max(MARGIN, rect.top - panelHeight - 6)
-  }
-
-  position.value = { top, left }
-}
-
-function close() {
-  open.value = false
-}
-
-function toggle() {
-  if (open.value) {
-    close()
-    return
-  }
-  open.value = true
-  nextTick(updatePosition)
-}
-
-function onDocClick(e: MouseEvent) {
-  const target = e.target as Node
-  if (popoverRef.value?.contains(target) || triggerRef.value?.contains(target)) return
-  close()
-}
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') close()
-}
-
-function onReposition() {
-  if (open.value) updatePosition()
-}
-
-watch(open, (value) => {
-  if (value) {
-    document.addEventListener('click', onDocClick, true)
-    document.addEventListener('keydown', onKeydown)
-    window.addEventListener('resize', onReposition)
-    window.addEventListener('scroll', onReposition, true)
-  } else {
-    document.removeEventListener('click', onDocClick, true)
-    document.removeEventListener('keydown', onKeydown)
-    window.removeEventListener('resize', onReposition)
-    window.removeEventListener('scroll', onReposition, true)
-  }
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', onDocClick, true)
-  document.removeEventListener('keydown', onKeydown)
-  window.removeEventListener('resize', onReposition)
-  window.removeEventListener('scroll', onReposition, true)
-})
 </script>
 
 <template>
   <span class="inline-flex items-center gap-1.5">
     <span class="tabular text-[13.5px] text-ink">{{ t('shifts.shiftCount', { count: number(shifts.length) }) }}</span>
-    <button
-      ref="triggerRef"
-      type="button"
-      class="grid h-6 w-6 shrink-0 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-primary-strong"
-      :class="open ? 'bg-surface-sunken text-primary-strong' : ''"
-      :aria-expanded="open"
-      :aria-label="t('shifts.showDetails')"
-      @click.stop="toggle"
-    >
-      <Icon name="calendar" class="h-3.5 w-3.5" />
-    </button>
-
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-fast ease-soft"
-        enter-from-class="opacity-0 scale-95"
-        leave-active-class="transition duration-fast ease-soft"
-        leave-to-class="opacity-0 scale-95"
-      >
-        <div
-          v-if="open"
-          ref="popoverRef"
-          role="tooltip"
-          class="surface fixed z-50 max-h-80 overflow-y-auto p-3"
-          :style="{ top: `${position.top}px`, left: `${position.left}px`, width: `min(272px, calc(100vw - ${MARGIN * 2}px))` }"
+    <Popover :width="272" align="end" :label="t('shifts.showDetails')">
+      <template #trigger="{ open, toggle }">
+        <button
+          type="button"
+          class="grid h-6 w-6 shrink-0 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-primary-strong"
+          :class="open ? 'bg-surface-sunken text-primary-strong' : ''"
+          :aria-expanded="open"
+          :aria-label="t('shifts.showDetails')"
+          @click.stop="toggle"
         >
-          <p class="eyebrow mb-2">{{ t('shifts.assignedCount', { count: number(shifts.length) }) }}</p>
-          <ul class="space-y-1.5">
-            <li v-for="shift in shifts" :key="shift.id" class="flex items-center justify-between gap-3 text-[13px]">
-              <span class="min-w-0 truncate font-medium text-ink">{{ shift.name }}</span>
-              <span class="shrink-0 tabular text-ink-soft">{{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}</span>
-            </li>
-          </ul>
-        </div>
-      </Transition>
-    </Teleport>
+          <Icon name="calendar" class="h-3.5 w-3.5" />
+        </button>
+      </template>
+      <div class="p-1.5">
+        <p class="eyebrow mb-2">{{ t('shifts.assignedCount', { count: number(shifts.length) }) }}</p>
+        <ul class="space-y-1.5">
+          <li v-for="shift in shifts" :key="shift.id" class="flex items-center justify-between gap-3 text-[13px]">
+            <span class="min-w-0 truncate font-medium text-ink">{{ shift.name }}</span>
+            <span class="shrink-0 tabular text-ink-soft">{{ shift.start_time.slice(0, 5) }}–{{ shift.end_time.slice(0, 5) }}</span>
+          </li>
+        </ul>
+      </div>
+    </Popover>
   </span>
 </template>

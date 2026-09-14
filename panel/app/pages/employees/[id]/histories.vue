@@ -342,10 +342,7 @@ onUnmounted(() => map?.remove())
       <InlineAlert v-if="error" class="mb-4 flex-none">{{ error }}</InlineAlert>
 
       <form class="surface-flat mb-3 flex flex-none flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-4 sm:p-4" @submit.prevent>
-        <div class="w-full sm:w-auto">
-          <label for="history-date" class="mb-1.5 block text-[12.5px] font-medium text-ink-soft">{{ t('common.date') }}</label>
-          <input id="history-date" v-model="selectedDate" type="date" :max="todayLocalDate()" class="field w-full sm:w-48" />
-        </div>
+        <DateInput v-model="selectedDate" class="w-full sm:w-48" :label="t('common.date')" :max="todayLocalDate()" required />
 
         <div
           v-if="trail && trail.shifts.length > 0"

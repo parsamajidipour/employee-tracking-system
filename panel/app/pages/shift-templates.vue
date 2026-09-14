@@ -31,6 +31,7 @@ const { confirm } = useConfirm()
 const toast = useToast()
 
 const editingId = ref<number | null>(null)
+const formSection = ref<HTMLElement | null>(null)
 const formError = ref<string | null>(null)
 const form = reactive({
   name: '',
@@ -83,6 +84,14 @@ function startEdit(template: ShiftTemplate) {
   form.grace_before_min = String(template.grace_before_min)
   form.grace_after_min = String(template.grace_after_min)
   form.max_daily_minutes = template.max_daily_minutes === null ? '' : String(template.max_daily_minutes)
+
+  nextTick(() => {
+    if (!window.matchMedia('(max-width: 1023px)').matches) return
+    formSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.setTimeout(() => {
+      formSection.value?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
+    }, 250)
+  })
 }
 
 function buildBody() {
@@ -183,7 +192,7 @@ onMounted(() => {
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div class="flex-none lg:min-h-0 lg:overflow-y-auto lg:pe-1">
+      <div ref="formSection" class="flex-none scroll-mt-3 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
         <Card
           :icon="editingId === null ? 'plus' : 'pencil'"
           :title="editingId === null ? t('shifts.new') : t('shifts.edit')"
@@ -213,18 +222,18 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="rounded-md bg-surface-sunken p-3.5">
+            <section class="border-t border-hairline pt-4">
               <p class="eyebrow mb-2.5">{{ t('shifts.window') }}</p>
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextInput v-model="form.start_time" type="time" :label="t('shifts.start')" placeholder="07:00" required />
-                <TextInput v-model="form.end_time" type="time" :label="t('shifts.end')" placeholder="16:00" required />
+                <TimeInput v-model="form.start_time" :label="t('shifts.start')" placeholder="07:00" required />
+                <TimeInput v-model="form.end_time" :label="t('shifts.end')" placeholder="16:00" required />
               </div>
               <p v-if="crossesMidnight" class="mt-2 text-[12px] text-ink-soft">
                 {{ t('shifts.crossesMidnight') }}
               </p>
-            </div>
+            </section>
 
-            <div class="rounded-md bg-surface-sunken p-3.5">
+            <section class="border-t border-hairline pt-4">
               <p class="eyebrow mb-2.5">{{ t('shifts.graceCap') }}</p>
               <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
                 <TextInput
@@ -252,7 +261,7 @@ onMounted(() => {
                   :hint="t('shifts.capHint')"
                 />
               </div>
-            </div>
+            </section>
 
             <div class="flex flex-col gap-2 border-t border-hairline pt-4 sm:flex-row sm:flex-wrap sm:items-center">
               <Button type="submit" class="w-full sm:w-auto" :loading="submitting">

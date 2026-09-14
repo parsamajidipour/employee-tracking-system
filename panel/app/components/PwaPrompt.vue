@@ -39,7 +39,7 @@ async function close() {
 
 <template>
   <Transition enter-active-class="transition-opacity duration-base" enter-from-class="opacity-0" leave-active-class="transition-opacity duration-fast" leave-to-class="opacity-0">
-    <aside v-if="visible" class="pwa-prompt surface border border-hairline p-4" role="status">
+    <aside v-if="visible" class="pwa-prompt elevated-overlay bg-surface p-4" role="status">
       <div class="flex items-start gap-3">
         <span class="grid h-9 w-9 flex-none place-items-center rounded-sm bg-primary-soft text-primary-strong">
           <Icon :name="$pwa?.offlineReady ? 'check-circle' : 'download'" class="h-5 w-5" />

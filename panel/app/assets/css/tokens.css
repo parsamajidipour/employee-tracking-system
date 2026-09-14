@@ -40,7 +40,7 @@
 
   --shadow-ambient: 0 1px 2px rgba(16, 16, 20, 0.04);
   --shadow-key: 0 8px 20px -6px rgba(16, 16, 20, 0.12);
-  --shadow-raised: 0 20px 44px -12px rgba(16, 16, 20, 0.22);
+  --shadow-raised: 0 24px 56px -14px rgba(16, 16, 20, 0.34), 0 8px 20px -10px rgba(16, 16, 20, 0.2);
   --shadow-dark-key: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
 
   --motion-fast: 120ms;
@@ -157,6 +157,12 @@
     color: var(--text-dark-primary);
   }
 
+  .elevated-overlay {
+    border: 1px solid color-mix(in srgb, var(--text-tertiary) 45%, var(--border));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-raised);
+  }
+
   .eyebrow {
     font-size: 11px;
     line-height: 14px;
@@ -208,6 +214,14 @@
 
   .field::placeholder {
     color: var(--text-tertiary);
+  }
+
+  select.field {
+    box-shadow: 0 1px 2px rgba(16, 16, 20, 0.08);
+  }
+
+  .modal-actions > * {
+    width: 100%;
   }
 
   .field:is(input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month'], input[type='week']) {
@@ -383,6 +397,13 @@
 }
 
 @media (max-width: 639px) {
+  .pill {
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 11.5px;
+    line-height: 16px;
+  }
+
   input,
   select,
   textarea {
@@ -390,7 +411,17 @@
   }
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .surveyor-option:hover {
+    background: var(--surface-sunken);
+  }
+}
+
 @media (min-width: 640px) {
+  .modal-actions > * {
+    width: auto;
+  }
+
   .app-top-nav {
     height: calc(4.5rem + var(--safe-top));
     padding-left: max(1.25rem, var(--safe-left));

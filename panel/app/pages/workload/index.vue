@@ -287,17 +287,14 @@ onMounted(load)
 
     <Drawer v-model="drawerOpen" :title="drawerEmployeeName">
       <div class="space-y-4">
-        <div>
-          <label for="workload-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('workload.activityDate') }}</label>
-          <input
-            id="workload-date"
-            v-model="drawerDate"
-            type="date"
-            :placeholder="t('workload.pickDate')"
-            :max="todayLocalDate()"
-            class="field w-52"
-          />
-        </div>
+        <DateInput
+          v-model="drawerDate"
+          class="w-full sm:w-52"
+          :label="t('workload.activityDate')"
+          :placeholder="t('workload.pickDate')"
+          :max="todayLocalDate()"
+          required
+        />
 
         <InlineAlert v-if="drawerError" class="!mb-0">{{ drawerError }}</InlineAlert>
 

@@ -123,28 +123,25 @@ function confirm() {
       <button type="button" class="safe-start-3 surface absolute top-[max(0.75rem,env(safe-area-inset-top))] grid h-11 w-11 place-items-center rounded-full shadow-lg" :aria-label="t('common.close')" @click="emit('close')">
         <Icon name="close" class="h-5 w-5" />
       </button>
-      <button type="button" class="safe-end-3 surface absolute top-[max(0.75rem,env(safe-area-inset-top))] flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg" @click="optionsOpen = !optionsOpen">
-        <Icon name="more-horizontal" class="h-5 w-5" />
+      <button type="button" class="safe-end-3 elevated-overlay absolute top-[max(0.75rem,env(safe-area-inset-top))] flex h-11 items-center gap-2 rounded-full bg-surface px-4 text-sm font-semibold" @click="optionsOpen = !optionsOpen">
+        <Icon name="navigation" class="h-5 w-5" />
         {{ t('cases.new.mapOptions') }}
       </button>
 
       <div v-if="error && !optionsOpen" class="safe-inset-x-3 absolute top-[calc(5rem+env(safe-area-inset-top))] rounded-md bg-state-danger px-3 py-2 text-xs text-white shadow-lg">{{ error }}</div>
 
-      <section v-if="optionsOpen" class="safe-inset-x-3 surface absolute top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100dvh_-_11rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] overflow-y-auto rounded-lg p-4 shadow-xl">
+      <section v-if="optionsOpen" class="safe-inset-x-3 elevated-overlay absolute top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100dvh_-_11rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] overflow-y-auto bg-surface p-4">
         <p class="mb-3 text-sm font-bold text-ink">{{ t('cases.new.mapOptions') }}</p>
         <InlineAlert v-if="error" class="mb-3">{{ error }}</InlineAlert>
 
-        <label for="mobile-map-url" class="mb-1.5 block text-xs font-medium text-ink-soft">{{ t('cases.new.mapUrl') }}</label>
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <input id="mobile-map-url" v-model="mapUrl" type="url" class="field min-w-0 flex-1" :placeholder="t('cases.new.mapUrlPlaceholder')" />
-          <Button type="button" size="sm" class="w-full sm:w-auto" :loading="resolvingUrl" @click="applyMapUrl">{{ t('cases.new.useMapUrl') }}</Button>
-        </div>
+        <TextInput v-model="mapUrl" type="url" :label="t('cases.new.mapUrl')" :placeholder="t('cases.new.mapUrlPlaceholder')" />
+        <Button type="button" size="sm" class="mt-2 w-full" :loading="resolvingUrl" @click="applyMapUrl">{{ t('cases.new.useMapUrl') }}</Button>
 
         <div class="my-4 border-t border-hairline" />
         <p class="mb-2 text-xs font-medium text-ink-soft">{{ t('cases.new.coordinates') }}</p>
         <div class="grid grid-cols-2 gap-2">
-          <input v-model="latitude" inputmode="decimal" class="field" :aria-label="t('cases.new.latitude')" :placeholder="t('cases.new.latitude')" />
-          <input v-model="longitude" inputmode="decimal" class="field" :aria-label="t('cases.new.longitude')" :placeholder="t('cases.new.longitude')" />
+          <input v-model="latitude" inputmode="decimal" class="field min-w-0" :aria-label="t('cases.new.latitude')" :placeholder="t('cases.new.latitude')" />
+          <input v-model="longitude" inputmode="decimal" class="field min-w-0" :aria-label="t('cases.new.longitude')" :placeholder="t('cases.new.longitude')" />
         </div>
         <Button type="button" variant="secondary" class="mt-2 w-full" @click="applyCoordinates">{{ t('cases.new.useCoordinates') }}</Button>
 

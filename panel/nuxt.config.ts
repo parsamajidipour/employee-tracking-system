@@ -79,6 +79,8 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/png', href: '/favicon-32.png' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+        { rel: 'preconnect', href: 'https://tile.openstreetmap.org', crossorigin: 'anonymous' },
+        { rel: 'dns-prefetch', href: 'https://tile.openstreetmap.org' },
       ],
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },

@@ -129,7 +129,7 @@ onMounted(() => {
           maxzoom: 19,
         },
       },
-      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }],
+      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm', paint: { 'raster-fade-duration': 0 } }],
     },
     center: [props.caseLng, props.caseLat],
     zoom: 12,

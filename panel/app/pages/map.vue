@@ -116,7 +116,7 @@ onMounted(() => {
           maxzoom: 19,
         },
       },
-      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }],
+      layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm', paint: { 'raster-fade-duration': 0 } }],
     },
     center: [58.5922, 23.6144],
     zoom: 10,
@@ -127,8 +127,12 @@ onMounted(() => {
   })
 
   map.on('error', (e) => {
-    if (!mapError.value) mapError.value = t('map.loadFailed')
+    if (!map?.isStyleLoaded() && !mapError.value) mapError.value = t('map.loadFailed')
     console.error('MapLibre error', e.error)
+  })
+
+  map.on('idle', () => {
+    mapError.value = null
   })
 
   map.on('load', () => {

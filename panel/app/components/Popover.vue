@@ -118,15 +118,15 @@ defineExpose({ close })
 
     <Teleport to="body">
       <Transition
-        enter-active-class="transition duration-fast ease-soft"
-        enter-from-class="opacity-0 scale-95"
-        leave-active-class="transition duration-fast ease-soft"
-        leave-to-class="opacity-0 scale-95"
+        enter-active-class="transition-opacity duration-fast ease-soft"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-fast ease-soft"
+        leave-to-class="opacity-0"
       >
         <div
           v-if="open"
           ref="panelRef"
-          class="surface fixed z-50 overflow-y-auto p-1.5"
+          class="elevated-overlay fixed z-50 overflow-y-auto bg-surface p-1.5"
           :style="{
             top: `${position.top}px`,
             left: `${position.left}px`,

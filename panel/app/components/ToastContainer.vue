@@ -15,8 +15,8 @@ const toasts = useToastState()
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="surface flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium"
-          :class="toast.variant === 'success' ? 'text-state-success' : 'text-state-danger'"
+          class="elevated-overlay flex items-center gap-2.5 bg-surface px-3.5 py-3 text-[13px] font-medium"
+          :class="toast.variant === 'success' ? 'border-s-4 !border-s-state-success text-state-success' : 'border-s-4 !border-s-state-danger text-state-danger'"
         >
           <Icon :name="toast.variant === 'success' ? 'check-circle' : 'alert-triangle'" class="h-4 w-4 flex-none" />
           {{ toast.message }}
