@@ -15,7 +15,7 @@ useHead({
 </script>
 
 <template>
-  <main class="grid min-h-dvh place-items-center bg-canvas p-5">
+  <main class="safe-screen grid min-h-dvh place-items-center bg-canvas">
     <section class="surface w-full max-w-lg p-6 text-center sm:p-9">
       <div class="mb-5 flex justify-end">
         <LanguageSwitcher class="w-36" />

@@ -11,7 +11,7 @@ const id = computed(() => `field-${(props.label ?? 'select').toLowerCase().repla
 </script>
 
 <template>
-  <div>
+  <div class="min-w-0 max-w-full">
     <label v-if="label" :for="id" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ label }}</label>
     <div class="relative">
       <select

@@ -23,9 +23,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   <Teleport to="body">
     <Transition enter-active-class="transition duration-base ease-soft" enter-from-class="opacity-0"
       leave-active-class="transition duration-fast ease-soft" leave-to-class="opacity-0">
-      <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-3 sm:p-4" @click.self="close">
+      <div v-if="open" class="safe-modal-frame fixed inset-0 z-50 flex items-center justify-center bg-ink/50" @click.self="close">
         <Transition appear enter-active-class="scale-in">
-          <div class="surface max-h-[calc(100dvh-24px)] w-full max-w-md overflow-y-auto p-4 sm:max-h-[calc(100dvh-32px)] sm:p-5" role="dialog" aria-modal="true">
+          <div class="surface max-h-full w-full max-w-md overflow-y-auto p-4 sm:p-5" role="dialog" aria-modal="true">
             <div class="mb-3.5 flex items-center justify-between">
               <h2 class="text-[14px] font-semibold text-ink">{{ title }}</h2>
               <button type="button" @click="close" class="grid h-7 w-7 place-items-center rounded-sm text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink" :aria-label="t('common.close')">

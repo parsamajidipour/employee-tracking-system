@@ -215,7 +215,7 @@ onMounted(() => {
 
             <div class="rounded-md bg-surface-sunken p-3.5">
               <p class="eyebrow mb-2.5">{{ t('shifts.window') }}</p>
-              <div class="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextInput v-model="form.start_time" type="time" :label="t('shifts.start')" placeholder="07:00" required />
                 <TextInput v-model="form.end_time" type="time" :label="t('shifts.end')" placeholder="16:00" required />
               </div>

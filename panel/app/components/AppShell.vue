@@ -9,8 +9,8 @@ const { t } = useI18n()
 
 <template>
   <header
-    class="flex h-16 flex-none items-center gap-1.5 border-b border-hairline bg-surface/90 px-3
-           backdrop-blur-sm sm:h-[72px] sm:gap-3 sm:px-5 lg:px-6"
+    class="app-top-nav flex flex-none items-center gap-1.5 border-b border-hairline bg-surface/90
+           backdrop-blur-sm sm:gap-3"
   >
     <div class="flex min-w-0 flex-1 items-center gap-1 sm:gap-3">
       <button
@@ -46,7 +46,7 @@ const { t } = useI18n()
     <div class="flex-none"><NotificationBell /></div>
   </header>
 
-  <main :class="fullBleed ? 'relative min-h-0 flex-1 overflow-clip' : 'min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7'">
+  <main :class="fullBleed ? 'app-main-safe relative min-h-0 flex-1 overflow-clip' : 'app-main-content min-h-0 flex-1 overflow-y-auto'">
     <slot />
   </main>
 </template>

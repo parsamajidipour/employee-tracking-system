@@ -20,6 +20,11 @@
     "emailPlaceholder": "e.g. admin{'@'}inspection.local", "passwordPlaceholder": "Enter your work password",
     "failed": "Login failed — check the credentials and try again."
   },
+  "pwa": {
+    "installTitle": "Install panel", "installMessage": "Add it to this device for faster access.", "install": "Install", "later": "Later",
+    "updateTitle": "Update available", "updateMessage": "Reload to use the latest version.", "update": "Update",
+    "offlineTitle": "Ready offline", "offlineMessage": "The panel shell is available without a connection."
+  },
   "notifications": {
     "title": "Notifications", "unread": "Notifications, {count} unread", "markAllRead": "Mark all read", "empty": "Nothing to catch up on yet.", "loadFailed": "Could not load notifications."
   },

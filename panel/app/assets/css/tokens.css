@@ -50,6 +50,11 @@
 
   --control-h: 48px;
   --row-h: 52px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 @media (pointer: coarse) {
@@ -64,6 +69,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color-scheme: light;
+  }
+
+  html,
+  body,
+  #__nuxt {
+    min-height: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   body {
@@ -197,6 +210,30 @@
     color: var(--text-tertiary);
   }
 
+  .field:is(input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month'], input[type='week']) {
+    display: block;
+    inline-size: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .field::-webkit-date-and-time-value {
+    min-width: 0;
+    width: 100%;
+    text-align: start;
+  }
+
+  .field::-webkit-datetime-edit {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .field::-webkit-calendar-picker-indicator {
+    flex: none;
+    margin-inline-start: 6px;
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -230,6 +267,154 @@
 
   .scale-in {
     animation: scale-in var(--motion-base) var(--ease) both;
+  }
+
+  .app-top-nav {
+    height: calc(4rem + var(--safe-top));
+    padding-top: var(--safe-top);
+    padding-left: max(0.75rem, var(--safe-left));
+    padding-right: max(0.75rem, var(--safe-right));
+  }
+
+  .app-main-safe {
+    padding-right: var(--safe-right);
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+  }
+
+  .app-main-content {
+    padding: 0.75rem max(0.75rem, var(--safe-right)) max(0.75rem, var(--safe-bottom)) max(0.75rem, var(--safe-left));
+  }
+
+  .app-sidebar-header {
+    min-height: calc(4.5rem + var(--safe-top));
+    padding-top: var(--safe-top);
+    padding-left: max(1.25rem, var(--safe-left));
+    padding-right: max(1.25rem, var(--safe-right));
+  }
+
+  .app-sidebar-nav {
+    padding-left: max(0.875rem, var(--safe-left));
+    padding-right: max(0.875rem, var(--safe-right));
+  }
+
+  .app-sidebar-footer {
+    padding-right: max(0.875rem, var(--safe-right));
+    padding-bottom: max(0.875rem, var(--safe-bottom));
+    padding-left: max(0.875rem, var(--safe-left));
+  }
+
+  .safe-screen {
+    padding-top: max(1.25rem, var(--safe-top));
+    padding-right: max(1.25rem, var(--safe-right));
+    padding-bottom: max(1.25rem, var(--safe-bottom));
+    padding-left: max(1.25rem, var(--safe-left));
+  }
+
+  .safe-modal-frame {
+    padding-top: max(0.75rem, var(--safe-top));
+    padding-right: max(0.75rem, var(--safe-right));
+    padding-bottom: max(0.75rem, var(--safe-bottom));
+    padding-left: max(0.75rem, var(--safe-left));
+  }
+
+  .safe-drawer-header {
+    padding-top: max(0.875rem, var(--safe-top));
+    padding-right: max(1rem, var(--safe-right));
+    padding-left: max(1rem, var(--safe-left));
+  }
+
+  .safe-drawer-body {
+    padding-right: max(1rem, var(--safe-right));
+    padding-left: max(1rem, var(--safe-left));
+  }
+
+  .safe-drawer-footer {
+    padding-right: max(1rem, var(--safe-right));
+    padding-bottom: max(0.875rem, var(--safe-bottom));
+    padding-left: max(1rem, var(--safe-left));
+  }
+
+  .toast-viewport {
+    right: max(1rem, var(--safe-right));
+    bottom: max(1rem, var(--safe-bottom));
+    left: max(1rem, var(--safe-left));
+  }
+
+  .pwa-prompt {
+    position: fixed;
+    z-index: 60;
+    right: max(1rem, var(--safe-right));
+    bottom: max(1rem, var(--safe-bottom));
+    left: max(1rem, var(--safe-left));
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
+  .login-language {
+    top: max(1.25rem, var(--safe-top));
+    inset-inline-end: max(1.25rem, var(--safe-right));
+  }
+
+  html[dir='rtl'] .login-language {
+    inset-inline-end: max(1.25rem, var(--safe-left));
+  }
+
+  .safe-start-3 {
+    inset-inline-start: max(0.75rem, var(--safe-left));
+  }
+
+  .safe-end-3 {
+    inset-inline-end: max(0.75rem, var(--safe-right));
+  }
+
+  html[dir='rtl'] .safe-start-3 {
+    inset-inline-start: max(0.75rem, var(--safe-right));
+  }
+
+  html[dir='rtl'] .safe-end-3 {
+    inset-inline-end: max(0.75rem, var(--safe-left));
+  }
+
+  .safe-inset-x-3 {
+    right: max(0.75rem, var(--safe-right));
+    left: max(0.75rem, var(--safe-left));
+  }
+}
+
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (min-width: 640px) {
+  .app-top-nav {
+    height: calc(4.5rem + var(--safe-top));
+    padding-left: max(1.25rem, var(--safe-left));
+    padding-right: max(1.25rem, var(--safe-right));
+  }
+
+  .app-main-content {
+    padding: 1.25rem max(1.25rem, var(--safe-right)) max(1.25rem, var(--safe-bottom)) max(1.25rem, var(--safe-left));
+  }
+
+  .toast-viewport {
+    right: max(1.25rem, var(--safe-right));
+    left: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-top-nav {
+    padding-left: max(1.5rem, var(--safe-left));
+    padding-right: max(1.5rem, var(--safe-right));
+  }
+
+  .app-main-content {
+    padding: 1.75rem max(1.75rem, var(--safe-right)) max(1.75rem, var(--safe-bottom)) max(1.75rem, var(--safe-left));
   }
 }
 

@@ -27,8 +27,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="relative flex min-h-dvh items-center justify-center bg-canvas p-5">
-    <div class="absolute end-5 top-5 text-ink-soft">
+  <div class="safe-screen relative flex min-h-dvh items-center justify-center bg-canvas">
+    <div class="login-language absolute text-ink-soft">
       <LanguageSwitcher />
     </div>
     <div class="enter w-full max-w-[400px]">

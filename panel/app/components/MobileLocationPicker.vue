@@ -120,17 +120,17 @@ function confirm() {
     <div v-if="open" class="fixed inset-0 z-[100] bg-surface lg:hidden">
       <LocationPicker :lat="draftLat" :lng="draftLng" :show-hint="false" @location-selected="select" />
 
-      <button type="button" class="surface absolute start-3 top-[max(0.75rem,env(safe-area-inset-top))] grid h-11 w-11 place-items-center rounded-full shadow-lg" :aria-label="t('common.close')" @click="emit('close')">
+      <button type="button" class="safe-start-3 surface absolute top-[max(0.75rem,env(safe-area-inset-top))] grid h-11 w-11 place-items-center rounded-full shadow-lg" :aria-label="t('common.close')" @click="emit('close')">
         <Icon name="close" class="h-5 w-5" />
       </button>
-      <button type="button" class="surface absolute end-3 top-[max(0.75rem,env(safe-area-inset-top))] flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg" @click="optionsOpen = !optionsOpen">
+      <button type="button" class="safe-end-3 surface absolute top-[max(0.75rem,env(safe-area-inset-top))] flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-lg" @click="optionsOpen = !optionsOpen">
         <Icon name="more-horizontal" class="h-5 w-5" />
         {{ t('cases.new.mapOptions') }}
       </button>
 
-      <div v-if="error && !optionsOpen" class="absolute inset-x-3 top-20 rounded-md bg-state-danger px-3 py-2 text-xs text-white shadow-lg">{{ error }}</div>
+      <div v-if="error && !optionsOpen" class="safe-inset-x-3 absolute top-[calc(5rem+env(safe-area-inset-top))] rounded-md bg-state-danger px-3 py-2 text-xs text-white shadow-lg">{{ error }}</div>
 
-      <section v-if="optionsOpen" class="surface absolute inset-x-3 top-20 max-h-[calc(100dvh-11rem)] overflow-y-auto rounded-lg p-4 shadow-xl">
+      <section v-if="optionsOpen" class="safe-inset-x-3 surface absolute top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100dvh_-_11rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] overflow-y-auto rounded-lg p-4 shadow-xl">
         <p class="mb-3 text-sm font-bold text-ink">{{ t('cases.new.mapOptions') }}</p>
         <InlineAlert v-if="error" class="mb-3">{{ error }}</InlineAlert>
 
@@ -155,7 +155,7 @@ function confirm() {
         </Button>
       </section>
 
-      <div class="absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div class="safe-inset-x-3 absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Button type="button" class="w-full shadow-xl" :disabled="draftLat === null || draftLng === null" @click="confirm">
           {{ t('cases.new.confirmLocation') }}
         </Button>

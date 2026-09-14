@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   srcDir: 'app',
   devtools: { enabled: true },
   ssr: false,
-  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/i18n'],
+  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/i18n', '@vite-pwa/nuxt'],
   css: ['~/assets/css/tokens.css', 'maplibre-gl/dist/maplibre-gl.css'],
   tailwindcss: {
     cssPath: false,
@@ -18,6 +18,52 @@ export default defineNuxtConfig({
       { code: 'ar', language: 'ar', name: 'العربية', dir: 'rtl', file: 'ar.json' },
     ],
   },
+  pwa: {
+    registerType: 'autoUpdate',
+    includeAssets: ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png'],
+    manifest: {
+      id: '/',
+      name: 'Smart Inspection',
+      short_name: 'Inspection',
+      description: 'Inspection cases, employees, schedules, and live operations.',
+      start_url: '/map',
+      scope: '/',
+      display: 'standalone',
+      display_override: ['window-controls-overlay', 'standalone'],
+      orientation: 'any',
+      background_color: '#f7f7fa',
+      theme_color: '#4f46e5',
+      categories: ['business', 'productivity'],
+      icons: [
+        { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+      shortcuts: [
+        { name: 'Live map', short_name: 'Map', url: '/map', icons: [{ src: '/pwa-192x192.png', sizes: '192x192' }] },
+        { name: 'Cases', short_name: 'Cases', url: '/cases', icons: [{ src: '/pwa-192x192.png', sizes: '192x192' }] },
+        { name: 'Employees', short_name: 'Employees', url: '/employees', icons: [{ src: '/pwa-192x192.png', sizes: '192x192' }] },
+      ],
+    },
+    workbox: {
+      globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      additionalManifestEntries: [
+        { url: '/', revision: process.env.PWA_REVISION || String(Date.now()) },
+      ],
+      navigateFallback: '/',
+      navigateFallbackDenylist: [/^\/api\//],
+      cleanupOutdatedCaches: true,
+      clientsClaim: true,
+      skipWaiting: true,
+    },
+    client: {
+      installPrompt: true,
+      periodicSyncForUpdates: 3600,
+    },
+    devOptions: {
+      enabled: false,
+    },
+  },
   vite: {
     worker: {
       format: 'es',
@@ -31,8 +77,13 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
       ],
       meta: [
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
         { name: 'color-scheme', content: 'light' },
+        { name: 'theme-color', content: '#4f46e5' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'apple-mobile-web-app-title', content: 'Inspection' },
       ],
       style: [
         {

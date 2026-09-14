@@ -65,7 +65,7 @@ onUnmounted(() => {
     <Teleport to="body" :disabled="!isMobile">
       <div
         v-if="!isMobile || open"
-        :class="isMobile ? 'fixed inset-0 z-50 flex items-center justify-center p-4' : 'contents'"
+        :class="isMobile ? 'safe-modal-frame fixed inset-0 z-50 flex items-center justify-center' : 'contents'"
       >
         <button
           v-if="isMobile"
@@ -77,7 +77,7 @@ onUnmounted(() => {
 
         <section
           :class="isMobile
-            ? 'surface relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden border border-hairline'
+            ? 'surface relative z-10 flex max-h-full w-full max-w-md flex-col overflow-hidden border border-hairline'
             : 'hidden flex-wrap items-end gap-3.5 sm:flex'"
           :role="isMobile ? 'dialog' : undefined"
           :aria-modal="isMobile ? true : undefined"

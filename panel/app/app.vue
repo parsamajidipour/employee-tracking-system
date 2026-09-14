@@ -12,11 +12,13 @@ useHead({
 
 <template>
   <div>
+    <VitePwaManifest />
     <NuxtRouteAnnouncer />
     <NuxtLayout>
       <NuxtPage :transition="{ name: 'page' }" />
     </NuxtLayout>
     <ConfirmDialog />
     <ToastContainer />
+    <PwaPrompt />
   </div>
 </template>

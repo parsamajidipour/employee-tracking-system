@@ -63,7 +63,7 @@ async function signOut() {
     ]"
     style="transition-property: transform, width"
   >
-    <div class="flex h-[72px] flex-none items-center gap-3 px-5">
+    <div class="app-sidebar-header flex flex-none items-center gap-3">
       <span class="grid h-9 w-9 flex-none place-items-center rounded-sm bg-primary text-white">
         <Icon name="map-pin" class="h-5 w-5" />
       </span>
@@ -78,7 +78,7 @@ async function signOut() {
       </button>
     </div>
 
-    <nav class="flex-1 space-y-1.5 overflow-y-auto px-3.5 py-3">
+    <nav class="app-sidebar-nav flex-1 space-y-1.5 overflow-y-auto py-3">
       <NuxtLink
         v-for="link in visibleLinks"
         :key="link.to"
@@ -96,7 +96,7 @@ async function signOut() {
       </NuxtLink>
     </nav>
 
-    <div class="flex-none space-y-1.5 border-t border-hairline-dark px-3.5 py-3.5">
+    <div class="app-sidebar-footer flex-none space-y-1.5 border-t border-hairline-dark pt-3.5">
       <button
         type="button"
         class="hidden h-11 w-full items-center gap-3.5 rounded-sm px-3.5 text-[13.5px] font-medium text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:flex"

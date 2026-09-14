@@ -20,6 +20,11 @@
     "emailPlaceholder": "مثل admin{'@'}inspection.local", "passwordPlaceholder": "أدخل كلمة مرور العمل",
     "failed": "فشل تسجيل الدخول — تحقق من البيانات وحاول مجددًا."
   },
+  "pwa": {
+    "installTitle": "تثبيت اللوحة", "installMessage": "أضفها إلى هذا الجهاز للوصول بشكل أسرع.", "install": "تثبيت", "later": "لاحقًا",
+    "updateTitle": "يتوفر تحديث", "updateMessage": "أعد التحميل لاستخدام أحدث إصدار.", "update": "تحديث",
+    "offlineTitle": "جاهزة دون اتصال", "offlineMessage": "واجهة اللوحة متاحة دون اتصال."
+  },
   "notifications": {
     "title": "الإشعارات", "unread": "الإشعارات، {count} غير مقروء", "markAllRead": "تعليم الكل كمقروء", "empty": "لا توجد إشعارات جديدة.", "loadFailed": "تعذر تحميل الإشعارات."
   },

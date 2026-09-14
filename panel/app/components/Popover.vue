@@ -16,22 +16,27 @@ function updatePosition() {
   const trigger = triggerRef.value
   if (!trigger) return
 
+  const viewport = window.visualViewport
+  const viewportLeft = viewport?.offsetLeft ?? 0
+  const viewportTop = viewport?.offsetTop ?? 0
+  const viewportWidth = viewport?.width ?? window.innerWidth
+  const viewportHeight = viewport?.height ?? window.innerHeight
   const rect = trigger.getBoundingClientRect()
-  const width = Math.min(props.width, window.innerWidth - MARGIN * 2)
+  const width = Math.min(props.width, viewportWidth - MARGIN * 2)
 
   const endAligned = props.align === 'end'
   let left = locale.value === 'ar'
     ? (endAligned ? rect.left : rect.right - width)
     : (endAligned ? rect.right - width : rect.left)
-  left = Math.max(MARGIN, Math.min(left, window.innerWidth - width - MARGIN))
+  left = Math.max(viewportLeft + MARGIN, Math.min(left, viewportLeft + viewportWidth - width - MARGIN))
 
-  const below = window.innerHeight - rect.bottom - MARGIN * 2
-  const above = rect.top - MARGIN * 2
+  const below = viewportTop + viewportHeight - rect.bottom - MARGIN * 2
+  const above = rect.top - viewportTop - MARGIN * 2
   const placeAbove = below < 200 && above > below
   const panelHeight = Math.min(panelRef.value?.scrollHeight ?? 320, placeAbove ? above : below)
 
   position.value = {
-    top: placeAbove ? Math.max(MARGIN, rect.top - panelHeight - 6) : rect.bottom + 6,
+    top: placeAbove ? Math.max(viewportTop + MARGIN, rect.top - panelHeight - 6) : rect.bottom + 6,
     left,
     maxHeight: placeAbove ? above : below,
   }
@@ -70,11 +75,15 @@ watch(open, (value) => {
     document.addEventListener('keydown', onKeydown)
     window.addEventListener('resize', onReposition)
     window.addEventListener('scroll', onReposition, true)
+    window.visualViewport?.addEventListener('resize', onReposition)
+    window.visualViewport?.addEventListener('scroll', onReposition)
   } else {
     document.removeEventListener('click', onDocClick, true)
     document.removeEventListener('keydown', onKeydown)
     window.removeEventListener('resize', onReposition)
     window.removeEventListener('scroll', onReposition, true)
+    window.visualViewport?.removeEventListener('resize', onReposition)
+    window.visualViewport?.removeEventListener('scroll', onReposition)
   }
 })
 
@@ -83,6 +92,8 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('resize', onReposition)
   window.removeEventListener('scroll', onReposition, true)
+  window.visualViewport?.removeEventListener('resize', onReposition)
+  window.visualViewport?.removeEventListener('scroll', onReposition)
 })
 
 defineExpose({ close })
