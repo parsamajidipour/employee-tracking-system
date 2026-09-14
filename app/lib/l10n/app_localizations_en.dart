@@ -567,13 +567,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get openPropertyMap => 'Open property map';
+  String get photoOutsideLocation => 'Outside location';
+
+  @override
+  String get openPropertyMap => 'Directions';
 
   @override
   String get chooseMapApp => 'Open directions with';
 
   @override
-  String get mapInApp => 'Map in app';
+  String get mapInApp => 'Preview in app';
 
   @override
   String get googleMaps => 'Google Maps';

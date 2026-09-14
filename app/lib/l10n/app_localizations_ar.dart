@@ -561,13 +561,16 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get openPropertyMap => 'فتح خريطة العقار';
+  String get photoOutsideLocation => 'خارج الموقع';
+
+  @override
+  String get openPropertyMap => 'الاتجاهات';
 
   @override
   String get chooseMapApp => 'فتح الاتجاهات باستخدام';
 
   @override
-  String get mapInApp => 'خريطة التطبيق';
+  String get mapInApp => 'معاينة داخل التطبيق';
 
   @override
   String get googleMaps => 'خرائط Google';

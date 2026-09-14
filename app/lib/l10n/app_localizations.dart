@@ -1088,10 +1088,16 @@ abstract class AppLocalizations {
   /// **'Photo is {distance} m from this case. Take another photo to unlock Complete.'**
   String photoWrongLocation(Object distance);
 
+  /// No description provided for @photoOutsideLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside location'**
+  String get photoOutsideLocation;
+
   /// No description provided for @openPropertyMap.
   ///
   /// In en, this message translates to:
-  /// **'Open property map'**
+  /// **'Directions'**
   String get openPropertyMap;
 
   /// No description provided for @chooseMapApp.
@@ -1103,7 +1109,7 @@ abstract class AppLocalizations {
   /// No description provided for @mapInApp.
   ///
   /// In en, this message translates to:
-  /// **'Map in app'**
+  /// **'Preview in app'**
   String get mapInApp;
 
   /// No description provided for @googleMaps.

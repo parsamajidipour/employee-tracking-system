@@ -196,6 +196,8 @@ In:
   shows an error dialog as soon as an uploaded photo fails this verification.
 - Opening a case location asks whether to use the in-app map, Google Maps,
   Waze, OpenStreetMap, or Apple Maps where available.
+- The field case UI keeps directions, photo validity, and action state visible
+  without exposing raw coordinates or persistent explanatory copy.
 - Per-employee workload and productivity dashboard, including a
   travel/inspection/idle time split for the current shift window —
   `App\Services\CaseWorkloadService`

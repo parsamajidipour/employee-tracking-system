@@ -419,9 +419,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
       _MapTarget.inApp => throw StateError('Handled above'),
     };
 
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
-        mounted) {
-      _showError(context.l10n.mapOpenFailed);
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) _showError(context.l10n.mapOpenFailed);
+    } catch (_) {
+      if (mounted) _showError(context.l10n.mapOpenFailed);
     }
   }
 
@@ -597,11 +599,6 @@ class _MapTargetSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final options = <({IconData icon, String label, _MapTarget target})>[
       (
-        icon: Icons.map_outlined,
-        label: context.l10n.mapInApp,
-        target: _MapTarget.inApp,
-      ),
-      (
         icon: Icons.directions_outlined,
         label: context.l10n.googleMaps,
         target: _MapTarget.google,
@@ -622,6 +619,11 @@ class _MapTargetSheet extends StatelessWidget {
           label: context.l10n.appleMaps,
           target: _MapTarget.apple,
         ),
+      (
+        icon: Icons.map_outlined,
+        label: context.l10n.mapInApp,
+        target: _MapTarget.inApp,
+      ),
     ];
 
     return Padding(
@@ -742,11 +744,6 @@ class _DetailsCard extends StatelessWidget {
                           : inspectionCase.propertyAddress,
                       style: context.text.bodyLarge,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${inspectionCase.lat.toStringAsFixed(5)}, ${inspectionCase.lng.toStringAsFixed(5)}',
-                      style: context.text.bodySmall,
-                    ),
                   ],
                 ),
               ),
@@ -757,7 +754,7 @@ class _DetailsCard extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: onOpenMap,
-              icon: const Icon(Icons.map_outlined),
+              icon: const Icon(Icons.directions_outlined),
               label: Text(context.l10n.openPropertyMap),
             ),
           ),
@@ -1241,13 +1238,27 @@ class _PhotoThumb extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Icon(
-            photo.isGpsVerified
-                ? Icons.verified_outlined
-                : Icons.warning_amber_outlined,
-            size: 14,
-            color: photo.isGpsVerified ? colors.success : colors.warning,
-          ),
+          if (photo.isGpsVerified)
+            Icon(Icons.verified_outlined, size: 14, color: colors.success)
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 14, color: colors.danger),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(
+                    context.l10n.photoOutsideLocation,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    style: context.text.bodySmall?.copyWith(
+                      color: colors.danger,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
