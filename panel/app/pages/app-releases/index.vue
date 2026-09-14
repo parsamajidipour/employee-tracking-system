@@ -10,8 +10,13 @@ interface AppRelease {
   created_at: string
 }
 
-const { t, tm } = useI18n()
+const { t, tm, rt } = useI18n()
 const { number, date, fileSize } = useLocalizedFormat()
+
+const tableHeaders = computed(() => {
+  const headers = tm('releases.headers') as Parameters<typeof rt>[0][]
+  return headers.map(header => rt(header))
+})
 
 const releases = ref<AppRelease[]>([])
 const loading = ref(true)
@@ -187,7 +192,7 @@ onMounted(load)
           <div class="h-full min-h-0 overflow-y-auto">
             <Table
               embedded
-              :headers="tm('releases.headers') as string[]"
+              :headers="tableHeaders"
               :loading="loading"
               :error="error"
               :is-empty="releases.length === 0"

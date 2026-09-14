@@ -255,15 +255,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xl),
-                        FadeSlideIn(
-                          index: 2,
-                          child: Text(
-                            l10n.locationWorkingHoursOnly,
-                            textAlign: TextAlign.center,
-                            style: context.text.bodySmall,
-                          ),
-                        ),
                       ],
                     ),
                   ),

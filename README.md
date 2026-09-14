@@ -13,8 +13,11 @@ api/      Laravel 11, API only — mobile API, panel API, WebSocket (Reverb),
 panel/    Nuxt 4 + Tailwind admin UI. Authenticates against api/ over
           Sanctum. Runs on the host in dev — see below.
 app/      Placeholder. Flutter Android client, built in a later phase.
-docs/     SPEC.md, API.md, PRIVACY.md.
+docs/     SPEC.md, API.md, PRIVACY.md, USER_GUIDE_FA.md.
 ```
+
+راهنمای فارسی استفاده از پنل و اپ اندروید در
+[`docs/USER_GUIDE_FA.md`](docs/USER_GUIDE_FA.md) قرار دارد.
 
 See `DECISIONS.md` for why the admin UI is Nuxt rather than Blade/Inertia,
 and why `panel/` runs on the host instead of in Docker during dev.
