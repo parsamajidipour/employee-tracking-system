@@ -18,6 +18,7 @@ const caseLinks = computed(() => [
 const adminLinks = computed(() => [{ to: '/app-releases', label: t('nav.appReleases'), icon: 'download' }])
 
 const trailingLinks = computed(() => [{ to: '/profile', label: t('nav.adminProfile'), icon: 'user-circle' }])
+const roleLabel = computed(() => (user.value ? t(`profile.roles.${user.value.role}`) : '—'))
 
 const visibleLinks = computed(() => [
   ...links.value,
@@ -67,7 +68,7 @@ async function signOut() {
       <span class="grid h-9 w-9 flex-none place-items-center rounded-sm bg-primary text-white">
         <Icon name="map-pin" class="h-5 w-5" />
       </span>
-      <span v-if="railExpanded" class="truncate text-[15px] font-semibold tracking-tight">{{ t('app.name') }}</span>
+      <span class="truncate text-[15px] font-semibold tracking-tight" :class="railExpanded ? '' : 'lg:hidden'">{{ t('app.name') }}</span>
       <button
         type="button"
         class="ms-auto grid h-9 w-9 flex-none place-items-center rounded-sm text-ink-dark-soft transition-colors hover:bg-surface-dark-hover hover:text-ink-dark lg:hidden"
@@ -92,7 +93,7 @@ async function signOut() {
         "
       >
         <Icon :name="link.icon" class="h-[22px] w-[22px] flex-none" />
-        <span v-if="railExpanded" class="truncate">{{ link.label }}</span>
+        <span class="truncate" :class="railExpanded ? '' : 'lg:hidden'">{{ link.label }}</span>
       </NuxtLink>
     </nav>
 
@@ -103,18 +104,22 @@ async function signOut() {
         @click="railExpanded = !railExpanded"
       >
         <Icon name="forward" class="directional-icon h-[22px] w-[22px] flex-none transition-transform duration-base" :class="railExpanded ? 'rotate-180' : ''" />
-        <span v-if="railExpanded" class="truncate">{{ t('nav.collapse') }}</span>
+        <span class="truncate" :class="railExpanded ? '' : 'lg:hidden'">{{ t('nav.collapse') }}</span>
       </button>
 
-      <div class="flex items-center gap-3 px-3.5 py-2">
+      <div class="flex min-w-0 items-center gap-3 px-3.5 py-1.5">
         <span class="grid h-9 w-9 flex-none place-items-center rounded-full bg-surface-dark-hover text-[13px] font-bold text-ink-dark">
           {{ (user?.name ?? '?').charAt(0).toUpperCase() }}
         </span>
-        <div v-if="railExpanded" class="min-w-0">
+        <div class="min-w-0 flex-1" :class="railExpanded ? '' : 'lg:hidden'">
           <p class="truncate text-[13.5px] font-semibold text-ink-dark">{{ user?.name ?? t('nav.signedIn') }}</p>
-          <button type="button" class="min-h-10 text-[12px] font-medium text-ink-dark-soft transition-colors hover:text-state-danger" @click="signOut">
-            {{ t('nav.signOut') }}
-          </button>
+          <div class="mt-0.5 flex min-w-0 items-center gap-2 text-[12px] font-medium text-ink-dark-soft">
+            <span class="truncate">{{ roleLabel }}</span>
+            <span class="h-1 w-1 flex-none rounded-full bg-hairline-dark" aria-hidden="true" />
+            <button type="button" class="flex-none py-1 transition-colors hover:text-state-danger" @click="signOut">
+              {{ t('nav.signOut') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

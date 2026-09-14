@@ -90,7 +90,7 @@
   }
 
   html[dir='rtl'] body {
-    font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+    font-family: 'Noto Sans Arabic Variable', Tahoma, 'Segoe UI', Arial, sans-serif;
     letter-spacing: 0;
   }
 

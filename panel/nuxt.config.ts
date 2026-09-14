@@ -4,7 +4,11 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/i18n', '@vite-pwa/nuxt'],
-  css: ['~/assets/css/tokens.css', 'maplibre-gl/dist/maplibre-gl.css'],
+  css: [
+    '@fontsource-variable/noto-sans-arabic/wght.css',
+    '~/assets/css/tokens.css',
+    'maplibre-gl/dist/maplibre-gl.css',
+  ],
   tailwindcss: {
     cssPath: false,
   },

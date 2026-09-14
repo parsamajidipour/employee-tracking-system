@@ -113,28 +113,36 @@ onMounted(refreshProfile)
 
     <div class="h-full min-h-0 overflow-y-auto p-3 sm:p-5">
       <div class="mx-auto grid max-w-5xl grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-2">
-        <Card class="lg:col-span-2" icon="user-circle" :title="t('profile.signedInAs')" :subtitle="user?.email ?? t('common.loading')">
-          <template #actions>
-            <Button variant="secondary" size="sm" @click="signOut">{{ t('nav.signOut') }}</Button>
-          </template>
-
-          <div class="flex flex-wrap items-center gap-4">
-            <Avatar :name="user?.name ?? '?'" size="lg" />
-            <dl class="grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-3 text-[13px] min-[360px]:grid-cols-2 sm:grid-cols-3">
-              <div>
-                <dt class="eyebrow mb-1">{{ t('common.name') }}</dt>
-                <dd class="truncate text-ink">{{ user?.name ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">{{ t('common.email') }}</dt>
-                <dd class="truncate text-ink">{{ user?.email ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt class="eyebrow mb-1">{{ t('profile.role') }}</dt>
-                <dd><Badge variant="success">{{ roleLabel }}</Badge></dd>
-              </div>
-            </dl>
+        <Card class="lg:col-span-2">
+          <div class="flex min-w-0 items-center gap-3">
+            <Avatar :name="user?.name ?? '?'" />
+            <div class="min-w-0 flex-1">
+              <p class="flex min-w-0 items-baseline gap-1.5 text-[13px]">
+                <span class="flex-none text-ink-faint">{{ t('profile.signedInAs') }}</span>
+                <strong class="truncate font-semibold text-ink" :title="user?.name">{{ user?.name ?? t('common.loading') }}</strong>
+              </p>
+              <p class="truncate text-[12px] text-ink-soft" dir="ltr" :title="user?.email">{{ user?.email ?? '—' }}</p>
+            </div>
+            <Button variant="secondary" size="sm" class="flex-none" @click="signOut">
+              <Icon name="power" class="h-3.5 w-3.5" />
+              {{ t('nav.signOut') }}
+            </Button>
           </div>
+
+          <dl class="mt-3 grid min-w-0 grid-cols-1 gap-3 border-t border-hairline pt-3 text-[13px] sm:grid-cols-3 sm:gap-5">
+            <div class="min-w-0">
+              <dt class="eyebrow mb-1">{{ t('common.name') }}</dt>
+              <dd class="break-words text-ink [overflow-wrap:anywhere]">{{ user?.name ?? '—' }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="eyebrow mb-1">{{ t('common.email') }}</dt>
+              <dd class="break-words text-ink [overflow-wrap:anywhere]" dir="ltr">{{ user?.email ?? '—' }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="eyebrow mb-1">{{ t('profile.role') }}</dt>
+              <dd><Badge variant="success">{{ roleLabel }}</Badge></dd>
+            </div>
+          </dl>
         </Card>
 
         <Card icon="pencil" :title="t('profile.details')" :subtitle="t('profile.detailsSubtitle')">
