@@ -240,6 +240,34 @@ class EmployeeControllerTest extends TestCase
         $this->assertFalse($employee->refresh()->is_active);
     }
 
+    public function test_deactivation_withdraws_pending_offers_and_their_notifications(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+        $lifecycle = app(CaseLifecycleService::class);
+        $case = $lifecycle->create([
+            'reference_no' => 'INS-DEACTIVATE-OFFER',
+            'title' => 'Offer cleanup',
+            'property_address' => null,
+            'lat' => 23.55,
+            'lng' => 58.35,
+            'priority' => 'normal',
+        ], $admin);
+        $lifecycle->assign($case, $employee, $admin);
+
+        $this->actingAs($admin)
+            ->putJson("/api/v1/employees/{$employee->id}/active", ['is_active' => false])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('case_offers', [
+            'inspection_case_id' => $case->id,
+            'employee_id' => $employee->id,
+        ]);
+        $this->assertDatabaseMissing('notifications', [
+            'notifiable_id' => $employee->id,
+        ]);
+    }
+
     public function test_reset_password_changes_the_stored_hash(): void
     {
         Mail::fake();

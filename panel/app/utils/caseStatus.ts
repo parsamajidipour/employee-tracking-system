@@ -45,7 +45,7 @@ export interface AssignmentDisplay {
   isOverdue: boolean
 }
 
-type CaseForAssignmentDisplay = Pick<InspectionCase, 'status' | 'assigned_to' | 'planned_at' | 'started_at'>
+type CaseForAssignmentDisplay = Pick<InspectionCase, 'status' | 'assigned_to' | 'offered_to' | 'planned_at' | 'started_at'>
 
 const ASSIGNMENT_VARIANT: Record<AssignmentDisplayStatus, BadgeVariant> = {
   unassigned: 'neutral',
@@ -82,7 +82,7 @@ function deriveAssignmentStatus(item: CaseForAssignmentDisplay): AssignmentDispl
   }
 
   if (item.status === 'pending') {
-    return item.assigned_to ? 'awaiting_acceptance' : 'unassigned'
+    return item.assigned_to || item.offered_to?.length ? 'awaiting_acceptance' : 'unassigned'
   }
 
   return 'unassigned'

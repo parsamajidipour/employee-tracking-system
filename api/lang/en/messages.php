@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'map_url_invalid' => 'This map link does not contain a supported location.',
     'forbidden' => 'You do not have permission to access this resource.',
     'location_unavailable' => 'Location lookup is temporarily unavailable.',
     'location_busy' => 'Location lookup is temporarily busy. Try again in a moment.',
@@ -26,6 +27,8 @@ return [
         'employee_inactive' => ':name is deactivated and cannot be assigned a case.',
         'not_assignable' => 'Only a pending or rejected case can be assigned or reassigned.',
         'awaiting_response' => 'This assignment is awaiting the surveyor response and cannot be replaced yet.',
+        'offer_required' => 'Select at least one active surveyor.',
+        'offer_unavailable' => 'This case offer is no longer available.',
         'transition_invalid' => 'Cannot move case from :from to :to.',
         'status' => [
             'pending' => 'pending',

@@ -180,6 +180,15 @@ in `tokens.css`).
   instead of the standard `lg` tablet/desktop line above.
 - Every loading state is a `Skeleton`, never a bare "Loading…" string. Every empty
   state is an `EmptyState` (icon + message), never a bare paragraph.
+- Primary actions live in the page content, not in `AppShell`'s top bar. List-page
+  create actions keep their text visible at phone widths, and create-form submit
+  actions sit after the form fields and span the available width on phones. The
+  top bar is reserved for navigation and secondary utilities such as refresh.
+- Location forms use a full-viewport, map-only picker below `lg`; the page shell
+  and form header stay behind it. Close/options float at the top and the full-width
+  confirmation action stays above the bottom safe area. Provider URL import,
+  coordinates, and current-location controls live in one optional overlay rather
+  than competing with map gestures.
 - Every text input carries a `placeholder` showing a realistic example value, not
   a restatement of its label.
 - A page fills the viewport. `AppShell`'s `full-bleed` plus an inner

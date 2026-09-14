@@ -77,7 +77,36 @@ class MyCaseControllerTest extends TestCase
         $this->actingAs($intruder);
         $response = $this->postJson("/api/v1/me/cases/{$case->id}/accept", ['planned_at' => now()->addDay()->toISOString()]);
 
-        $response->assertForbidden();
+        $response->assertStatus(409);
+    }
+
+    public function test_first_employee_to_accept_a_shared_offer_claims_it_for_exclusive_access(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $first = User::factory()->create();
+        $second = User::factory()->create();
+        $lifecycle = app(CaseLifecycleService::class);
+        $case = $this->makeCase($admin);
+        $case = $lifecycle->offer($case, collect([$first, $second]), $admin);
+
+        $this->actingAs($first)
+            ->postJson("/api/v1/me/cases/{$case->id}/accept", ['planned_at' => now()->addHour()->toISOString()])
+            ->assertOk()
+            ->assertJsonPath('assigned_to', $first->id);
+
+        $this->assertDatabaseMissing('case_offers', ['inspection_case_id' => $case->id]);
+        $this->assertDatabaseHas('inspection_cases', ['id' => $case->id, 'assigned_to' => $first->id]);
+
+        $this->actingAs($second)
+            ->getJson("/api/v1/me/cases/{$case->id}")
+            ->assertForbidden();
+        $this->actingAs($second)
+            ->postJson("/api/v1/me/cases/{$case->id}/accept", ['planned_at' => now()->addHour()->toISOString()])
+            ->assertStatus(409);
+
+        $inbox = $this->actingAs($second)->getJson('/api/v1/notifications')->assertOk();
+        $this->assertSame([], $inbox->json('data'));
+        $this->assertNotContains($case->id, $inbox->json('visible_case_ids'));
     }
 
     public function test_cannot_start_a_case_that_has_not_been_accepted(): void

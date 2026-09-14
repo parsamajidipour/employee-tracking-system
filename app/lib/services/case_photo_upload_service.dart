@@ -2,9 +2,22 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/inspection_case.dart';
 import 'api_exception.dart';
 import 'case_photo_queue_repository.dart';
 import 'case_repository.dart';
+
+class CasePhotoUploadEvent {
+  const CasePhotoUploadEvent({
+    required this.revision,
+    required this.caseId,
+    required this.photo,
+  });
+
+  final int revision;
+  final int caseId;
+  final CasePhoto photo;
+}
 
 class CasePhotoUploadService extends ChangeNotifier {
   static const _batchLimit = 20;
@@ -12,12 +25,16 @@ class CasePhotoUploadService extends ChangeNotifier {
   final CasePhotoQueueRepository _repository;
   final CaseRepository _caseRepository;
   bool _running = false;
+  int _uploadRevision = 0;
+  CasePhotoUploadEvent? _lastUploadEvent;
 
   CasePhotoUploadService({
     required CasePhotoQueueRepository repository,
     required CaseRepository caseRepository,
   })  : _repository = repository,
         _caseRepository = caseRepository;
+
+  CasePhotoUploadEvent? get lastUploadEvent => _lastUploadEvent;
 
   Future<bool> runUploadCycle() async {
     if (_running) return false;
@@ -29,7 +46,7 @@ class CasePhotoUploadService extends ChangeNotifier {
 
       for (final item in batch) {
         try {
-          await _caseRepository.uploadPhoto(
+          final photo = await _caseRepository.uploadPhoto(
             item.caseId,
             filePath: item.filePath,
             lat: item.lat,
@@ -39,6 +56,12 @@ class CasePhotoUploadService extends ChangeNotifier {
           );
           await _repository.deleteId(item.id!);
           await _deleteFileQuietly(item.filePath);
+          _lastUploadEvent = CasePhotoUploadEvent(
+            revision: ++_uploadRevision,
+            caseId: item.caseId,
+            photo: photo,
+          );
+          notifyListeners();
           anyChange = true;
         } on ApiException catch (e) {
           if (e.isUnauthorized) break;

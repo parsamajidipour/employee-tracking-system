@@ -27,6 +27,11 @@ class CaseResource extends JsonResource
             'priority' => $this->priority->value,
             'assigned_to' => $this->assigned_to,
             'assignee_name' => $this->whenLoaded('assignee', fn () => $this->assignee?->name),
+            'offered_to' => $this->whenLoaded('offers', fn () => $this->offers->map(fn ($offer) => [
+                'employee_id' => $offer->employee_id,
+                'name' => $offer->employee?->name,
+                'offered_at' => $offer->offered_at?->toISOString(),
+            ])->values()),
             'assigned_at' => $this->assigned_at?->toISOString(),
             'accepted_at' => $this->accepted_at?->toISOString(),
             'planned_at' => $this->planned_at?->toISOString(),

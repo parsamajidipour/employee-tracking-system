@@ -89,10 +89,11 @@ class CaseControllerTest extends TestCase
         ], $admin);
 
         $this->actingAs($admin);
-        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employee->id]);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_ids' => [$employee->id]]);
 
         $response->assertOk();
-        $response->assertJsonPath('assigned_to', $employee->id);
+        $response->assertJsonPath('assigned_to', null);
+        $response->assertJsonPath('offered_to.0.employee_id', $employee->id);
         $this->assertDatabaseHas('case_status_events', ['inspection_case_id' => $case->id]);
         $this->assertDatabaseHas('notifications', [
             'notifiable_id' => $employee->id,
@@ -100,7 +101,7 @@ class CaseControllerTest extends TestCase
         ]);
     }
 
-    public function test_an_assignment_awaiting_acceptance_cannot_be_replaced(): void
+    public function test_pending_offer_recipients_can_be_replaced_before_acceptance(): void
     {
         $admin = User::factory()->admin()->create();
         $employeeA = User::factory()->create();
@@ -119,17 +120,15 @@ class CaseControllerTest extends TestCase
         $case = $lifecycle->assign($case, $employeeA, $admin);
 
         $this->actingAs($admin);
-        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employeeB->id]);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_ids' => [$employeeB->id]]);
 
-        $response->assertStatus(409);
-        $response->assertJsonPath('message', 'This assignment is awaiting the surveyor response and cannot be replaced yet.');
-        $this->assertDatabaseMissing('case_status_events', [
-            'inspection_case_id' => $case->id,
-            'note' => "Reassigned from {$employeeA->name} to {$employeeB->name}.",
-        ]);
+        $response->assertOk();
+        $response->assertJsonPath('offered_to.0.employee_id', $employeeB->id);
+        $this->assertDatabaseMissing('case_offers', ['inspection_case_id' => $case->id, 'employee_id' => $employeeA->id]);
+        $this->assertDatabaseHas('case_offers', ['inspection_case_id' => $case->id, 'employee_id' => $employeeB->id]);
     }
 
-    public function test_assign_sets_assigned_at_matching_the_logged_events_created_at(): void
+    public function test_offer_sets_offered_at_matching_the_logged_event_created_at(): void
     {
         $admin = User::factory()->admin()->create();
         $employee = User::factory()->create();
@@ -149,7 +148,8 @@ class CaseControllerTest extends TestCase
         $event = $case->statusEvents()->latest('created_at')->first();
 
         $this->assertNotNull($event);
-        $this->assertTrue($case->assigned_at->equalTo($event->created_at));
+        $offer = $case->offers()->firstOrFail();
+        $this->assertTrue($offer->offered_at->equalTo($event->created_at));
     }
 
     public function test_creating_a_case_does_not_notify_employees_until_assignment(): void
@@ -212,7 +212,7 @@ class CaseControllerTest extends TestCase
         $lifecycle->accept($case, $employeeA, now()->addDay());
 
         $this->actingAs($admin);
-        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employeeB->id]);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_ids' => [$employeeB->id]]);
 
         $response->assertStatus(409);
     }
@@ -279,10 +279,10 @@ class CaseControllerTest extends TestCase
         ], $admin);
 
         $this->actingAs($admin);
-        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employee->id]);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_ids' => [$employee->id]]);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors('employee_id');
+        $response->assertJsonValidationErrors('employee_ids.0');
     }
 
     public function test_a_rejected_case_can_be_reassigned(): void
@@ -304,10 +304,11 @@ class CaseControllerTest extends TestCase
         $lifecycle->reject($case, $employeeA, 'Too far.');
 
         $this->actingAs($admin);
-        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_id' => $employeeB->id]);
+        $response = $this->postJson("/api/v1/cases/{$case->id}/assign", ['employee_ids' => [$employeeB->id]]);
 
         $response->assertOk();
         $response->assertJsonPath('status', 'pending');
-        $response->assertJsonPath('assigned_to', $employeeB->id);
+        $response->assertJsonPath('assigned_to', null);
+        $response->assertJsonPath('offered_to.0.employee_id', $employeeB->id);
     }
 }

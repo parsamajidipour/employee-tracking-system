@@ -97,6 +97,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
     final caseId = notification.caseId;
     if (caseId != null) {
+      await liveUpdates.refreshInbox();
+      if (!liveUpdates.inbox.visibleCaseIds.contains(caseId)) return;
       await _openCase(caseId);
     }
   }

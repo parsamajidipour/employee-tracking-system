@@ -7,8 +7,9 @@ const props = withDefaults(
     lat: number | null
     lng: number | null
     readonly?: boolean
+    showHint?: boolean
   }>(),
-  { readonly: false },
+  { readonly: false, showHint: true },
 )
 const { t } = useI18n()
 
@@ -73,15 +74,21 @@ onMounted(() => {
     map.on('load', emitCenter)
   }
 
-  // Only a user-driven move (drag/scroll/touch) carries an originalEvent —
-  // a programmatic `setCenter`/`jumpTo` does not. That's what lets us tell
-  // "the admin actually chose a spot" apart from "the map merely opened".
   map.on('moveend', (e) => {
     if (!e.originalEvent) return
     hasPositioned.value = true
     emitCenter()
   })
 })
+
+watch(
+  () => [props.lat, props.lng] as const,
+  ([lat, lng]) => {
+    if (!map || lat === null || lng === null) return
+    hasPositioned.value = true
+    map.jumpTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) })
+  },
+)
 
 onUnmounted(() => {
   map?.remove()
@@ -104,7 +111,7 @@ onUnmounted(() => {
     <div class="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/30"></div>
 
     <div
-      v-if="!readonly"
+      v-if="!readonly && showHint"
       class="surface pointer-events-none absolute start-3 top-3 px-3 py-2 text-[12.5px]"
       :class="hasPositioned ? 'text-ink-soft' : 'font-semibold text-state-warning'"
     >

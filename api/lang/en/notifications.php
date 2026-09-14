@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'case_assigned' => ':reference — :title was assigned to you.',
+    'case_assigned' => ':reference — :title is available for you to accept.',
     'case_created' => 'New case :reference — :title.',
     'case_overdue' => ':reference — :title is overdue.',
     'case_status' => ':actor :action :reference — :title.',

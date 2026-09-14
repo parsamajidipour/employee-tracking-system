@@ -79,6 +79,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<CaseOffer, $this>
+     */
+    public function caseOffers(): HasMany
+    {
+        return $this->hasMany(CaseOffer::class, 'employee_id');
+    }
+
+    /**
      * @return HasOne<Device, $this>
      */
     public function activeDevice(): HasOne

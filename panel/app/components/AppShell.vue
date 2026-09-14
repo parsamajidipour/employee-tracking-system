@@ -46,7 +46,7 @@ const { t } = useI18n()
     <div class="flex-none"><NotificationBell /></div>
   </header>
 
-  <main :class="fullBleed ? 'relative min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7'">
+  <main :class="fullBleed ? 'relative min-h-0 flex-1 overflow-clip' : 'min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7'">
     <slot />
   </main>
 </template>

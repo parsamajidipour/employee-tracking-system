@@ -246,13 +246,16 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="isLoading" />
         <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
-      <Button size="sm" to="/employees/create">
-        <Icon name="plus" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">{{ t('employees.create.title') }}</span>
-      </Button>
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:overflow-hidden">
+      <div class="flex flex-none justify-end">
+        <Button class="w-full sm:w-auto" to="/employees/create">
+          <Icon name="plus" class="h-4 w-4" />
+          <span>{{ t('employees.create.title') }}</span>
+        </Button>
+      </div>
+
       <Card
         class="flex-none lg:min-h-0 lg:flex-1"
         icon="users"

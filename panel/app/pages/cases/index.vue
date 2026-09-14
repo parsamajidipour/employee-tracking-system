@@ -54,11 +54,14 @@ onMounted(() => {
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
-      <Button size="sm" to="/cases/new">
-        <Icon name="plus" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">{{ t('cases.new.title') }}</span>
-      </Button>
     </template>
+
+    <div class="mb-3 flex justify-end sm:mb-4">
+      <Button class="w-full sm:w-auto" to="/cases/new">
+        <Icon name="plus" class="h-4 w-4" />
+        <span>{{ t('cases.new.title') }}</span>
+      </Button>
+    </div>
 
     <div class="surface-flat mb-3 flex flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-3.5 sm:p-4">
       <div class="w-full min-[360px]:w-48">

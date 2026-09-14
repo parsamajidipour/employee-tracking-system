@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/l10n.dart';
 import '../models/inspection_case.dart';
@@ -42,6 +44,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   bool _busy = false;
   List<QueuedCasePhoto> _queuedPhotos = [];
   final ImagePicker _imagePicker = ImagePicker();
+  int _handledPhotoUploadRevision = 0;
 
   @override
   LiveUpdates get liveUpdates => widget.authController.liveUpdates;
@@ -55,6 +58,9 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   void initState() {
     super.initState();
     startLiveRefresh();
+    _handledPhotoUploadRevision = widget
+            .authController.casePhotoUploadService.lastUploadEvent?.revision ??
+        0;
     widget.authController.casePhotoUploadService
         .addListener(_onPhotoQueueChanged);
     _fetch();
@@ -70,8 +76,15 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   }
 
   void _onPhotoQueueChanged() {
-    _loadQueuedPhotos();
-    _fetch();
+    final event = widget.authController.casePhotoUploadService.lastUploadEvent;
+    if (event != null && event.revision > _handledPhotoUploadRevision) {
+      _handledPhotoUploadRevision = event.revision;
+      if (event.caseId == widget.caseId && !event.photo.isGpsVerified) {
+        unawaited(_showPhotoOutsideCase(event.photo.distanceFromCaseM));
+      }
+    }
+    unawaited(_loadQueuedPhotos());
+    unawaited(_fetch());
   }
 
   Future<void> _loadQueuedPhotos() async {
@@ -95,6 +108,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
       });
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.isForbidden || e.isNotFound) {
+        Navigator.of(context).pop();
+        return;
+      }
       setState(() {
         _error = e.message;
         _loading = false;
@@ -136,27 +153,14 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
   void _showError(String message) => _showSnack(message, isError: true);
 
   Future<void> _accept() async {
-    final date = await showDatePicker(
+    final plannedAt = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => const _SchedulePickerSheet(),
     );
-    if (date == null || !mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (time == null || !mounted) return;
-
-    final plannedAt = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    );
+    if (plannedAt == null || !mounted) return;
 
     setState(() => _busy = true);
     try {
@@ -192,14 +196,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
 
     setState(() => _busy = true);
     try {
-      final updated = await widget.authController.caseRepository
+      await widget.authController.caseRepository
           .rejectCase(widget.caseId, note: note);
       if (!mounted) return;
-      setState(() {
-        _inspectionCase = updated;
-        _busy = false;
-      });
-      _showSnack(context.l10n.rejectedNotice);
+      liveUpdates.bumpRevision();
+      Navigator.of(context).pop();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -363,10 +364,65 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
     _loadQueuedPhotos();
   }
 
-  void _openMap(InspectionCase inspectionCase) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CaseLocationScreen(inspectionCase: inspectionCase),
-    ));
+  Future<void> _showPhotoOutsideCase(double? distanceM) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(Icons.error_outline, color: context.colors.danger, size: 36),
+        title: Text(context.l10n.photoWrongLocationTitle),
+        content: Text(context.l10n.photoWrongLocation(
+          distanceM?.round().toString() ?? '—',
+        )),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.close),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openMap(InspectionCase inspectionCase) async {
+    final target = await showModalBottomSheet<_MapTarget>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _MapTargetSheet(
+        showAppleMaps: Platform.isIOS,
+      ),
+    );
+    if (target == null || !mounted) return;
+
+    if (target == _MapTarget.inApp) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => CaseLocationScreen(inspectionCase: inspectionCase),
+      ));
+      return;
+    }
+
+    final lat = inspectionCase.lat;
+    final lng = inspectionCase.lng;
+    final uri = switch (target) {
+      _MapTarget.google => Uri.parse(
+          'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+        ),
+      _MapTarget.waze =>
+        Uri.parse('https://waze.com/ul?ll=$lat,$lng&navigate=yes'),
+      _MapTarget.openStreetMap => Uri.parse(
+          'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=;$lat,$lng',
+        ),
+      _MapTarget.apple =>
+        Uri.parse('https://maps.apple.com/?daddr=$lat,$lng&dirflg=d'),
+      _MapTarget.inApp => throw StateError('Handled above'),
+    };
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      _showError(context.l10n.mapOpenFailed);
+    }
   }
 
   @override
@@ -449,6 +505,148 @@ class _CaseDetailScreenState extends State<CaseDetailScreen>
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+enum _MapTarget { inApp, google, waze, openStreetMap, apple }
+
+class _SchedulePickerSheet extends StatefulWidget {
+  const _SchedulePickerSheet();
+
+  @override
+  State<_SchedulePickerSheet> createState() => _SchedulePickerSheetState();
+}
+
+class _SchedulePickerSheetState extends State<_SchedulePickerSheet> {
+  late DateTime _plannedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final remainder = now.minute % 5;
+    final rounded =
+        now.add(Duration(minutes: remainder == 0 ? 5 : 5 - remainder));
+    _plannedAt = DateTime(
+      rounded.year,
+      rounded.month,
+      rounded.day,
+      rounded.hour,
+      rounded.minute,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(context.l10n.chooseInspectionTime,
+              style: context.text.titleMedium),
+          SizedBox(
+            height: 220,
+            child: CupertinoDatePicker(
+              mode: CupertinoDatePickerMode.dateAndTime,
+              initialDateTime: _plannedAt,
+              minimumDate: DateTime.now().subtract(const Duration(minutes: 1)),
+              maximumDate: DateTime.now().add(const Duration(days: 365)),
+              minuteInterval: 5,
+              use24hFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+              onDateTimeChanged: (value) => _plannedAt = value,
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(context.l10n.cancel),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(_plannedAt),
+                  child: Text(context.l10n.confirmTime),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapTargetSheet extends StatelessWidget {
+  const _MapTargetSheet({required this.showAppleMaps});
+
+  final bool showAppleMaps;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <({IconData icon, String label, _MapTarget target})>[
+      (
+        icon: Icons.map_outlined,
+        label: context.l10n.mapInApp,
+        target: _MapTarget.inApp,
+      ),
+      (
+        icon: Icons.directions_outlined,
+        label: context.l10n.googleMaps,
+        target: _MapTarget.google,
+      ),
+      (
+        icon: Icons.navigation_outlined,
+        label: context.l10n.waze,
+        target: _MapTarget.waze,
+      ),
+      (
+        icon: Icons.public_outlined,
+        label: context.l10n.openStreetMap,
+        target: _MapTarget.openStreetMap,
+      ),
+      if (showAppleMaps)
+        (
+          icon: Icons.map_rounded,
+          label: context.l10n.appleMaps,
+          target: _MapTarget.apple,
+        ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              0,
+              AppSpacing.screen,
+              AppSpacing.sm,
+            ),
+            child: Text(context.l10n.chooseMapApp,
+                style: context.text.titleMedium),
+          ),
+          for (final option in options)
+            ListTile(
+              leading: Icon(option.icon),
+              title: Text(option.label),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).pop(option.target),
+            ),
         ],
       ),
     );
@@ -675,14 +873,6 @@ class _ActionsCard extends StatelessWidget {
         onPressed: busy || !hasVerifiedPhoto ? null : onComplete,
         child: Text(context.l10n.completeInspection),
       ));
-      if (!hasVerifiedPhoto) {
-        widgets.add(const SizedBox(height: AppSpacing.sm));
-        widgets.add(Text(
-          context.l10n.gpsPhotoRequired,
-          textAlign: TextAlign.center,
-          style: context.text.bodySmall,
-        ));
-      }
     }
 
     if (widgets.isEmpty) {

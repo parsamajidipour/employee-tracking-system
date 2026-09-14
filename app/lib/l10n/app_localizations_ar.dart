@@ -510,7 +510,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String acceptScheduled(Object date) {
-    return 'تم قبول المهمة وجدولة الفحص في $date.';
+    return 'تمت الجدولة في $date.';
   }
 
   @override
@@ -523,8 +523,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get rejectedNotice => 'تم رفض المهمة وإشعار الإدارة.';
 
   @override
-  String get inspectionStarted =>
-      'بدأ الفحص، وأصبحت أدوات GPS وصور الموقع جاهزة.';
+  String get inspectionStarted => 'بدأ الفحص.';
 
   @override
   String get completeCase => 'إكمال الحالة';
@@ -533,31 +532,63 @@ class AppLocalizationsAr extends AppLocalizations {
   String get complete => 'إكمال';
 
   @override
-  String get completedNotice => 'اكتمل الفحص وتم إشعار الإدارة.';
+  String get completedNotice => 'اكتمل الفحص.';
 
   @override
   String get noteOptional => 'ملاحظة (اختيارية)';
 
   @override
-  String get photoLocationOff =>
-      'شغّل الموقع قبل التقاط صورة، إذ يجب ختمها بإحداثيات GPS.';
+  String get photoLocationOff => 'شغّل الموقع أولاً.';
 
   @override
-  String get photoLocationPermission => 'يلزم إذن الموقع قبل رفع الصورة.';
+  String get photoLocationPermission => 'اسمح بالوصول إلى الموقع أولاً.';
 
   @override
-  String get photoTooLarge =>
-      'حجم الصورة أكبر من 10 ميغابايت. التقطها مجددًا وحاول.';
+  String get photoTooLarge => 'حجم الصورة أكبر من 10 ميغابايت.';
 
   @override
-  String get photoQueued => 'تم حفظ الصورة وجارٍ رفعها في الخلفية';
+  String get photoQueued => 'جارٍ رفع الصورة…';
 
   @override
-  String get gpsFixFailed =>
-      'تعذر تحديد موقع GPS. انتقل إلى مكان مفتوح وأعد التقاط الصورة.';
+  String get gpsFixFailed => 'تعذر تحديد موقع GPS.';
+
+  @override
+  String get photoWrongLocationTitle => 'موقع غير صحيح';
+
+  @override
+  String photoWrongLocation(Object distance) {
+    return 'الصورة تبعد $distance م عن الحالة. التقط صورة أخرى لتفعيل الإكمال.';
+  }
 
   @override
   String get openPropertyMap => 'فتح خريطة العقار';
+
+  @override
+  String get chooseMapApp => 'فتح الاتجاهات باستخدام';
+
+  @override
+  String get mapInApp => 'خريطة التطبيق';
+
+  @override
+  String get googleMaps => 'خرائط Google';
+
+  @override
+  String get waze => 'Waze';
+
+  @override
+  String get openStreetMap => 'OpenStreetMap';
+
+  @override
+  String get appleMaps => 'خرائط Apple';
+
+  @override
+  String get mapOpenFailed => 'تعذر فتح الخريطة.';
+
+  @override
+  String get chooseInspectionTime => 'موعد الفحص';
+
+  @override
+  String get confirmTime => 'تأكيد';
 
   @override
   String get planned => 'مجدول';
@@ -576,9 +607,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get completeInspection => 'إكمال الفحص';
-
-  @override
-  String get gpsPhotoRequired => 'تلزم صورة موقع موثقة بـ GPS قبل الإكمال.';
 
   @override
   String get noCaseActions => 'لا توجد إجراءات متاحة لهذه الحالة حاليًا.';

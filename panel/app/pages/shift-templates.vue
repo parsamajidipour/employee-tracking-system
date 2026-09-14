@@ -180,10 +180,6 @@ onMounted(() => {
         <Icon name="refresh" class="h-3.5 w-3.5" :spin="loading" />
         <span class="hidden sm:inline">{{ t('common.refresh') }}</span>
       </Button>
-      <Button v-if="editingId !== null" size="sm" @click="startCreate">
-        <Icon name="plus" class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">{{ t('shifts.new') }}</span>
-      </Button>
     </template>
 
     <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:overflow-hidden">

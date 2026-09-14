@@ -108,6 +108,12 @@ class LiveUpdates extends ChangeNotifier {
   }
 
   void _onEvent(RealtimeEvent event) {
+    if (event.type == 'case.access-changed') {
+      final caseId = (event.payload['case_id'] as num?)?.toInt();
+      if (caseId != null) {
+        unawaited(LocalNotificationService.cancelCase(caseId));
+      }
+    }
     unawaited(refreshInbox());
     bumpRevision();
   }
@@ -117,6 +123,15 @@ class LiveUpdates extends ChangeNotifier {
       final fetched = await notificationRepository.fetchInbox();
       final previous = inbox;
       inbox = fetched;
+
+      final previouslyVisible = !_seeded && previous.visibleCaseIds.isEmpty
+          ? await storage.visibleCaseIds()
+          : previous.visibleCaseIds;
+      for (final caseId
+          in previouslyVisible.difference(fetched.visibleCaseIds)) {
+        unawaited(LocalNotificationService.cancelCase(caseId));
+      }
+      unawaited(storage.saveVisibleCaseIds(fetched.visibleCaseIds));
 
       _announceNew(previous);
       notifyListeners();
@@ -152,7 +167,9 @@ class LiveUpdates extends ChangeNotifier {
   Future<void> _showNotification(AppNotification notification) async {
     final l10n = await storedLocalizations(storage);
     await LocalNotificationService.show(
-      id: notification.id.hashCode & 0x7fffffff,
+      id: notification.caseId == null
+          ? notification.id.hashCode & 0x7fffffff
+          : LocalNotificationService.caseNotificationId(notification.caseId!),
       title: notification.localizedTitle(l10n),
       body: notification.message.isEmpty
           ? l10n.openAppForDetails
@@ -179,6 +196,7 @@ class LiveUpdates extends ChangeNotifier {
     inbox = NotificationInbox(
       notifications: inbox.notifications,
       unreadCount: 0,
+      visibleCaseIds: inbox.visibleCaseIds,
     );
     notifyListeners();
 

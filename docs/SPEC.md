@@ -166,7 +166,10 @@ In:
 - Inspection/valuation case management: create, assign, accept/reject,
   start/complete, cancel — `App\Services\CaseLifecycleService`
 - Case creation and assignment are separate operations. A new case is always
-  unassigned, and every active employee receives its creation notification.
+  unassigned and does not notify employees. Management can offer it to one or
+  more active employees; the first employee to accept becomes the sole
+  assignee, and the offer, inbox item, local notification, and access are
+  removed from every other recipient.
 - The lifecycle is `unassigned -> pending (awaiting acceptance) -> accepted
   (scheduled) -> in_progress -> completed`. Rejection returns the case to the
   assignment queue, and accepted cases whose planned time passes become
@@ -176,14 +179,23 @@ In:
 - Assignment candidates expose location, availability, current activity,
   active/pending/scheduled/overdue counts and workload. Inactive employees
   cannot receive assignments.
-- Relevant case changes notify the assignee and/or management through the
+- Relevant case changes notify offer recipients, the assignee, and/or management through the
   database inbox and Reverb broadcast. The Android app converts received
   broadcasts into local device notifications while it is connected; no FCM
   delivery exists yet — see `DECISIONS.md`.
-- Surveyor acceptance with planned inspection date/time
+- Case lists and notification inboxes are access-filtered on every fetch. A
+  deleted, cancelled, rejected, withdrawn, or already-claimed offer cannot
+  remain as a tappable stale item in another employee's app.
+- On phones, tapping the address location control opens a map-only full-screen
+  picker. It supports moving the map, the device's current location, manual
+  latitude/longitude, and shared Google Maps, OpenStreetMap, or Apple Maps URLs.
+- Surveyor acceptance uses one compact date/time wheel picker.
 - Site photos can only be captured after the inspection starts. Photos outside
   `tracking.case_photo_radius_m` are retained but fail GPS verification; at
-  least one GPS-verified photo is required to complete the case.
+  least one GPS-verified photo is required to complete the case. The phone
+  shows an error dialog as soon as an uploaded photo fails this verification.
+- Opening a case location asks whether to use the in-app map, Google Maps,
+  Waze, OpenStreetMap, or Apple Maps where available.
 - Per-employee workload and productivity dashboard, including a
   travel/inspection/idle time split for the current shift window —
   `App\Services\CaseWorkloadService`

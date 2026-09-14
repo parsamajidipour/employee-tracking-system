@@ -515,7 +515,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String acceptScheduled(Object date) {
-    return 'Assignment accepted. Inspection scheduled for $date.';
+    return 'Scheduled for $date.';
   }
 
   @override
@@ -529,8 +529,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Assignment rejected. Management has been notified.';
 
   @override
-  String get inspectionStarted =>
-      'Inspection started. GPS and site photo tools are ready.';
+  String get inspectionStarted => 'Inspection started.';
 
   @override
   String get completeCase => 'Complete case';
@@ -539,33 +538,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get complete => 'Complete';
 
   @override
-  String get completedNotice =>
-      'Inspection completed. Management has been notified.';
+  String get completedNotice => 'Inspection completed.';
 
   @override
   String get noteOptional => 'Note (optional)';
 
   @override
-  String get photoLocationOff =>
-      'Turn location on before taking a photo — it must be stamped with GPS.';
+  String get photoLocationOff => 'Turn on location first.';
 
   @override
-  String get photoLocationPermission =>
-      'Location permission is required before a photo can be uploaded.';
+  String get photoLocationPermission => 'Allow location first.';
 
   @override
-  String get photoTooLarge =>
-      'The photo is larger than 10 MB. Retake it and try again.';
+  String get photoTooLarge => 'Photo exceeds 10 MB.';
 
   @override
-  String get photoQueued => 'Photo saved — uploading in the background';
+  String get photoQueued => 'Uploading photo…';
 
   @override
-  String get gpsFixFailed =>
-      'Could not get a GPS fix. Move to an open area and retake.';
+  String get gpsFixFailed => 'GPS location unavailable.';
+
+  @override
+  String get photoWrongLocationTitle => 'Wrong location';
+
+  @override
+  String photoWrongLocation(Object distance) {
+    return 'Photo is $distance m from this case. Take another photo to unlock Complete.';
+  }
 
   @override
   String get openPropertyMap => 'Open property map';
+
+  @override
+  String get chooseMapApp => 'Open directions with';
+
+  @override
+  String get mapInApp => 'Map in app';
+
+  @override
+  String get googleMaps => 'Google Maps';
+
+  @override
+  String get waze => 'Waze';
+
+  @override
+  String get openStreetMap => 'OpenStreetMap';
+
+  @override
+  String get appleMaps => 'Apple Maps';
+
+  @override
+  String get mapOpenFailed => 'Could not open the map.';
+
+  @override
+  String get chooseInspectionTime => 'Inspection time';
+
+  @override
+  String get confirmTime => 'Confirm';
 
   @override
   String get planned => 'Planned';
@@ -584,10 +613,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get completeInspection => 'Complete inspection';
-
-  @override
-  String get gpsPhotoRequired =>
-      'A GPS-verified site photo is required before completion.';
 
   @override
   String get noCaseActions => 'No actions available for this case right now.';

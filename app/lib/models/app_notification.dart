@@ -63,13 +63,19 @@ class AppNotification {
 class NotificationInbox {
   final List<AppNotification> notifications;
   final int unreadCount;
+  final Set<int> visibleCaseIds;
 
   const NotificationInbox({
     required this.notifications,
     required this.unreadCount,
+    required this.visibleCaseIds,
   });
 
-  static const empty = NotificationInbox(notifications: [], unreadCount: 0);
+  static const empty = NotificationInbox(
+    notifications: [],
+    unreadCount: 0,
+    visibleCaseIds: {},
+  );
 
   factory NotificationInbox.fromJson(Map<String, dynamic> json) =>
       NotificationInbox(
@@ -77,5 +83,9 @@ class NotificationInbox {
             .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
             .toList(),
         unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
+        visibleCaseIds:
+            ((json['visible_case_ids'] as List<dynamic>?) ?? const [])
+                .map((id) => (id as num).toInt())
+                .toSet(),
       );
 }

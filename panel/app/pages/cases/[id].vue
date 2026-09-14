@@ -18,7 +18,7 @@ const error = ref<string | null>(null)
 const candidates = ref<NearestSurveyor[]>([])
 const candidatesLoading = ref(false)
 const candidatesError = ref<string | null>(null)
-const selectedSurveyorId = ref<number | null>(null)
+const selectedSurveyorIds = ref<number[]>([])
 const assigning = ref(false)
 const cancelModalOpen = ref(false)
 const cancelNote = ref('')
@@ -46,7 +46,7 @@ const surveyorChoices = computed(() => activeEmployees.value
     if (a.nearby && b.nearby) return a.nearby.distance_m - b.nearby.distance_m
     return a.activeCases - b.activeCases
   }))
-const selectedChoice = computed(() => surveyorChoices.value.find(row => row.employee.id === selectedSurveyorId.value) ?? null)
+const selectedChoices = computed(() => surveyorChoices.value.filter(row => selectedSurveyorIds.value.includes(row.employee.id)))
 const workflowSteps = computed(() => {
   const current = assignment.value?.status ?? 'unassigned'
   const order = ['unassigned', 'awaiting_acceptance', 'scheduled', 'in_progress', 'completed']
@@ -63,7 +63,9 @@ const workflowSteps = computed(() => {
 async function loadCase() {
   loading.value = true
   try {
-    item.value = await fetchCase(caseId)
+    const loaded = await fetchCase(caseId)
+    item.value = loaded
+    selectedSurveyorIds.value = (loaded.offered_to ?? []).map(offer => offer.employee_id)
     error.value = null
   } catch {
     error.value = t('cases.detail.loadFailed')
@@ -89,15 +91,14 @@ async function refreshAll() {
 }
 
 async function assignSelected() {
-  if (!selectedSurveyorId.value || !selectedChoice.value) {
+  if (!selectedSurveyorIds.value.length) {
     toast.error(t('cases.detail.selectFirst'))
     return
   }
   assigning.value = true
   try {
-    await assignCase(caseId, selectedSurveyorId.value)
-    toast.success(t('cases.detail.assignedNotice', { name: selectedChoice.value.employee.name }))
-    selectedSurveyorId.value = null
+    await assignCase(caseId, selectedSurveyorIds.value)
+    toast.success(t('cases.detail.assignedNotice', { count: selectedSurveyorIds.value.length }))
     await refreshAll()
   } catch (err) {
     toast.error(apiErrorMessage(err, t('cases.detail.assignFailed')))
@@ -107,10 +108,10 @@ async function assignSelected() {
   }
 }
 
-async function assignFromMap(employeeId: number) {
-  selectedSurveyorId.value = employeeId
-  await nextTick()
-  await assignSelected()
+function toggleSurveyor(employeeId: number) {
+  selectedSurveyorIds.value = selectedSurveyorIds.value.includes(employeeId)
+    ? selectedSurveyorIds.value.filter(id => id !== employeeId)
+    : [...selectedSurveyorIds.value, employeeId]
 }
 
 function openCancelModal() {
@@ -163,7 +164,7 @@ function photoDistanceLabel(distance: number | null): string {
 }
 
 function eventTitle(event: CaseStatusEvent): string {
-  if (event.to_status === 'pending' && event.note?.toLowerCase().includes('assigned')) return t('cases.detail.events.assigned')
+  if (event.to_status === 'pending' && /assigned|offered/i.test(event.note ?? '')) return t('cases.detail.events.assigned')
   if (!event.from_status && event.to_status === 'pending') return t('cases.detail.events.received')
   if (event.to_status === 'accepted') return t('cases.detail.events.accepted')
   if (event.to_status === 'in_progress') return t('cases.detail.events.started')
@@ -195,6 +196,9 @@ function eventNote(event: CaseStatusEvent): string {
 
   const assigned = note.match(/^Assigned to (.+)\.$/)
   if (assigned) return t('cases.detail.events.assignedNote', { name: assigned[1] })
+
+  const offered = note.match(/^Offered to (.+)\.$/)
+  if (offered) return t('cases.detail.events.offeredNote', { names: offered[1] })
 
   return note
 }
@@ -329,23 +333,22 @@ onMounted(refreshAll)
                 :case-lat="item.lat"
                 :case-lng="item.lng"
                 :candidates="candidates"
-                :selected-id="selectedSurveyorId"
-                @select="selectedSurveyorId = $event"
-                @assign="assignFromMap"
+                :selected-ids="selectedSurveyorIds"
+                @select="toggleSurveyor"
               />
             </div>
             <div class="border-b border-hairline px-4 py-3"><div class="grid grid-cols-[1fr_auto_auto] gap-3 text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint"><span>{{ t('cases.detail.surveyor') }}</span><span>{{ t('cases.detail.cases') }}</span><span>{{ t('cases.detail.workload') }}</span></div></div>
             <div class="min-h-0 flex-1 overflow-y-auto">
               <div v-if="candidatesLoading && !surveyorChoices.length" class="space-y-2 p-4"><Skeleton v-for="i in 4" :key="i" class="h-20" rounded="md" /></div>
               <EmptyState v-else-if="!surveyorChoices.length" icon="users" :message="t('cases.detail.noneAvailable')" />
-              <label v-for="choice in surveyorChoices" v-else :key="choice.employee.id" class="group grid cursor-pointer grid-cols-[minmax(0,1fr)_42px_76px] items-center gap-3 border-b border-hairline px-4 py-3 transition-colors last:border-0 hover:bg-surface-sunken" :class="selectedSurveyorId === choice.employee.id ? 'bg-primary-soft' : ''">
-                <input v-model="selectedSurveyorId" type="radio" name="surveyor" class="sr-only" :value="choice.employee.id" />
+              <label v-for="choice in surveyorChoices" v-else :key="choice.employee.id" class="group grid cursor-pointer grid-cols-[minmax(0,1fr)_42px_76px] items-center gap-3 border-b border-hairline px-4 py-3 transition-colors last:border-0 hover:bg-surface-sunken" :class="selectedSurveyorIds.includes(choice.employee.id) ? 'bg-primary-soft' : ''">
+                <input v-model="selectedSurveyorIds" type="checkbox" name="surveyors" class="sr-only" :value="choice.employee.id" />
                 <div class="flex min-w-0 items-center gap-2.5"><Avatar :name="choice.employee.name" size="sm" /><div class="min-w-0"><p class="truncate text-[13px] font-semibold text-ink">{{ choice.employee.name }}</p><p class="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-faint"><span class="h-1.5 w-1.5 rounded-full" :class="choice.nearby?.connection_status === 'online' ? 'bg-state-success' : 'bg-state-neutral'" /><template v-if="choice.nearby">{{ t('cases.assignmentMap.away', { distance: formatDistance(choice.nearby.distance_m) }) }} · {{ t(`employees.connection.${choice.nearby.connection_status}`) }}</template><template v-else>{{ t('cases.detail.offShift') }}</template></p><p class="mt-1 text-[11px] text-ink-soft">{{ t('cases.detail.pending', { count: number(choice.workload?.summary.pending ?? 0) }) }} · {{ t('cases.detail.scheduled', { count: number(choice.workload?.summary.scheduled ?? 0) }) }}<span v-if="choice.workload?.summary.overdue" class="text-state-danger"> · {{ t('cases.detail.overdue', { count: number(choice.workload.summary.overdue) }) }}</span></p></div></div>
                 <span class="tabular text-center text-[13px] font-semibold text-ink">{{ number(choice.activeCases) }}</span>
                 <div><div class="h-1.5 overflow-hidden rounded-full bg-surface-sunken"><span class="block h-full rounded-full" :class="choice.workloadPercent >= 80 ? 'bg-state-danger' : choice.workloadPercent >= 55 ? 'bg-state-warning' : 'bg-state-success'" :style="{ width: `${choice.workloadPercent}%` }" /></div><p class="mt-1 text-end text-[10.5px] tabular text-ink-faint">{{ number(choice.workloadPercent) }}%</p></div>
               </label>
             </div>
-            <div class="mt-auto border-t border-hairline bg-surface px-4 py-3"><Button class="w-full" :disabled="!selectedSurveyorId" :loading="assigning" @click="assignSelected">{{ assigning ? t('cases.detail.assigning') : selectedChoice ? t('cases.detail.assignTo', { name: selectedChoice.employee.name }) : t('cases.detail.selectToAssign') }}</Button><p class="mt-2 text-center text-[11px] text-ink-faint">{{ t('cases.detail.assignmentHint') }}</p></div>
+            <div class="mt-auto border-t border-hairline bg-surface px-4 py-3"><Button class="w-full" :disabled="!selectedSurveyorIds.length" :loading="assigning" @click="assignSelected">{{ assigning ? t('cases.detail.assigning') : selectedChoices.length ? t('cases.detail.offerTo', { count: number(selectedChoices.length) }) : t('cases.detail.selectToAssign') }}</Button><p class="mt-2 text-center text-[11px] text-ink-faint">{{ t('cases.detail.assignmentHint') }}</p></div>
           </div>
           <div v-else class="flex h-full min-h-[300px] flex-col p-5">
             <div class="flex items-center gap-3 rounded-md bg-surface-sunken p-4"><Avatar :name="item.assignee_name || t('cases.detail.unassigned')" size="lg" :muted="!item.assignee_name" /><div class="min-w-0"><p class="font-semibold text-ink">{{ item.assignee_name || t('cases.detail.noSurveyor') }}</p><p class="mt-0.5 text-[12.5px] text-ink-soft">{{ assignment ? t(`case.assignmentStatuses.${assignment.status}`) : '' }}</p></div></div>

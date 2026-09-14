@@ -18,9 +18,11 @@ class AssignCaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_id' => [
+            'employee_ids' => ['required', 'array', 'min:1'],
+            'employee_ids.*' => [
                 'required',
                 'integer',
+                'distinct',
                 Rule::exists('users', 'id')->where('role', 'employee')->where('is_active', true)->whereNull('deleted_at'),
             ],
         ];
@@ -32,7 +34,7 @@ class AssignCaseRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'employee_id.exists' => __('messages.employee_not_assignable'),
+            'employee_ids.*.exists' => __('messages.employee_not_assignable'),
         ];
     }
 }

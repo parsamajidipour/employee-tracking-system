@@ -10,12 +10,11 @@ const props = defineProps<{
   caseLat: number
   caseLng: number
   candidates: NearestSurveyor[]
-  selectedId: number | null
+  selectedIds: number[]
 }>()
 
 const emit = defineEmits<{
   (e: 'select', employeeId: number): void
-  (e: 'assign', employeeId: number): void
 }>()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
@@ -68,7 +67,7 @@ function renderMarkers(): void {
   markers.push(caseMarker)
 
   props.candidates.forEach((candidate) => {
-    const selected = candidate.employee_id === props.selectedId
+    const selected = props.selectedIds.includes(candidate.employee_id)
     const element = markerButton(
       selected ? '#4f46e5' : candidate.connection_status === 'online' ? '#16a34a' : '#9ca3af',
       `${candidate.name}, ${t('cases.assignmentMap.away', { distance: formatDistance(candidate.distance_m) })}`,
@@ -85,7 +84,9 @@ function renderMarkers(): void {
     Object.assign(detail.style, { margin: '4px 0 10px', fontSize: '12px', color: '#71717a' })
     const assign = document.createElement('button')
     assign.type = 'button'
-    assign.textContent = t('cases.assignmentMap.assignTo', { name: candidate.name.split(' ')[0] })
+    assign.textContent = selected
+      ? t('cases.assignmentMap.removeFromOffer', { name: candidate.name.split(' ')[0] })
+      : t('cases.assignmentMap.addToOffer', { name: candidate.name.split(' ')[0] })
     Object.assign(assign.style, {
       width: '100%',
       minHeight: '36px',
@@ -97,7 +98,7 @@ function renderMarkers(): void {
       fontWeight: '700',
       cursor: 'pointer',
     })
-    assign.addEventListener('click', () => emit('assign', candidate.employee_id))
+    assign.addEventListener('click', () => emit('select', candidate.employee_id))
     popupContent.append(name, detail, assign)
 
     element.addEventListener('click', () => emit('select', candidate.employee_id))
@@ -138,7 +139,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.caseLat, props.caseLng, props.candidates, props.selectedId, locale.value],
+  () => [props.caseLat, props.caseLng, props.candidates, props.selectedIds, locale.value],
   () => renderMarkers(),
   { deep: true },
 )

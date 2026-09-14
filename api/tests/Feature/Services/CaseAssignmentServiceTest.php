@@ -81,7 +81,7 @@ class CaseAssignmentServiceTest extends TestCase
         ], $admin);
 
         $ranked = app(CaseAssignmentService::class)->rank(
-            InspectionCase::query()->withLatLng()->findOrFail($case->id),
+            $case->fresh(),
         );
 
         $this->assertSame($near->id, $ranked->first()->employeeId);
@@ -144,7 +144,8 @@ class CaseAssignmentServiceTest extends TestCase
             'lng' => 58.35,
             'priority' => 'normal',
         ], $admin);
-        $lifecycle->assign($existing, $busy, $admin);
+        $existing = $lifecycle->assign($existing, $busy, $admin);
+        $lifecycle->accept($existing, $busy, $now->addHour());
 
         $newCase = $lifecycle->create([
             'reference_no' => 'INS-4',

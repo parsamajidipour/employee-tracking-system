@@ -13,7 +13,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class _FakeCaseRepository extends CaseRepository {
   _FakeCaseRepository({List<Object?>? responses})
       : responses = responses ?? [],
-        super(apiClient: ApiClient(
+        super(
+            apiClient: ApiClient(
           baseUrl: 'https://example.invalid',
           storage: AuthStorage(),
           onUnauthorized: () async {},
@@ -68,7 +69,8 @@ void main() {
   });
 
   tearDown(() async {
-    final path = p.join(await databaseFactory.getDatabasesPath(), 'case_photo_queue.db');
+    final path =
+        p.join(await databaseFactory.getDatabasesPath(), 'case_photo_queue.db');
     await databaseFactory.deleteDatabase(path);
   });
 
@@ -92,7 +94,30 @@ void main() {
     expect(caseRepository.attemptedCaseIds, [1]);
   });
 
-  test('a transient failure on item 1 leaves it pending and never attempts item 2',
+  test('publishes the server GPS verification result', () async {
+    await queueRepository.insert(_queuedPhoto(caseId: 7));
+    final caseRepository = _FakeCaseRepository(
+      responses: [
+        {
+          ..._photoJson(verified: false),
+          'distance_from_case_m': 420.4,
+        },
+      ],
+    );
+    final service = CasePhotoUploadService(
+      repository: queueRepository,
+      caseRepository: caseRepository,
+    );
+
+    await service.runUploadCycle();
+
+    expect(service.lastUploadEvent?.caseId, 7);
+    expect(service.lastUploadEvent?.photo.isGpsVerified, isFalse);
+    expect(service.lastUploadEvent?.photo.distanceFromCaseM, 420.4);
+  });
+
+  test(
+      'a transient failure on item 1 leaves it pending and never attempts item 2',
       () async {
     await queueRepository.insert(_queuedPhoto(caseId: 1));
     await queueRepository.insert(_queuedPhoto(caseId: 2));
@@ -171,7 +196,8 @@ void main() {
     expect(await queueRepository.nextPendingBatch(), hasLength(2));
   });
 
-  test('concurrent runUploadCycle calls only run one cycle at a time', () async {
+  test('concurrent runUploadCycle calls only run one cycle at a time',
+      () async {
     await queueRepository.insert(_queuedPhoto(caseId: 1));
     final caseRepository = _FakeCaseRepository(responses: [_photoJson()]);
     final service = CasePhotoUploadService(

@@ -10,6 +10,7 @@ const submitting = ref(false)
 const formError = ref<string | null>(null)
 const locationLookupState = ref<'idle' | 'loading' | 'error'>('idle')
 const locationManuallyEdited = ref(false)
+const mobileMapOpen = ref(false)
 let locationLookupTimer: ReturnType<typeof setTimeout> | undefined
 let locationLookupSequence = 0
 
@@ -122,27 +123,35 @@ onBeforeUnmount(() => {
         <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
         <span class="hidden sm:inline">{{ t('common.cancel') }}</span>
       </Button>
-      <Button size="sm" :loading="submitting" :aria-label="t('cases.new.create')" @click="submit">
-        <Icon v-if="!submitting" name="plus" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">{{ submitting ? t('cases.new.creating') : t('cases.new.create') }}</span>
-      </Button>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
+    <form class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden" @submit.prevent="submit">
       <div class="flex flex-none flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
         <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>
 
         <Card class="flex-none" icon="briefcase" :title="t('cases.new.details')" :subtitle="t('cases.new.detailsSubtitle')">
-          <form class="space-y-3.5" @submit.prevent="submit">
+          <div class="space-y-3.5">
             <TextInput v-model="form.reference_no" :label="t('cases.fields.reportNumber')" :placeholder="t('cases.placeholders.reportNumber')" required />
             <TextInput v-model="form.title" :label="t('cases.fields.customerName')" :placeholder="t('cases.placeholders.customerName')" required />
             <TextInput
+              class="hidden lg:block"
               v-model="form.property_address"
               :label="t('cases.fields.location')"
               :placeholder="locationLookupState === 'loading' ? t('cases.new.findingLocation') : t('cases.new.moveMapToFill')"
               :hint="locationHint"
               @update:model-value="markLocationManuallyEdited"
             />
+            <div class="lg:hidden">
+              <label class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('cases.fields.location') }}</label>
+              <button type="button" class="field flex min-h-11 w-full items-center gap-2 text-start" @click="mobileMapOpen = true">
+                <Icon name="map-pin" class="h-4 w-4 flex-none text-primary" />
+                <span class="min-w-0 flex-1 truncate" :class="form.property_address ? 'text-ink' : 'text-ink-faint'">
+                  {{ form.property_address || t('cases.new.openMap') }}
+                </span>
+                <Icon name="chevron-right" class="h-4 w-4 flex-none text-ink-faint rtl:rotate-180" />
+              </button>
+              <p class="mt-1.5 text-xs text-ink-faint">{{ locationHint }}</p>
+            </div>
 
             <Select v-model="form.priority" :label="t('cases.fields.priority')">
               <option v-for="priority in CASE_PRIORITIES" :key="priority" :value="priority">
@@ -160,7 +169,13 @@ onBeforeUnmount(() => {
                 class="field h-auto resize-none py-2.5"
               />
             </div>
-          </form>
+
+            <div class="hidden border-t border-hairline pt-3.5 lg:block">
+              <Button type="submit" class="w-full" :loading="submitting">
+                {{ submitting ? t('cases.new.creating') : t('cases.new.create') }}
+              </Button>
+            </div>
+          </div>
         </Card>
 
         <Card class="flex-none" icon="user-circle" :title="t('cases.new.whatNext')">
@@ -181,7 +196,7 @@ onBeforeUnmount(() => {
         </Card>
       </div>
 
-      <Card class="flex-none lg:min-h-0" icon="map-pin" :title="t('cases.fields.locationOnMap')" :subtitle="hasLocation ? t('cases.new.dragPin') : t('cases.new.dropPin')" flush>
+      <Card class="hidden flex-none lg:flex lg:min-h-0" icon="map-pin" :title="t('cases.fields.locationOnMap')" :subtitle="hasLocation ? t('cases.new.dragPin') : t('cases.new.dropPin')" flush>
         <template #actions>
           <Badge :variant="hasLocation ? 'success' : 'warning'">
             {{ hasLocation ? `${form.lat!.toFixed(5)}, ${form.lng!.toFixed(5)}` : t('cases.new.notSet') }}
@@ -191,6 +206,20 @@ onBeforeUnmount(() => {
           <LocationPicker :lat="form.lat" :lng="form.lng" @location-selected="selectLocation" />
         </div>
       </Card>
-    </div>
+
+      <div class="flex-none border-t border-hairline pt-3 lg:hidden">
+        <Button type="submit" class="w-full" :loading="submitting">
+          {{ submitting ? t('cases.new.creating') : t('cases.new.create') }}
+        </Button>
+      </div>
+    </form>
+
+    <MobileLocationPicker
+      :open="mobileMapOpen"
+      :lat="form.lat"
+      :lng="form.lng"
+      @close="mobileMapOpen = false"
+      @confirm="(position) => { selectLocation(position); mobileMapOpen = false }"
+    />
   </AppShell>
 </template>

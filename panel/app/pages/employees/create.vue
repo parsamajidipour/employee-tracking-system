@@ -64,10 +64,6 @@ async function submit() {
         <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
         <span class="hidden sm:inline">{{ t('common.cancel') }}</span>
       </Button>
-      <Button size="sm" :loading="submitting" :aria-label="t('employees.create.create')" @click="submit">
-        <Icon v-if="!submitting" name="plus" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">{{ submitting ? t('employees.create.creating') : t('employees.create.create') }}</span>
-      </Button>
     </template>
 
     <form class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5" @submit.prevent="submit">
@@ -122,6 +118,12 @@ async function submit() {
           </p>
           <ShiftPicker v-model="form.shift_template_ids" :shifts="templates" :loading="loadingShifts" />
         </Card>
+      </div>
+
+      <div class="flex flex-none justify-end border-t border-hairline pt-3 sm:pt-4">
+        <Button type="submit" class="w-full sm:w-auto" :loading="submitting">
+          {{ submitting ? t('employees.create.creating') : t('employees.create.create') }}
+        </Button>
       </div>
     </form>
   </AppShell>

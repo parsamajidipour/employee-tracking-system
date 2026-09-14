@@ -12,6 +12,7 @@ class AuthStorage {
   static const _lastUploadAtKey = 'last_upload_at';
   static const _backgroundNotifiedNotificationsKey =
       'background_notified_notifications';
+  static const _visibleCaseIdsKey = 'visible_case_ids';
   static const _localeKey = 'app_locale';
 
   final FlutterSecureStorage _storage;
@@ -85,6 +86,25 @@ class AuthStorage {
       value: jsonEncode(recent),
     );
   }
+
+  Future<Set<int>> visibleCaseIds() async {
+    final raw = await _storage.read(key: _visibleCaseIdsKey);
+    if (raw == null) return <int>{};
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List<dynamic>) {
+        return decoded.whereType<num>().map((id) => id.toInt()).toSet();
+      }
+    } catch (_) {}
+
+    return <int>{};
+  }
+
+  Future<void> saveVisibleCaseIds(Set<int> ids) => _storage.write(
+        key: _visibleCaseIdsKey,
+        value: jsonEncode(ids.toList(growable: false)),
+      );
 
   Future<String?> locale() => _storage.read(key: _localeKey);
 

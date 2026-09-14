@@ -113,10 +113,11 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _handleLaunchNotification() async {
     await LocalNotificationService.initialize();
-    _handleNotificationPayload(LocalNotificationService.takeLaunchPayload());
+    await _handleNotificationPayload(
+        LocalNotificationService.takeLaunchPayload());
   }
 
-  void _handleNotificationPayload(String? payload) {
+  Future<void> _handleNotificationPayload(String? payload) async {
     if (payload == null || payload.isEmpty) return;
 
     try {
@@ -125,13 +126,21 @@ class _MainShellState extends State<MainShell> {
       final type = decoded['type'] as String?;
 
       if (type == 'app-release.published') {
-        unawaited(_showUpdateIfNeeded());
+        await _showUpdateIfNeeded();
         return;
       }
 
+      if (type == 'case.created') return;
+
       final caseId = (decoded['case_id'] as num?)?.toInt();
       if (caseId != null) {
-        unawaited(_openCase(caseId));
+        await widget.authController.liveUpdates.refreshInbox();
+        if (!widget.authController.liveUpdates.inbox.visibleCaseIds
+            .contains(caseId)) {
+          await LocalNotificationService.cancelCase(caseId);
+          return;
+        }
+        await _openCase(caseId);
       }
     } catch (_) {}
   }

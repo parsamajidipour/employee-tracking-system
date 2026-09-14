@@ -995,7 +995,7 @@ abstract class AppLocalizations {
   /// No description provided for @acceptScheduled.
   ///
   /// In en, this message translates to:
-  /// **'Assignment accepted. Inspection scheduled for {date}.'**
+  /// **'Scheduled for {date}.'**
   String acceptScheduled(Object date);
 
   /// No description provided for @rejectCase.
@@ -1019,7 +1019,7 @@ abstract class AppLocalizations {
   /// No description provided for @inspectionStarted.
   ///
   /// In en, this message translates to:
-  /// **'Inspection started. GPS and site photo tools are ready.'**
+  /// **'Inspection started.'**
   String get inspectionStarted;
 
   /// No description provided for @completeCase.
@@ -1037,7 +1037,7 @@ abstract class AppLocalizations {
   /// No description provided for @completedNotice.
   ///
   /// In en, this message translates to:
-  /// **'Inspection completed. Management has been notified.'**
+  /// **'Inspection completed.'**
   String get completedNotice;
 
   /// No description provided for @noteOptional.
@@ -1049,38 +1049,104 @@ abstract class AppLocalizations {
   /// No description provided for @photoLocationOff.
   ///
   /// In en, this message translates to:
-  /// **'Turn location on before taking a photo — it must be stamped with GPS.'**
+  /// **'Turn on location first.'**
   String get photoLocationOff;
 
   /// No description provided for @photoLocationPermission.
   ///
   /// In en, this message translates to:
-  /// **'Location permission is required before a photo can be uploaded.'**
+  /// **'Allow location first.'**
   String get photoLocationPermission;
 
   /// No description provided for @photoTooLarge.
   ///
   /// In en, this message translates to:
-  /// **'The photo is larger than 10 MB. Retake it and try again.'**
+  /// **'Photo exceeds 10 MB.'**
   String get photoTooLarge;
 
   /// No description provided for @photoQueued.
   ///
   /// In en, this message translates to:
-  /// **'Photo saved — uploading in the background'**
+  /// **'Uploading photo…'**
   String get photoQueued;
 
   /// No description provided for @gpsFixFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not get a GPS fix. Move to an open area and retake.'**
+  /// **'GPS location unavailable.'**
   String get gpsFixFailed;
+
+  /// No description provided for @photoWrongLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong location'**
+  String get photoWrongLocationTitle;
+
+  /// No description provided for @photoWrongLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo is {distance} m from this case. Take another photo to unlock Complete.'**
+  String photoWrongLocation(Object distance);
 
   /// No description provided for @openPropertyMap.
   ///
   /// In en, this message translates to:
   /// **'Open property map'**
   String get openPropertyMap;
+
+  /// No description provided for @chooseMapApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open directions with'**
+  String get chooseMapApp;
+
+  /// No description provided for @mapInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Map in app'**
+  String get mapInApp;
+
+  /// No description provided for @googleMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Maps'**
+  String get googleMaps;
+
+  /// No description provided for @waze.
+  ///
+  /// In en, this message translates to:
+  /// **'Waze'**
+  String get waze;
+
+  /// No description provided for @openStreetMap.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenStreetMap'**
+  String get openStreetMap;
+
+  /// No description provided for @appleMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Maps'**
+  String get appleMaps;
+
+  /// No description provided for @mapOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the map.'**
+  String get mapOpenFailed;
+
+  /// No description provided for @chooseInspectionTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspection time'**
+  String get chooseInspectionTime;
+
+  /// No description provided for @confirmTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirmTime;
 
   /// No description provided for @planned.
   ///
@@ -1117,12 +1183,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Complete inspection'**
   String get completeInspection;
-
-  /// No description provided for @gpsPhotoRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'A GPS-verified site photo is required before completion.'**
-  String get gpsPhotoRequired;
 
   /// No description provided for @noCaseActions.
   ///

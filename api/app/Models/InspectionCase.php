@@ -85,4 +85,12 @@ class InspectionCase extends Model
     {
         return $this->hasMany(CasePhoto::class, 'inspection_case_id')->orderBy('captured_at');
     }
+
+    /**
+     * @return HasMany<CaseOffer, $this>
+     */
+    public function offers(): HasMany
+    {
+        return $this->hasMany(CaseOffer::class, 'inspection_case_id')->orderBy('offered_at');
+    }
 }

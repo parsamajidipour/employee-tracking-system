@@ -36,7 +36,7 @@ class CaseSeeder extends Seeder
             return;
         }
 
-        $this->pending($admin, 1);
+        $this->pending($admin, $employees->first(), 1);
         $this->accepted($admin, $employees->get(0) ?? $employees->first(), 2);
         $this->inProgress($admin, $employees->get(1 % $employees->count()), 3);
         $this->completed($admin, $employees->get(2 % $employees->count()), 4);
@@ -52,15 +52,16 @@ class CaseSeeder extends Seeder
         ];
     }
 
-    private function pending(User $admin, int $seed): void
+    private function pending(User $admin, User $employee, int $seed): void
     {
-        $this->lifecycle->create([
+        $case = $this->lifecycle->create([
             'reference_no' => 'INS-SEED-'.$seed,
             'title' => 'Villa valuation — unassigned',
             'property_address' => 'Seeb, Muscat',
             ...$this->point($seed),
             'priority' => 'normal',
         ], $admin);
+        $this->lifecycle->assign($case, $employee, $admin);
     }
 
     private function accepted(User $admin, User $employee, int $seed): void

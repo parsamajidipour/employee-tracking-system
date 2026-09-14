@@ -16,6 +16,8 @@ class LocalNotificationService {
 
   static Stream<String?> get taps => _taps.stream;
 
+  static int caseNotificationId(int caseId) => 1000000000 + caseId % 1000000000;
+
   static Future<void> initialize() => _ensureInitialized();
 
   static String? takeLaunchPayload() {
@@ -84,5 +86,12 @@ class LocalNotificationService {
     } catch (_) {
       // Best-effort: a missed alert should never take tracking down with it.
     }
+  }
+
+  static Future<void> cancelCase(int caseId) async {
+    try {
+      await _ensureInitialized();
+      await _plugin.cancel(caseNotificationId(caseId));
+    } catch (_) {}
   }
 }

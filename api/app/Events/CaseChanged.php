@@ -24,7 +24,7 @@ final class CaseChanged implements ShouldBroadcastNow
     {
         $fresh = InspectionCase::query()
             ->withLatLng()
-            ->with(['assignee', 'statusEvents.actor', 'photos'])
+            ->with(['assignee', 'offers.employee', 'statusEvents.actor', 'photos'])
             ->find($case->id);
 
         return new self(

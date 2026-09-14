@@ -16,21 +16,11 @@ final class CaseAssignmentService
     public function __construct(private readonly ShiftWindowResolver $resolver) {}
 
     /**
-     * Ranks currently-on-shift employees by straight-line distance to the case's
-     * property location, tie-broken by current open workload. Uses each
-     * employee's last known live position (the same Redis cache the live map
-     * reads), so no separate routing/geocoding infrastructure is required —
-     * this project runs on a single VPS at a few dozen employees, and a
-     * straight-line distance is precise enough to pick "who is already in
-     * Quriyat" without standing up OSRM.
-     *
      * @return Collection<int, SurveyorCandidate>
      */
     public function rank(InspectionCase $case): Collection
     {
         $now = CarbonImmutable::now();
-        $caseLat = $case->lat;
-        $caseLng = $case->lng;
 
         $openCounts = InspectionCase::query()
             ->whereNotNull('assigned_to')
@@ -44,28 +34,38 @@ final class CaseAssignmentService
             ->active()
             ->get()
             ->filter(fn (User $employee) => $this->resolver->resolve($employee, $now) !== null)
-            ->map(function (User $employee) use ($caseLat, $caseLng, $openCounts) {
+            ->map(function (User $employee) use ($case, $openCounts) {
                 $raw = Redis::get("last_known:{$employee->id}");
                 if ($raw === null) {
                     return null;
                 }
 
                 $cached = json_decode($raw, true);
+                if (! is_array($cached) || ! isset($cached['lat'], $cached['lng'], $cached['recorded_at'])) {
+                    return null;
+                }
+
+                $lat = filter_var($cached['lat'], FILTER_VALIDATE_FLOAT);
+                $lng = filter_var($cached['lng'], FILTER_VALIDATE_FLOAT);
+                if ($lat === false || $lng === false || $lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+                    return null;
+                }
+
                 $recordedAt = CarbonImmutable::parse($cached['recorded_at']);
                 $online = $recordedAt->greaterThanOrEqualTo(
                     CarbonImmutable::now()->subSeconds(config('tracking.online_threshold_seconds')),
                 );
 
                 $distance = (float) DB::selectOne(
-                    'SELECT ST_Distance(ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) AS meters',
-                    [$cached['lng'], $cached['lat'], $caseLng, $caseLat],
+                    'SELECT ST_Distance(location, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) AS meters FROM inspection_cases WHERE id = ?',
+                    [$lng, $lat, $case->id],
                 )->meters;
 
                 return new SurveyorCandidate(
                     employeeId: $employee->id,
                     name: $employee->name,
-                    lat: (float) $cached['lat'],
-                    lng: (float) $cached['lng'],
+                    lat: $lat,
+                    lng: $lng,
                     distanceM: $distance,
                     openCaseCount: (int) ($openCounts[$employee->id] ?? 0),
                     connectionStatus: $online ? 'online' : 'offline',

@@ -18,6 +18,12 @@ export interface CasePhoto {
   captured_at: string
 }
 
+export interface CaseOffer {
+  employee_id: number
+  name: string
+  offered_at: string
+}
+
 export interface InspectionCase {
   id: number
   reference_no: string
@@ -29,6 +35,7 @@ export interface InspectionCase {
   priority: CasePriority
   assigned_to: number | null
   assignee_name: string | null
+  offered_to?: CaseOffer[]
   assigned_at: string | null
   accepted_at: string | null
   planned_at: string | null
@@ -133,8 +140,8 @@ export function createCase(payload: NewCasePayload): Promise<InspectionCase> {
   return apiFetch<InspectionCase>('/api/v1/cases', { method: 'POST', body: payload })
 }
 
-export function assignCase(id: number, employeeId: number): Promise<InspectionCase> {
-  return apiFetch<InspectionCase>(`/api/v1/cases/${id}/assign`, { method: 'POST', body: { employee_id: employeeId } })
+export function assignCase(id: number, employeeIds: number[]): Promise<InspectionCase> {
+  return apiFetch<InspectionCase>(`/api/v1/cases/${id}/assign`, { method: 'POST', body: { employee_ids: employeeIds } })
 }
 
 export function cancelCase(id: number, note?: string): Promise<InspectionCase> {

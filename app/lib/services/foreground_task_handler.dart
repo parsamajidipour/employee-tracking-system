@@ -126,6 +126,12 @@ class TrackingTaskHandler extends TaskHandler {
 
       final notified = await _storage.backgroundNotifiedNotifications();
       final inbox = await _notificationRepository.fetchInbox();
+      final previousVisibleCaseIds = await _storage.visibleCaseIds();
+      for (final caseId
+          in previousVisibleCaseIds.difference(inbox.visibleCaseIds)) {
+        await LocalNotificationService.cancelCase(caseId);
+      }
+      await _storage.saveVisibleCaseIds(inbox.visibleCaseIds);
       final l10n = await storedLocalizations(_storage);
       var changed = false;
 
@@ -135,7 +141,10 @@ class TrackingTaskHandler extends TaskHandler {
         changed = true;
 
         await LocalNotificationService.show(
-          id: notification.id.hashCode & 0x7fffffff,
+          id: notification.caseId == null
+              ? notification.id.hashCode & 0x7fffffff
+              : LocalNotificationService.caseNotificationId(
+                  notification.caseId!),
           title: notification.localizedTitle(l10n),
           body: notification.message.isEmpty
               ? l10n.openAppForDetails

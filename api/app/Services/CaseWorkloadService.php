@@ -18,7 +18,12 @@ final class CaseWorkloadService
     public function summary(User $employee): array
     {
         $now = CarbonImmutable::now();
-        $cases = InspectionCase::where('assigned_to', $employee->id)->get();
+        $cases = InspectionCase::query()
+            ->where(function ($query) use ($employee): void {
+                $query->where('assigned_to', $employee->id)
+                    ->orWhereHas('offers', fn ($offers) => $offers->where('employee_id', $employee->id));
+            })
+            ->get();
 
         $pending = $cases->where('status', CaseStatus::Pending);
         $open = $cases->filter(fn (InspectionCase $c) => $c->status->isOpen());

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\CaseStatus;
+use App\Enums\UserRole;
+use App\Events\CaseAccessChanged;
 use App\Events\CaseChanged;
 use App\Models\CaseAssignmentHistory;
 use App\Models\CaseStatusEvent;
@@ -13,13 +15,17 @@ use App\Notifications\CaseStatusChangedNotification;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Query\Expression;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use LogicException;
 
 final class CaseLifecycleService
 {
-    public function __construct(private readonly NotificationAudience $audience) {}
+    public function __construct(
+        private readonly NotificationAudience $audience,
+        private readonly CaseNotificationService $caseNotifications,
+    ) {}
 
     /**
      * @param  array{reference_no: string, title: string, property_address: ?string, lat: float, lng: float, priority: string, notes: ?string}  $data
@@ -48,71 +54,172 @@ final class CaseLifecycleService
         return $case;
     }
 
-    public function assign(InspectionCase $case, User $employee, User $actor): InspectionCase
+    /**
+     * @param  Collection<int, User>  $employees
+     */
+    public function offer(InspectionCase $case, Collection $employees, User $actor): InspectionCase
     {
-        $this->guardAssignable($case, $employee);
+        if ($employees->isEmpty()) {
+            throw new LogicException(__('messages.case.offer_required'));
+        }
 
-        $updated = DB::transaction(function () use ($case, $employee, $actor) {
+        if ($employees->contains(fn (User $employee) => $employee->role !== UserRole::Employee || ! $employee->is_active || $employee->trashed())) {
+            throw new LogicException(__('messages.employee_not_assignable'));
+        }
+
+        [$updated, $removedEmployeeIds] = DB::transaction(function () use ($case, $employees, $actor) {
+            $locked = InspectionCase::query()->lockForUpdate()->findOrFail($case->id);
+            $this->guardOfferable($locked);
             $now = CarbonImmutable::now();
-            $previousStatus = $case->status;
-            $previousAssigneeId = $case->assigned_to;
-            $previousAssigneeName = $previousAssigneeId
-                ? User::query()->find($previousAssigneeId)?->name
-                : null;
+            $previousStatus = $locked->status;
+            $employeeIds = $employees->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+            $previousEmployeeIds = $locked->offers()->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
+            $removedEmployeeIds = array_values(array_diff($previousEmployeeIds, $employeeIds));
 
-            $case->update([
-                'assigned_to' => $employee->id,
-                'assigned_at' => $now,
+            $locked->update([
+                'assigned_to' => null,
+                'assigned_at' => null,
                 'status' => CaseStatus::Pending,
             ]);
 
-            $note = $previousAssigneeId
-                ? "Reassigned from {$previousAssigneeName} to {$employee->name}."
-                : "Assigned to {$employee->name}.";
+            $locked->offers()->whereNotIn('employee_id', $employeeIds)->delete();
+            foreach ($employeeIds as $employeeId) {
+                $locked->offers()->updateOrCreate(
+                    ['employee_id' => $employeeId],
+                    ['offered_by' => $actor->id, 'offered_at' => $now],
+                );
+            }
 
-            $from = $previousStatus === CaseStatus::Rejected
-                ? CaseStatus::Rejected
-                : ($previousAssigneeId ? CaseStatus::Pending : null);
+            $names = $employees->pluck('name')->join(', ');
+            $this->logEvent($locked, $actor, $previousStatus, CaseStatus::Pending, "Offered to {$names}.", $now);
+            $this->caseNotifications->delete($locked->id, null, ['case.assigned']);
 
-            $this->logEvent($case, $actor, $from, CaseStatus::Pending, $note, $now);
-            CaseAssignmentHistory::create([
-                'inspection_case_id' => $case->id,
-                'employee_id' => $employee->id,
-                'actor_id' => $actor->id,
-                'assigned_at' => $now,
-            ]);
-
-            $employee->notify(new CaseAssignedNotification($case));
-
-            return $case->fresh();
+            return [$locked->fresh(), $removedEmployeeIds];
         });
 
-        Notification::send(
-            $this->audience->managers($actor->id),
-            new CaseStatusChangedNotification($updated, CaseStatus::Pending, $actor->name, "Assigned to {$employee->name}."),
-        );
+        Notification::send($employees, new CaseAssignedNotification($updated));
+
+        if ($removedEmployeeIds !== []) {
+            event(new CaseAccessChanged($updated->id, $removedEmployeeIds));
+        }
 
         event(CaseChanged::for('assigned', $updated));
 
         return $updated;
     }
 
+    public function assign(InspectionCase $case, User $employee, User $actor): InspectionCase
+    {
+        return $this->offer($case, collect([$employee]), $actor);
+    }
+
+    public function withdrawOffers(User $employee): void
+    {
+        $caseIds = DB::transaction(function () use ($employee): array {
+            $caseIds = $employee->caseOffers()->pluck('inspection_case_id')->map(fn ($id) => (int) $id)->all();
+            $employee->caseOffers()->delete();
+
+            foreach ($caseIds as $caseId) {
+                $this->caseNotifications->delete($caseId, [$employee->id], ['case.assigned']);
+            }
+
+            return $caseIds;
+        });
+
+        foreach ($caseIds as $caseId) {
+            event(new CaseAccessChanged($caseId, [$employee->id]));
+            $case = InspectionCase::query()->find($caseId);
+            if ($case !== null) {
+                event(CaseChanged::for('offer-withdrawn', $case));
+            }
+        }
+    }
+
     public function accept(InspectionCase $case, User $employee, CarbonInterface $plannedAt): InspectionCase
     {
-        $this->guardActor($case, $employee);
-        $now = $this->transition($case, CaseStatus::Accepted, $employee, 'Accepted by surveyor.');
+        [$updated, $offeredEmployeeIds] = DB::transaction(function () use ($case, $employee, $plannedAt) {
+            $locked = InspectionCase::query()->lockForUpdate()->findOrFail($case->id);
+            $offeredEmployeeIds = $locked->offers()->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
+            $isLegacyAssignee = $locked->assigned_to === $employee->id;
 
-        $case->update(['accepted_at' => $now, 'planned_at' => CarbonImmutable::instance($plannedAt)]);
+            if ($locked->status !== CaseStatus::Pending || (! $isLegacyAssignee && ! in_array($employee->id, $offeredEmployeeIds, true))) {
+                throw new LogicException(__('messages.case.offer_unavailable'));
+            }
 
-        return $this->announce($case, CaseStatus::Accepted, $employee, 'accepted', null);
+            $now = CarbonImmutable::now();
+            $locked->update([
+                'assigned_to' => $employee->id,
+                'assigned_at' => $now,
+                'status' => CaseStatus::Accepted,
+                'accepted_at' => $now,
+                'planned_at' => CarbonImmutable::instance($plannedAt),
+            ]);
+            $this->logEvent($locked, $employee, CaseStatus::Pending, CaseStatus::Accepted, 'Accepted by surveyor.', $now);
+            CaseAssignmentHistory::create([
+                'inspection_case_id' => $locked->id,
+                'employee_id' => $employee->id,
+                'actor_id' => $employee->id,
+                'assigned_at' => $now,
+            ]);
+            $locked->offers()->delete();
+            $this->caseNotifications->delete($locked->id, null, ['case.assigned']);
+
+            return [$locked->fresh(), $offeredEmployeeIds];
+        });
+
+        Notification::send(
+            $this->audience->managers(),
+            new CaseStatusChangedNotification($updated, CaseStatus::Accepted, $employee->name),
+        );
+
+        if ($offeredEmployeeIds !== []) {
+            event(new CaseAccessChanged($updated->id, $offeredEmployeeIds));
+        }
+        event(CaseChanged::for('accepted', $updated));
+
+        return $updated;
     }
 
     public function reject(InspectionCase $case, User $employee, ?string $note): InspectionCase
     {
-        $this->guardActor($case, $employee);
-        $this->transition($case, CaseStatus::Rejected, $employee, $note ?? 'Rejected by surveyor.');
+        [$updated, $legacyAssignment] = DB::transaction(function () use ($case, $employee, $note) {
+            $locked = InspectionCase::query()->lockForUpdate()->findOrFail($case->id);
+            $hasOffer = $locked->offers()->where('employee_id', $employee->id)->exists();
+            $legacyAssignment = $locked->assigned_to === $employee->id;
 
-        return $this->announce($case, CaseStatus::Rejected, $employee, 'rejected', $note);
+            if ($locked->status !== CaseStatus::Pending || (! $hasOffer && ! $legacyAssignment)) {
+                throw new LogicException(__('messages.case.offer_unavailable'));
+            }
+
+            $now = CarbonImmutable::now();
+            if ($legacyAssignment) {
+                $locked->update([
+                    'assigned_to' => null,
+                    'assigned_at' => null,
+                    'status' => CaseStatus::Rejected,
+                ]);
+                $this->logEvent($locked, $employee, CaseStatus::Pending, CaseStatus::Rejected, $note ?? 'Rejected by surveyor.', $now);
+            } else {
+                $locked->offers()->where('employee_id', $employee->id)->delete();
+                $this->logEvent($locked, $employee, CaseStatus::Pending, CaseStatus::Pending, $note ?? 'Offer declined by surveyor.', $now);
+            }
+
+            $this->caseNotifications->delete($locked->id, [$employee->id], ['case.assigned']);
+
+            return [$locked->fresh(), $legacyAssignment];
+        });
+
+        if ($legacyAssignment) {
+            Notification::send(
+                $this->audience->managers(),
+                new CaseStatusChangedNotification($updated, CaseStatus::Rejected, $employee->name, $note),
+            );
+        }
+
+        event(new CaseAccessChanged($updated->id, [$employee->id]));
+        event(CaseChanged::for('rejected', $updated));
+
+        return $updated;
     }
 
     public function start(InspectionCase $case, User $employee): InspectionCase
@@ -163,7 +270,11 @@ final class CaseLifecycleService
     public function cancel(InspectionCase $case, User $actor, ?string $note): InspectionCase
     {
         $assigneeId = $case->assigned_to;
+        $offeredEmployeeIds = $case->offers()->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
         $this->transition($case, CaseStatus::Cancelled, $actor, $note ?? 'Cancelled by management.');
+
+        $case->offers()->delete();
+        $this->caseNotifications->delete($case->id, $offeredEmployeeIds, ['case.assigned']);
 
         $fresh = $case->fresh();
 
@@ -179,6 +290,9 @@ final class CaseLifecycleService
         }
 
         event(CaseChanged::for('cancelled', $fresh));
+        if ($offeredEmployeeIds !== []) {
+            event(new CaseAccessChanged($fresh->id, $offeredEmployeeIds));
+        }
 
         return $fresh;
     }
@@ -204,12 +318,8 @@ final class CaseLifecycleService
         }
     }
 
-    private function guardAssignable(InspectionCase $case, User $employee): void
+    private function guardOfferable(InspectionCase $case): void
     {
-        if (! $employee->is_active) {
-            throw new LogicException(__('messages.case.employee_inactive', ['name' => $employee->name]));
-        }
-
         if (! in_array($case->status, [CaseStatus::Pending, CaseStatus::Rejected], true)) {
             throw new LogicException(__('messages.case.not_assignable'));
         }

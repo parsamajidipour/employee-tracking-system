@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'case_assigned' => 'تم إسناد :reference — :title إليك.',
+    'case_assigned' => 'الحالة :reference — :title متاحة لك لقبولها.',
     'case_created' => 'حالة جديدة :reference — :title.',
     'case_overdue' => 'الحالة :reference — :title متأخرة.',
     'case_status' => ':actor :action الحالة :reference — :title.',

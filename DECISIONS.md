@@ -920,3 +920,50 @@ employee location, but it is still a third-party privacy boundary. Nominatim is 
 best-effort service with no availability guarantee; the field remains editable
 because coverage can be incomplete and the lookup can be unavailable or
 rate-limited.
+
+## Case assignment is a multi-recipient offer with an atomic first claim
+
+**Decision.** Pending cases use `case_offers` instead of writing a provisional
+employee into `inspection_cases.assigned_to`. Management may replace the offer
+recipient set while the case is pending. Acceptance locks the case row, verifies
+that the caller still has an offer, writes the sole `assigned_to`, and removes
+all offers and their `case.assigned` database notifications in the same
+transaction. A competing acceptance receives `409` after the lock is released.
+
+**Why.** A provisional single assignee could not express “send to these people,
+first acceptance wins,” and merely sending extra notifications would leave
+employees with links to cases they could never open. Keeping offers relational
+makes visibility, validation, filtering, and cleanup use the same source of truth.
+
+**Consequences.** `CaseAccessChanged` invalidates each affected employee app.
+The notification endpoint also intersects case notifications with current case
+visibility, so missed WebSocket frames cannot preserve stale inbox entries. The
+Flutter client uses one deterministic local-notification id per case and cancels
+it when visibility disappears. Case deletion removes related database
+notifications before broadcasting invalidation.
+
+## Mobile case location selection is a map-only full-screen flow
+
+**Decision.** Below the panel's `lg` breakpoint, the location field opens a
+full-screen MapLibre picker without the page header. The map supports gesture
+selection, browser geolocation, direct latitude/longitude entry, and shared URLs
+from Google Maps, OpenStreetMap, and Apple Maps. `POST /api/v1/resolve-map-url`
+extracts coordinates and follows at most four redirects only across an explicit
+map-provider hostname allowlist.
+
+**Why.** An embedded map between form fields leaves too little touch area and
+puts the submit action far from the end of the form. Short Google share links
+also require server-side redirect resolution, while a strict allowlist prevents
+the resolver from becoming a general server-side request primitive.
+
+## Nearest-surveyor distance reads the geography column directly
+
+**Decision.** `CaseAssignmentService` calculates `ST_Distance` from the selected
+`inspection_cases.location` row instead of depending on transient `lat`/`lng`
+select aliases on the route-bound model.
+
+**Why.** The controller receives a normal route-bound model, so those aliases
+were absent in production and were coerced into an incorrect zero coordinate.
+Tests had accidentally hidden the bug by re-querying with `withLatLng()` first.
+Reading the stored geography by case id keeps the calculation correct regardless
+of how the model entered the service.

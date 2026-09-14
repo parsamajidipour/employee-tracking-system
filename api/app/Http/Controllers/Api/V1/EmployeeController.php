@@ -12,14 +12,15 @@ use App\Http\Requests\SyncEmployeeShiftsRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\CaseResource;
 use App\Http\Resources\EmployeeResource;
-use App\Models\CaseAssignmentHistory;
 use App\Mail\EmployeePasswordChangedMail;
 use App\Mail\EmployeeWelcomeMail;
+use App\Models\CaseAssignmentHistory;
 use App\Models\InspectionCase;
 use App\Models\TrackingSession;
 use App\Models\User;
 use App\Notifications\DeviceRevokedNotification;
 use App\Notifications\ScheduleChangedNotification;
+use App\Services\CaseLifecycleService;
 use App\Services\DeviceService;
 use App\Services\ShiftWindowResolver;
 use Illuminate\Http\JsonResponse;
@@ -99,12 +100,22 @@ class EmployeeController extends Controller
         return response()->json($shifts);
     }
 
-    public function setActive(SetEmployeeActiveRequest $request, User $employee): EmployeeResource
+    public function setActive(SetEmployeeActiveRequest $request, User $employee, CaseLifecycleService $cases): EmployeeResource
     {
+        if (! $request->boolean('is_active')) {
+            $openCases = $this->openCaseCount($employee);
+            abort_if(
+                $openCases > 0,
+                409,
+                trans_choice('messages.employee_open_cases', $openCases, ['name' => $employee->name, 'count' => $openCases]),
+            );
+        }
+
         $employee->update(['is_active' => $request->boolean('is_active')]);
 
         if (! $employee->is_active) {
             $employee->tokens()->delete();
+            $cases->withdrawOffers($employee);
         }
 
         return EmployeeResource::make($employee);
@@ -136,14 +147,11 @@ class EmployeeController extends Controller
         return response()->noContent();
     }
 
-    public function destroy(User $employee): Response
+    public function destroy(User $employee, CaseLifecycleService $cases): Response
     {
         abort_unless($employee->role === UserRole::Employee, 404);
 
-        $openCases = InspectionCase::query()
-            ->where('assigned_to', $employee->id)
-            ->whereIn('status', array_map(fn (CaseStatus $status) => $status->value, CaseStatus::open()))
-            ->count();
+        $openCases = $this->openCaseCount($employee);
 
         abort_if(
             $openCases > 0,
@@ -154,6 +162,7 @@ class EmployeeController extends Controller
         $suffix = hash('crc32b', (string) now()->getTimestampMs()).'_parsa';
 
         $employee->tokens()->delete();
+        $cases->withdrawOffers($employee);
         $employee->employeeShifts()->delete();
         $employee->update([
             'is_active' => false,
@@ -209,9 +218,10 @@ class EmployeeController extends Controller
 
         $cases = InspectionCase::query()
             ->withLatLng()
-            ->with('assignee')
+            ->with(['assignee', 'offers.employee'])
             ->where(function ($query) use ($employee, $historyCaseIds, $notifiedCaseIds): void {
                 $query->where('assigned_to', $employee->id);
+                $query->orWhereHas('offers', fn ($offers) => $offers->where('employee_id', $employee->id));
 
                 if ($historyCaseIds->isNotEmpty()) {
                     $query->orWhereIn('id', $historyCaseIds);
@@ -232,5 +242,13 @@ class EmployeeController extends Controller
             ->get();
 
         return CaseResource::collection($cases);
+    }
+
+    private function openCaseCount(User $employee): int
+    {
+        return InspectionCase::query()
+            ->where('assigned_to', $employee->id)
+            ->whereIn('status', array_map(fn (CaseStatus $status) => $status->value, CaseStatus::open()))
+            ->count();
     }
 }
