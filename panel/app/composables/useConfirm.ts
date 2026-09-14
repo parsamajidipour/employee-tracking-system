@@ -8,7 +8,7 @@ interface ConfirmState {
 
 const state = reactive<ConfirmState>({
   open: false,
-  title: 'Confirm',
+  title: '',
   message: '',
   variant: 'default',
   resolve: null,
@@ -19,10 +19,12 @@ export function useConfirmState() {
 }
 
 export function useConfirm() {
+  const { t } = useI18n()
+
   function confirm(message: string, opts: { title?: string; variant?: 'default' | 'danger' } = {}): Promise<boolean> {
     return new Promise((resolve) => {
       state.message = message
-      state.title = opts.title ?? 'Confirm'
+      state.title = opts.title ?? t('common.confirm')
       state.variant = opts.variant ?? 'default'
       state.resolve = resolve
       state.open = true

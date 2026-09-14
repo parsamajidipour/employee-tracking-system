@@ -108,6 +108,7 @@ void main() {
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
+    expect(find.byIcon(Icons.copy_outlined), findsNothing);
   });
 
   testWidgets(

@@ -10,13 +10,9 @@ interface AppRelease {
   created_at: string
 }
 
-const { t, tm, rt } = useI18n()
+const { t } = useI18n()
 const { number, date, fileSize } = useLocalizedFormat()
-
-const tableHeaders = computed(() => {
-  const headers = tm('releases.headers') as Parameters<typeof rt>[0][]
-  return headers.map(header => rt(header))
-})
+const tableHeaders = useTranslatedArray('releases.headers')
 
 const releases = ref<AppRelease[]>([])
 const loading = ref(true)

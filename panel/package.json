@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
+    "prebuild": "npm run check:i18n",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck"

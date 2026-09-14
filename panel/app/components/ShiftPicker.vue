@@ -10,8 +10,8 @@ interface PickableShift {
 defineProps<{ shifts: PickableShift[]; loading?: boolean }>()
 const selected = defineModel<number[]>({ default: () => [] })
 
-const { t, tm } = useI18n()
-const dayLabels = computed(() => tm('shifts.days') as string[])
+const { t } = useI18n()
+const dayLabels = useTranslatedArray('shifts.days')
 
 function formatTime(value: string) {
   return value.slice(0, 5)

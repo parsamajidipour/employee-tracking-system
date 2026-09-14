@@ -6,10 +6,10 @@ interface EmployeeShiftPreview {
   employee: { id: number; name: string } | null
 }
 
-const { t, tm } = useI18n()
+const { t } = useI18n()
 const { number } = useLocalizedFormat()
-const dayLabels = computed(() => tm('shifts.days') as string[])
-const tableHeaders = computed(() => tm('shifts.headers') as string[])
+const dayLabels = useTranslatedArray('shifts.days')
+const tableHeaders = useTranslatedArray('shifts.headers')
 
 const { data: templatesData, loading, error: cacheError, load, refresh } = useShiftTemplates()
 const templates = computed(() => templatesData.value ?? [])

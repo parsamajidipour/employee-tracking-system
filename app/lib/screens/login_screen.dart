@@ -79,17 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _copyPassword() async {
-    if (_passwordController.text.isEmpty) return;
-
-    await Clipboard.setData(ClipboardData(text: _passwordController.text));
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(context.l10n.passwordCopied)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -189,31 +178,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                       hintText: l10n.enterPassword,
                                       prefixIcon:
                                           const Icon(Icons.lock_outline),
-                                      suffixIcon: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            onPressed: () => setState(
-                                              () => _obscurePassword =
-                                                  !_obscurePassword,
-                                            ),
-                                            icon: Icon(
-                                              _obscurePassword
-                                                  ? Icons.visibility_outlined
-                                                  : Icons
-                                                      .visibility_off_outlined,
-                                            ),
-                                            tooltip: _obscurePassword
-                                                ? l10n.showPassword
-                                                : l10n.hidePassword,
-                                          ),
-                                          IconButton(
-                                            onPressed: _copyPassword,
-                                            icon:
-                                                const Icon(Icons.copy_outlined),
-                                            tooltip: l10n.copyPassword,
-                                          ),
-                                        ],
+                                      suffixIcon: IconButton(
+                                        onPressed: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_outlined
+                                              : Icons.visibility_off_outlined,
+                                        ),
+                                        tooltip: _obscurePassword
+                                            ? l10n.showPassword
+                                            : l10n.hidePassword,
                                       ),
                                     ),
                                     obscureText: _obscurePassword,

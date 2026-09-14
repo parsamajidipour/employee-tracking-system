@@ -57,12 +57,6 @@
       "dragPin": "اسحب الدبوس لضبط الموقع", "dropPin": "مطلوب — انقر على الخريطة لوضع الدبوس", "notSet": "غير محدد", "adjustMap": "حرّك الخريطة لضبط الدبوس.", "placeOnProperty": "حرّك الخريطة لوضع الدبوس على العقار — مطلوب."
     },
     "assignmentMap": { "propertyLocation": "موقع العقار", "caseLocation": "موقع الحالة", "propertyToInspect": "العقار المطلوب فحصه", "away": "يبعد {distance}", "openCases": "الحالات المفتوحة: {count}", "assignTo": "إسناد إلى {name}", "online": "متصل", "lastKnown": "آخر موقع معروف" },
-    "histories": {
-      "title": "سجلات {name}", "employee": "الموظف", "subtitle": "المسارات اليومية حسب المناوبة", "refresh": "تحديث سجل المسار", "employeeShifts": "مناوبات الموظف", "shift": "المناوبة",
-      "loadFailed": "تعذر تحميل نشاط هذا اليوم.", "mapFailed": "تعذر تحميل الخريطة.", "points": "{count} نقطة", "empty": "لا يوجد نشاط متتبع لهذا اليوم.",
-      "interruptions": "انقطاعات التتبع", "ongoing": "مستمر", "start": "البداية", "end": "النهاية", "startShort": "ب", "endShort": "ن",
-      "reasons": { "gps_disabled": "GPS غير متاح", "network_disabled": "لا توجد شبكة", "flight_mode": "وضع الطيران", "permission_revoked": "تم إلغاء الإذن", "service_interrupted": "انقطعت خدمة التتبع" }
-    },
     "detail": {
       "workspace": "مساحة عمل الحالة", "refresh": "تحديث الحالة", "loadFailed": "تعذر تحميل هذه الحالة.", "rankingUnavailable": "ترتيب المواقع المباشرة غير متاح مؤقتًا.",
       "selectFirst": "اختر مسّاحًا متاحًا أولًا.", "assignedNotice": "تم إسناد الحالة إلى {name} وهي بانتظار القبول.", "assignFailed": "تعذر إكمال الإسناد ولم يتغير شيء.",
@@ -103,6 +97,12 @@
     "activity": { "inspecting": "يقوم بالفحص", "overdue": "عمل متأخر", "awaiting": "بانتظار الرد", "available": "متاح" },
     "location": { "offShift": "خارج المناوبة / لا يوجد موقع مباشر", "unavailable": "الموقع غير متاح" },
     "connection": { "online": "متصل", "stale": "غير محدّث", "offline": "غير متصل" },
+    "histories": {
+      "title": "سجلات {name}", "employee": "الموظف", "subtitle": "المسارات اليومية حسب المناوبة", "refresh": "تحديث سجل المسار", "employeeShifts": "مناوبات الموظف", "shift": "المناوبة",
+      "loadFailed": "تعذر تحميل نشاط هذا اليوم.", "mapFailed": "تعذر تحميل الخريطة.", "points": "{count} نقطة", "empty": "لا يوجد نشاط متتبع لهذا اليوم.",
+      "interruptions": "انقطاعات التتبع", "ongoing": "مستمر", "start": "البداية", "end": "النهاية", "startShort": "ب", "endShort": "ن",
+      "reasons": { "gps_disabled": "GPS غير متاح", "network_disabled": "لا توجد شبكة", "flight_mode": "وضع الطيران", "permission_revoked": "تم إلغاء الإذن", "service_interrupted": "انقطعت خدمة التتبع" }
+    },
     "list": {
       "title": "الموظفون", "subtitle": "التوفر وعبء العمل والجداول والوصول في مكان واحد", "refresh": "تحديث الموظفين",
       "loadFailed": "تعذر تحميل الموظفين. سجل الدخول وحاول مجددًا.", "workforce": "القوة العاملة وعبء العمل",

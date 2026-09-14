@@ -57,12 +57,6 @@
       "dragPin": "Drag the pin to fine-tune", "dropPin": "Required — click the map to drop the pin", "notSet": "Not set", "adjustMap": "Move the map to adjust the pin.", "placeOnProperty": "Move the map to place the pin on the property — required."
     },
     "assignmentMap": { "propertyLocation": "Property location", "caseLocation": "Case location", "propertyToInspect": "Property to inspect", "away": "{distance} away", "openCases": "{count} open cases", "assignTo": "Assign to {name}", "online": "Online", "lastKnown": "Last known" },
-    "histories": {
-      "title": "{name} histories", "employee": "Employee", "subtitle": "Daily routes by shift", "refresh": "Refresh route history", "employeeShifts": "Employee shifts", "shift": "Shift",
-      "loadFailed": "Could not load activity for this day.", "mapFailed": "The map could not be loaded.", "points": "{count} pts", "empty": "No tracked activity for this day.",
-      "interruptions": "Tracking interruptions", "ongoing": "ongoing", "start": "Start", "end": "End", "startShort": "S", "endShort": "E",
-      "reasons": { "gps_disabled": "GPS unavailable", "network_disabled": "No network", "flight_mode": "Flight mode", "permission_revoked": "Permission revoked", "service_interrupted": "Tracking service interrupted" }
-    },
     "detail": {
       "workspace": "Case workspace", "refresh": "Refresh case", "loadFailed": "Could not load this case.", "rankingUnavailable": "Live location ranking is temporarily unavailable.",
       "selectFirst": "Select an available surveyor first.", "assignedNotice": "Case assigned to {name}. Awaiting acceptance.", "assignFailed": "Assignment could not be completed. Nothing was changed.",
@@ -103,6 +97,12 @@
     "activity": { "inspecting": "Inspecting", "overdue": "Overdue work", "awaiting": "Awaiting response", "available": "Available" },
     "location": { "offShift": "Off shift / no live location", "unavailable": "Location unavailable" },
     "connection": { "online": "online", "stale": "stale", "offline": "offline" },
+    "histories": {
+      "title": "{name} histories", "employee": "Employee", "subtitle": "Daily routes by shift", "refresh": "Refresh route history", "employeeShifts": "Employee shifts", "shift": "Shift",
+      "loadFailed": "Could not load activity for this day.", "mapFailed": "The map could not be loaded.", "points": "{count} pts", "empty": "No tracked activity for this day.",
+      "interruptions": "Tracking interruptions", "ongoing": "ongoing", "start": "Start", "end": "End", "startShort": "S", "endShort": "E",
+      "reasons": { "gps_disabled": "GPS unavailable", "network_disabled": "No network", "flight_mode": "Flight mode", "permission_revoked": "Permission revoked", "service_interrupted": "Tracking service interrupted" }
+    },
     "list": {
       "title": "Employees", "subtitle": "Availability, workload, schedules and access in one place", "refresh": "Refresh employees",
       "loadFailed": "Could not load employees. Sign in and try again.", "workforce": "Workforce & workload",
