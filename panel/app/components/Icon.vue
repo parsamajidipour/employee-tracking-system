@@ -58,7 +58,10 @@ withDefaults(defineProps<{ name: keyof typeof ICONS | string; spin?: boolean }>(
     stroke-linecap="round"
     stroke-linejoin="round"
     class="transition-transform duration-fast ease-soft"
-    :class="spin ? 'animate-spin' : ''"
+    :class="[
+      spin ? 'refresh-spin' : '',
+      name === 'refresh' ? 'refresh-icon' : '',
+    ]"
   >
     <path :d="ICONS[name] ?? ''" />
   </svg>

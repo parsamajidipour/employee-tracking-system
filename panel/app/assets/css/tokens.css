@@ -85,6 +85,30 @@
     transform: scaleX(-1);
   }
 
+  .refresh-icon {
+    transform-origin: center;
+  }
+
+  .refresh-spin {
+    animation: refresh-spin-ltr 0.75s linear infinite;
+  }
+
+  html[dir='rtl'] .refresh-icon:not(.refresh-spin) {
+    transform: scaleX(-1);
+  }
+
+  html[dir='rtl'] .refresh-spin {
+    animation-name: refresh-spin-rtl;
+  }
+
+  @keyframes refresh-spin-ltr {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes refresh-spin-rtl {
+    to { transform: rotate(-360deg); }
+  }
+
   h1 {
     font-size: 24px;
     line-height: 30px;

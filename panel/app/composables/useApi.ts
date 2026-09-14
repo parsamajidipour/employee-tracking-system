@@ -31,6 +31,7 @@ export async function apiFetch<T>(path: string, opts: Record<string, any> = {}):
   return $fetch<T>(path, {
     baseURL: apiOrigin(),
     credentials: 'include',
+    timeout: 15_000,
     ...opts,
     headers: {
       Accept: 'application/json',

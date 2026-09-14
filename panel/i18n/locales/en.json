@@ -7,7 +7,7 @@
     "cancel": "Cancel", "confirm": "Confirm", "close": "Close", "delete": "Delete", "edit": "Edit", "discard": "Discard",
     "search": "Search", "status": "Status", "date": "Date", "name": "Name", "email": "Email", "phone": "Phone", "password": "Password",
     "back": "Back", "next": "Next", "previous": "Previous", "notAvailable": "Not available", "optional": "optional",
-    "showPassword": "Show password", "hidePassword": "Hide password", "copyPassword": "Copy password", "passwordCopied": "Password copied", "copied": "Copied",
+    "showPassword": "Show password", "hidePassword": "Hide password",
     "removeFile": "Remove file", "clickToUpload": "Click to upload", "orDragDrop": "or drag and drop", "moreActions": "More actions", "live": "Live", "offline": "Offline", "loadFailed": "Could not load data.", "nothingHere": "Nothing here yet."
   },
   "nav": {
@@ -18,8 +18,7 @@
   "auth": {
     "signIn": "Sign in", "signingIn": "Signing in…", "workEmail": "Use your work email address.",
     "emailPlaceholder": "e.g. admin{'@'}inspection.local", "passwordPlaceholder": "Enter your work password",
-    "failed": "Login failed — check the credentials and try again.",
-    "privacy": "Location data is only visible during an employee's working hours."
+    "failed": "Login failed — check the credentials and try again."
   },
   "notifications": {
     "title": "Notifications", "unread": "Notifications, {count} unread", "markAllRead": "Mark all read", "empty": "Nothing to catch up on yet.", "loadFailed": "Could not load notifications."

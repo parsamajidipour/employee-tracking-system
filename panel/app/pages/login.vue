@@ -17,7 +17,7 @@ async function submit() {
       method: 'POST',
       body: { email: email.value, password: password.value },
     })
-    await router.push('/')
+    await router.replace('/map')
   } catch {
     error.value = t('auth.failed')
   } finally {
@@ -28,7 +28,9 @@ async function submit() {
 
 <template>
   <div class="relative flex min-h-dvh items-center justify-center bg-canvas p-5">
-    <LanguageSwitcher class="absolute end-5 top-5 text-ink-soft" />
+    <div class="absolute end-5 top-5 text-ink-soft">
+      <LanguageSwitcher />
+    </div>
     <div class="enter w-full max-w-[400px]">
       <div class="mb-6 flex flex-col items-center gap-2.5 text-center">
         <span class="grid h-9 w-9 place-items-center rounded-sm bg-primary text-white">
@@ -54,10 +56,6 @@ async function submit() {
           </Button>
         </form>
       </div>
-
-      <p class="muted mt-5 text-center text-[11.5px]">
-        {{ t('auth.privacy') }}
-      </p>
     </div>
   </div>
 </template>
