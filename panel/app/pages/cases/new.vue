@@ -118,13 +118,6 @@ onBeforeUnmount(() => {
 
 <template>
   <AppShell :title="t('cases.new.title')" :subtitle="t('cases.new.subtitle')" back-to="/cases" full-bleed>
-    <template #actions>
-      <Button variant="secondary" size="sm" to="/cases" :aria-label="t('cases.new.cancelCreation')">
-        <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">{{ t('common.cancel') }}</span>
-      </Button>
-    </template>
-
     <form class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5 lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden" @submit.prevent="submit">
       <div class="flex flex-none flex-col gap-3 sm:gap-4 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
         <InlineAlert v-if="formError" class="!mb-0 flex-none">{{ formError }}</InlineAlert>

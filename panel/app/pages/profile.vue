@@ -158,8 +158,8 @@ onMounted(refreshProfile)
               :hint="t('profile.emailHint')"
             />
 
-            <div class="flex items-center gap-2 border-t border-hairline pt-3.5">
-              <Button type="submit" :disabled="!infoDirty" :loading="infoSaving">
+            <div class="flex flex-col gap-2 border-t border-hairline pt-3.5 sm:flex-row sm:items-center">
+              <Button type="submit" class="w-full sm:w-auto" :disabled="!infoDirty" :loading="infoSaving">
                 {{ infoSaving ? t('common.saving') : t('profile.save') }}
               </Button>
               <span v-if="!infoDirty" class="text-[12px] text-ink-faint">{{ t('profile.noChanges') }}</span>
@@ -202,7 +202,7 @@ onMounted(refreshProfile)
             />
 
             <div class="flex items-center gap-2 border-t border-hairline pt-3.5">
-              <Button type="submit" :disabled="!passwordReady" :loading="passwordSaving">
+              <Button type="submit" class="w-full sm:w-auto" :disabled="!passwordReady" :loading="passwordSaving">
                 {{ passwordSaving ? t('employees.list.changing') : t('employees.list.changePassword') }}
               </Button>
             </div>

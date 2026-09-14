@@ -23,6 +23,9 @@ useCaseStream(() => loadWorkload())
 const search = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const coverageFilter = ref<'all' | 'scheduled' | 'unscheduled'>('all')
+const advancedFilterCount = computed(
+  () => Number(statusFilter.value !== 'all') + Number(coverageFilter.value !== 'all'),
+)
 
 const employees = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -101,8 +104,7 @@ const isFiltered = computed(
   () => search.value.trim() !== '' || statusFilter.value !== 'all' || coverageFilter.value !== 'all',
 )
 
-function clearFilters() {
-  search.value = ''
+function clearAdvancedFilters() {
   statusFilter.value = 'all'
   coverageFilter.value = 'all'
 }
@@ -264,8 +266,8 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
         flush
       >
         <div class="flex min-h-0 flex-col lg:h-full">
-          <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-3.5 py-3 sm:px-5">
-            <div class="w-full min-w-0 flex-1 min-[560px]:min-w-56">
+          <div class="flex flex-none flex-col gap-3 border-b border-hairline bg-surface-sunken/60 px-3.5 py-3 sm:flex-row sm:flex-wrap sm:items-end sm:px-5">
+            <div class="w-full min-w-0 sm:min-w-56 sm:flex-1">
               <TextInput
                 v-model="search"
                 :label="t('common.search')"
@@ -273,24 +275,34 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
                 :placeholder="t('employees.list.searchPlaceholder')"
               />
             </div>
-            <div class="w-full min-[360px]:w-[calc(50%_-_6px)] min-[560px]:w-44">
-              <Select v-model="statusFilter" :label="t('common.status')">
-                <option value="all">{{ t('employees.list.allStatuses') }}</option>
-                <option value="active">{{ t('employees.list.activeOnly') }}</option>
-                <option value="inactive">{{ t('employees.list.inactiveOnly') }}</option>
-              </Select>
-            </div>
-            <div class="w-full min-[360px]:w-[calc(50%_-_6px)] min-[560px]:w-48">
-              <Select v-model="coverageFilter" :label="t('employees.list.shiftCoverage')">
-                <option value="all">{{ t('employees.list.anyCoverage') }}</option>
-                <option value="scheduled">{{ t('employees.list.hasShift') }}</option>
-                <option value="unscheduled">{{ t('employees.list.noShift') }}</option>
-              </Select>
-            </div>
-            <Button v-if="isFiltered" variant="ghost" size="sm" @click="clearFilters">
-              <Icon name="close" class="h-3.5 w-3.5" />
-              {{ t('employees.list.clear') }}
-            </Button>
+            <ResponsiveFilterGroup :title="t('common.moreFilters')" :active-count="advancedFilterCount">
+              <div class="w-full sm:w-44">
+                <Select v-model="statusFilter" :label="t('common.status')">
+                  <option value="all">{{ t('employees.list.allStatuses') }}</option>
+                  <option value="active">{{ t('employees.list.activeOnly') }}</option>
+                  <option value="inactive">{{ t('employees.list.inactiveOnly') }}</option>
+                </Select>
+              </div>
+              <div class="w-full sm:w-48">
+                <Select v-model="coverageFilter" :label="t('employees.list.shiftCoverage')">
+                  <option value="all">{{ t('employees.list.anyCoverage') }}</option>
+                  <option value="scheduled">{{ t('employees.list.hasShift') }}</option>
+                  <option value="unscheduled">{{ t('employees.list.noShift') }}</option>
+                </Select>
+              </div>
+              <template #footer>
+                <Button
+                  v-if="advancedFilterCount > 0"
+                  variant="ghost"
+                  size="sm"
+                  class="w-full justify-center sm:w-auto"
+                  @click="clearAdvancedFilters"
+                >
+                  <Icon name="close" class="h-3.5 w-3.5" />
+                  {{ t('common.clearFilters') }}
+                </Button>
+              </template>
+            </ResponsiveFilterGroup>
           </div>
 
           <div class="min-h-0 lg:flex-1 lg:overflow-y-auto">
@@ -474,7 +486,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
 
       <template #footer>
         <Button variant="secondary" @click="editModalOpen = false">{{ t('common.cancel') }}</Button>
-        <Button :loading="editSaving" @click="submitEdit">
+        <Button class="w-full sm:w-auto" :loading="editSaving" @click="submitEdit">
           {{ editSaving ? t('common.saving') : t('employees.list.saveChanges') }}
         </Button>
       </template>
@@ -494,7 +506,7 @@ onMounted(() => Promise.all([load(), loadWorkload()]))
 
       <template #footer>
         <Button variant="secondary" @click="passwordModalOpen = false">{{ t('common.cancel') }}</Button>
-        <Button :loading="passwordSaving" @click="submitChangePassword">
+        <Button class="w-full sm:w-auto" :loading="passwordSaving" @click="submitChangePassword">
           {{ passwordSaving ? t('employees.list.changing') : t('employees.list.changePassword') }}
         </Button>
       </template>

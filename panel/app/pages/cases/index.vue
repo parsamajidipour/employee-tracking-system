@@ -14,6 +14,7 @@ const statusFilter = ref<CaseStatus | ''>('')
 const assigneeFilter = ref<number | ''>('')
 const createdDateFilter = ref('')
 const page = ref(1)
+const advancedFilterCount = computed(() => Number(assigneeFilter.value !== '') + Number(createdDateFilter.value !== ''))
 
 function currentFilters() {
   return {
@@ -63,26 +64,38 @@ onMounted(() => {
       </Button>
     </div>
 
-    <div class="surface-flat mb-3 flex flex-wrap items-end gap-3 p-3.5 sm:mb-4 sm:gap-3.5 sm:p-4">
-      <div class="w-full min-[360px]:w-48">
+    <div class="surface-flat mb-3 flex flex-col gap-3 p-3.5 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3.5 sm:p-4">
+      <div class="w-full sm:w-48">
         <Select v-model="statusFilter" :label="t('common.status')">
           <option value="">{{ t('cases.list.allStatuses') }}</option>
           <option v-for="status in CASE_STATUSES" :key="status" :value="status">{{ t(`case.statuses.${status}`) }}</option>
         </Select>
       </div>
-      <div class="w-full min-[360px]:w-56">
-        <Select v-model="assigneeFilter" :label="t('cases.fields.assignee')">
-          <option value="">{{ t('cases.list.allEmployees') }}</option>
-          <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
-        </Select>
-      </div>
-      <div class="w-full min-[360px]:w-48">
-        <label for="case-created-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('common.date') }}</label>
-        <input id="case-created-date" v-model="createdDateFilter" type="date" class="field w-full" />
-      </div>
-      <Button v-if="createdDateFilter" variant="secondary" size="sm" type="button" @click="createdDateFilter = ''">
-        {{ t('cases.list.clearDate') }}
-      </Button>
+      <ResponsiveFilterGroup :title="t('common.moreFilters')" :active-count="advancedFilterCount">
+        <div class="w-full sm:w-56">
+          <Select v-model="assigneeFilter" :label="t('cases.fields.assignee')">
+            <option value="">{{ t('cases.list.allEmployees') }}</option>
+            <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
+          </Select>
+        </div>
+        <div class="w-full sm:w-48">
+          <label for="case-created-date" class="mb-1.5 block text-[12px] font-medium text-ink-soft">{{ t('common.date') }}</label>
+          <input id="case-created-date" v-model="createdDateFilter" type="date" class="field w-full" />
+        </div>
+        <template #footer>
+          <Button
+            v-if="advancedFilterCount > 0"
+            variant="ghost"
+            size="sm"
+            type="button"
+            class="w-full justify-center sm:w-auto"
+            @click="assigneeFilter = ''; createdDateFilter = ''"
+          >
+            <Icon name="close" class="h-3.5 w-3.5" />
+            {{ t('common.clearFilters') }}
+          </Button>
+        </template>
+      </ResponsiveFilterGroup>
     </div>
 
     <Table
@@ -93,7 +106,7 @@ onMounted(() => {
       :empty-message="t('cases.list.empty')"
     >
       <template #cards>
-        <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block space-y-3 p-3.5 sm:p-4">
+        <NuxtLink v-for="item in cases" :key="item.id" :to="`/cases/${item.id}`" class="surface-flat block space-y-3 p-4">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="truncate text-[14px] font-medium text-ink">{{ item.title }}</p>
@@ -104,7 +117,7 @@ onMounted(() => {
           <dl class="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[13px]">
             <div>
               <dt class="eyebrow mb-1">{{ t('cases.fields.assignee') }}</dt>
-              <dd class="text-ink">{{ item.assignee_name ?? t('case.assignmentStatuses.unassigned') }}</dd>
+              <dd class="truncate text-ink">{{ item.assignee_name ?? t('case.assignmentStatuses.unassigned') }}</dd>
             </div>
             <div>
               <dt class="eyebrow mb-1">{{ t('cases.fields.priority') }}</dt>

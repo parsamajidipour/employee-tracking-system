@@ -254,8 +254,8 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2 border-t border-hairline pt-4">
-              <Button type="submit" :loading="submitting">
+            <div class="flex flex-col gap-2 border-t border-hairline pt-4 sm:flex-row sm:flex-wrap sm:items-center">
+              <Button type="submit" class="w-full sm:w-auto" :loading="submitting">
                 {{ editingId === null ? t('shifts.add') : t('shifts.saveChanges') }}
               </Button>
               <Button v-if="editingId !== null" type="button" variant="secondary" :disabled="submitting" @click="startCreate">

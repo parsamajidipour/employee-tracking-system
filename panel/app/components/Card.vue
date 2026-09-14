@@ -26,7 +26,7 @@ withDefaults(
           <p v-if="subtitle" class="line-clamp-2 text-[12px] leading-4 text-ink-faint sm:truncate">{{ subtitle }}</p>
         </div>
       </div>
-      <div v-if="$slots.actions" class="flex flex-none items-center gap-2 max-[359px]:w-full max-[359px]:justify-end">
+      <div v-if="$slots.actions" class="flex flex-none flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-end">
         <slot name="actions" />
       </div>
     </header>

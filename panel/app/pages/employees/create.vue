@@ -59,13 +59,6 @@ async function submit() {
 
 <template>
   <AppShell :title="t('employees.create.title')" :subtitle="t('employees.create.subtitle')" back-to="/employees" full-bleed>
-    <template #actions>
-      <Button variant="secondary" size="sm" to="/employees" :aria-label="t('employees.create.cancelCreation')">
-        <Icon name="close" class="h-3.5 w-3.5 sm:hidden" />
-        <span class="hidden sm:inline">{{ t('common.cancel') }}</span>
-      </Button>
-    </template>
-
     <form class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-5" @submit.prevent="submit">
       <InlineAlert v-if="error" class="!mb-0 flex-none">{{ error }}</InlineAlert>
 

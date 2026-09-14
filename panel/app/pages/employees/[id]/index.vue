@@ -130,7 +130,7 @@ onMounted(refreshAll)
         >
           <template #actions>
             <Button v-if="isDirty" variant="ghost" size="sm" :disabled="saving" @click="reset">{{ t('common.discard') }}</Button>
-            <Button size="sm" :disabled="!isDirty" :loading="saving" @click="save">
+            <Button size="sm" class="w-full sm:w-auto" :disabled="!isDirty" :loading="saving" @click="save">
               {{ saving ? t('common.saving') : t('employees.detail.saveShifts') }}
             </Button>
           </template>

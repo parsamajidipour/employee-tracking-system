@@ -4,8 +4,8 @@
   "common": {
     "active": "نشط", "inactive": "غير نشط", "all": "الكل", "yes": "نعم", "no": "لا", "none": "لا يوجد", "unknown": "غير معروف",
     "loading": "جارٍ التحميل…", "refresh": "تحديث", "retry": "حاول مجددًا", "save": "حفظ", "saving": "جارٍ الحفظ…", "saved": "تم الحفظ.",
-    "cancel": "إلغاء", "confirm": "تأكيد", "close": "إغلاق", "delete": "حذف", "edit": "تعديل", "discard": "تجاهل التغييرات",
-    "search": "بحث", "status": "الحالة", "date": "التاريخ", "name": "الاسم", "email": "البريد الإلكتروني", "phone": "الهاتف", "password": "كلمة المرور",
+    "cancel": "إلغاء", "confirm": "تأكيد", "close": "إغلاق", "done": "تم", "delete": "حذف", "edit": "تعديل", "discard": "تجاهل التغييرات",
+    "search": "بحث", "status": "الحالة", "date": "التاريخ", "moreFilters": "فلاتر إضافية", "clearFilters": "مسح الفلاتر", "name": "الاسم", "email": "البريد الإلكتروني", "phone": "الهاتف", "password": "كلمة المرور",
     "back": "رجوع", "next": "التالي", "previous": "السابق", "notAvailable": "غير متاح", "optional": "اختياري",
     "showPassword": "إظهار كلمة المرور", "hidePassword": "إخفاء كلمة المرور",
     "removeFile": "إزالة الملف", "clickToUpload": "انقر للرفع", "orDragDrop": "أو اسحب الملف وأفلته", "moreActions": "إجراءات إضافية", "live": "مباشر", "offline": "غير متصل", "loadFailed": "تعذر تحميل البيانات.", "nothingHere": "لا يوجد شيء هنا بعد."

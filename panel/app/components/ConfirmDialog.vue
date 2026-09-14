@@ -15,7 +15,7 @@ function respond(value: boolean) {
     <p>{{ state.message }}</p>
     <template #footer>
       <Button variant="secondary" @click="respond(false)">{{ t('common.cancel') }}</Button>
-      <Button :variant="state.variant === 'danger' ? 'danger' : 'primary'" @click="respond(true)">{{ t('common.confirm') }}</Button>
+      <Button class="w-full sm:w-auto" :variant="state.variant === 'danger' ? 'danger' : 'primary'" @click="respond(true)">{{ t('common.confirm') }}</Button>
     </template>
   </Modal>
 </template>

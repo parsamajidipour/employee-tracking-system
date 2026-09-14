@@ -21,6 +21,7 @@ const { connected } = useCaseStream(() => {
 
 const search = ref('')
 const sortKey = ref<SortKey>('overdue')
+const advancedFilterCount = computed(() => Number(sortKey.value !== 'overdue'))
 
 const totals = computed(() =>
   rows.value.reduce(
@@ -160,18 +161,32 @@ onMounted(load)
         flush
       >
         <div class="flex min-h-0 flex-col lg:h-full">
-          <div class="flex flex-none flex-wrap items-end gap-3 border-b border-hairline bg-surface-sunken/60 px-4 py-3 sm:px-5">
-            <div class="min-w-56 flex-1">
+          <div class="flex flex-none flex-col gap-3 border-b border-hairline bg-surface-sunken/60 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-end sm:px-5">
+            <div class="w-full min-w-0 sm:min-w-56 sm:flex-1">
               <TextInput v-model="search" :label="t('common.search')" icon="search" :placeholder="t('workload.searchPlaceholder')" />
             </div>
-            <div class="w-52">
-              <Select v-model="sortKey" :label="t('workload.sortBy')">
-                <option value="overdue">{{ t('workload.sortOverdue') }}</option>
-                <option value="active">{{ t('workload.sortOpen') }}</option>
-                <option value="completed">{{ t('workload.sortCompleted') }}</option>
-                <option value="name">{{ t('workload.sortName') }}</option>
-              </Select>
-            </div>
+            <ResponsiveFilterGroup :title="t('common.moreFilters')" :active-count="advancedFilterCount">
+              <div class="w-full sm:w-52">
+                <Select v-model="sortKey" :label="t('workload.sortBy')">
+                  <option value="overdue">{{ t('workload.sortOverdue') }}</option>
+                  <option value="active">{{ t('workload.sortOpen') }}</option>
+                  <option value="completed">{{ t('workload.sortCompleted') }}</option>
+                  <option value="name">{{ t('workload.sortName') }}</option>
+                </Select>
+              </div>
+              <template #footer>
+                <Button
+                  v-if="advancedFilterCount > 0"
+                  variant="ghost"
+                  size="sm"
+                  class="w-full justify-center sm:w-auto"
+                  @click="sortKey = 'overdue'"
+                >
+                  <Icon name="close" class="h-3.5 w-3.5" />
+                  {{ t('common.clearFilters') }}
+                </Button>
+              </template>
+            </ResponsiveFilterGroup>
           </div>
 
           <div class="min-h-0 lg:flex-1 lg:overflow-y-auto">

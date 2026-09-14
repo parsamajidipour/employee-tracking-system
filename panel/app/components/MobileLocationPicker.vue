@@ -135,9 +135,9 @@ function confirm() {
         <InlineAlert v-if="error" class="mb-3">{{ error }}</InlineAlert>
 
         <label for="mobile-map-url" class="mb-1.5 block text-xs font-medium text-ink-soft">{{ t('cases.new.mapUrl') }}</label>
-        <div class="flex gap-2">
+        <div class="flex flex-col gap-2 sm:flex-row">
           <input id="mobile-map-url" v-model="mapUrl" type="url" class="field min-w-0 flex-1" :placeholder="t('cases.new.mapUrlPlaceholder')" />
-          <Button type="button" size="sm" :loading="resolvingUrl" @click="applyMapUrl">{{ t('cases.new.useMapUrl') }}</Button>
+          <Button type="button" size="sm" class="w-full sm:w-auto" :loading="resolvingUrl" @click="applyMapUrl">{{ t('cases.new.useMapUrl') }}</Button>
         </div>
 
         <div class="my-4 border-t border-hairline" />

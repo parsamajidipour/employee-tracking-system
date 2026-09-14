@@ -4,8 +4,8 @@
   "common": {
     "active": "Active", "inactive": "Inactive", "all": "All", "yes": "Yes", "no": "No", "none": "None", "unknown": "Unknown",
     "loading": "Loading…", "refresh": "Refresh", "retry": "Try again", "save": "Save", "saving": "Saving…", "saved": "Saved.",
-    "cancel": "Cancel", "confirm": "Confirm", "close": "Close", "delete": "Delete", "edit": "Edit", "discard": "Discard",
-    "search": "Search", "status": "Status", "date": "Date", "name": "Name", "email": "Email", "phone": "Phone", "password": "Password",
+    "cancel": "Cancel", "confirm": "Confirm", "close": "Close", "done": "Done", "delete": "Delete", "edit": "Edit", "discard": "Discard",
+    "search": "Search", "status": "Status", "date": "Date", "moreFilters": "More filters", "clearFilters": "Clear filters", "name": "Name", "email": "Email", "phone": "Phone", "password": "Password",
     "back": "Back", "next": "Next", "previous": "Previous", "notAvailable": "Not available", "optional": "optional",
     "showPassword": "Show password", "hidePassword": "Hide password",
     "removeFile": "Remove file", "clickToUpload": "Click to upload", "orDragDrop": "or drag and drop", "moreActions": "More actions", "live": "Live", "offline": "Offline", "loadFailed": "Could not load data.", "nothingHere": "Nothing here yet."
