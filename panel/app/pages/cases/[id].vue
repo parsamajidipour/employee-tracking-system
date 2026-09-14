@@ -296,7 +296,7 @@ onMounted(refreshAll)
                 class="group overflow-hidden rounded-md border border-hairline bg-surface-sunken transition-colors hover:border-primary/40"
               >
                 <div class="aspect-[4/3] overflow-hidden bg-surface xl:aspect-square">
-                  <img :src="photo.url" :alt="t('cases.detail.photoAlt', { date: shortDateTimeLabel(photo.captured_at) })" class="h-full w-full object-cover transition-transform duration-fast group-hover:scale-[1.02]" loading="lazy" />
+                  <img :src="photo.url" :alt="t('cases.detail.photoAlt', { date: shortDateTimeLabel(photo.captured_at) })" class="h-full w-full object-cover" loading="lazy" />
                 </div>
                 <div class="flex items-start justify-between gap-2 p-3">
                   <div class="min-w-0">

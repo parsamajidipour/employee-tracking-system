@@ -90,22 +90,10 @@
   }
 
   .refresh-spin {
-    animation: refresh-spin-ltr 0.75s linear infinite;
+    animation: refresh-spin-counterclockwise 0.75s linear infinite;
   }
 
-  html[dir='rtl'] .refresh-icon:not(.refresh-spin) {
-    transform: scaleX(-1);
-  }
-
-  html[dir='rtl'] .refresh-spin {
-    animation-name: refresh-spin-rtl;
-  }
-
-  @keyframes refresh-spin-ltr {
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes refresh-spin-rtl {
+  @keyframes refresh-spin-counterclockwise {
     to { transform: rotate(-360deg); }
   }
 
@@ -221,11 +209,7 @@
     font-weight: 600;
     letter-spacing: -0.005em;
     transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease),
-      color var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
-  }
-
-  .btn:active {
-    transform: scale(0.97);
+      color var(--motion-fast) var(--ease);
   }
 
   .row-h {
